@@ -424,9 +424,367 @@ fn readiness_and_validate_progress_to_realized_s3() {
         .write_back
         .contains("loom journey run"));
 
+    let compiled = store
+        .add_node(
+            NodeType::Validation,
+            "journey:flow:proof",
+            "compiler-owned Journey proof",
+            "not_run",
+            serde_json::json!({"type":"journey", "profile":"proof"}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Proves,
+            &compiled.id,
+            &journey.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Validates,
+            &compiled.id,
+            &derived.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let compiled_packet = workitem::next(&store, Some(Lane::Validate))
+        .unwrap()
+        .expect("compiler-owned Journey validation is servable");
+    assert_eq!(compiled_packet.target.id, journey.id);
+    assert_eq!(
+        compiled_packet.prompt_contract.write_back,
+        format!(
+            "loom journey compile '{}' --profile 'proof'; loom journey run '{}' --profile 'proof'",
+            journey.id, journey.id
+        )
+    );
+    assert!(!compiled_packet
+        .prompt_contract
+        .write_back
+        .contains("validation verdict"));
+    let roster = workitem::queue_items(&store, Lane::Validate).unwrap();
+    assert_eq!(roster[0].target.id, journey.id);
+    assert_eq!(
+        Lane::Validate.depth(&LadderInputs::gather(&store).unwrap()),
+        roster.len()
+    );
+
     earn_s3(&store, &journey);
     let r = completeness::journey_readiness(&store, &journey).unwrap();
     assert!(r.proven && r.realized);
+}
+
+#[test]
+fn validate_depth_roster_and_packet_share_profile_bearing_work_units() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let mut journey = authored_journey(&store, tmp.path(), "flow");
+    journey.body["profile_ids"] = serde_json::json!(["proof", "smoke"]);
+    store.set_node_body(&journey.id, &journey.body).unwrap();
+
+    let intents = [
+        intent(&store, "first visible behavior", "implemented"),
+        intent(&store, "second visible behavior", "implemented"),
+    ];
+    for (index, target) in intents.iter().enumerate() {
+        store
+            .set_facet(
+                &target.id,
+                TargetKind::Node,
+                "visibility",
+                "user_visible",
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        derive(&store, &journey, target, &["choose", "confirm"]);
+        ratify_and_ground(&store, target, &format!("src/behavior_{index}.rs"));
+    }
+    let (surface, _) = add_surface(&store, &journey);
+    let surface_code = codefile(&store, "src/flow_cli.rs");
+    store
+        .add_edge(
+            EdgeKind::Exposes,
+            &surface.id,
+            &surface_code.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let mut expected_commands = Vec::new();
+    for profile in ["proof", "smoke"] {
+        let validation = store
+            .add_node(
+                NodeType::Validation,
+                &format!("journey:flow:{profile}"),
+                "compiler-owned Journey proof",
+                "not_run",
+                serde_json::json!({"type":"journey", "profile":profile}),
+            )
+            .unwrap();
+        store
+            .add_edge(
+                EdgeKind::Proves,
+                &validation.id,
+                &journey.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        for target in &intents {
+            store
+                .add_edge(
+                    EdgeKind::Validates,
+                    &validation.id,
+                    &target.id,
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+        }
+        expected_commands.push(format!(
+            "loom journey run '{}' --profile '{}'",
+            journey.id, profile
+        ));
+    }
+
+    let roster = workitem::queue_items(&store, Lane::Validate).unwrap();
+    let depth = Lane::Validate.depth(&LadderInputs::gather(&store).unwrap());
+    assert_eq!(depth, roster.len());
+    assert_eq!(roster.len(), 4, "two profiles plus two unproven Intents");
+    for command in &expected_commands {
+        assert!(
+            roster.iter().any(|entry| entry.reason.contains(command)),
+            "roster omitted exact profile command {command}"
+        );
+    }
+
+    let packet = workitem::next(&store, Some(Lane::Validate))
+        .unwrap()
+        .expect("first shared work unit is servable");
+    assert!(expected_commands
+        .iter()
+        .any(|command| packet.prompt_contract.write_back.contains(command)));
+}
+
+#[test]
+fn compiler_owned_journey_validation_rejects_manual_verdict() {
+    let tmp = Tmp::new();
+    let (
+        validation_id,
+        intent_id,
+        proves_id,
+        validates_id,
+        surface_id,
+        codefile_id,
+        successor_codefile_id,
+    ) = {
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let journey = authored_journey(&store, tmp.path(), "flow");
+        let target = intent(&store, "compiled behavior", "implemented");
+        let (surface, _) = add_surface(&store, &journey);
+        let successor = codefile(&store, "src/behavior_v2.rs");
+        let codefile = codefile(&store, "src/behavior.rs");
+        let validation = store
+            .add_node(
+                NodeType::Validation,
+                "journey:flow:proof",
+                "compiler-owned Journey proof",
+                "not_run",
+                serde_json::json!({"type":"journey", "profile":"proof"}),
+            )
+            .unwrap();
+        let proves = store
+            .add_edge(
+                EdgeKind::Proves,
+                &validation.id,
+                &journey.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        let validates = store
+            .add_edge(
+                EdgeKind::Validates,
+                &validation.id,
+                &target.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        store
+            .add_edge(
+                EdgeKind::Exercises,
+                &validation.id,
+                &codefile.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+        (
+            validation.id,
+            target.id,
+            proves.id,
+            validates.id,
+            surface.id,
+            codefile.id,
+            successor.id,
+        )
+    };
+
+    for cmd in [
+        loom::cli::ValidationCmd::Verdict {
+            key: validation_id.clone(),
+            outcome: "passed".into(),
+            evidence: "not a runtime observation".into(),
+            reason: String::new(),
+        },
+        loom::cli::ValidationCmd::Update {
+            key: validation_id.clone(),
+            r#type: Some("manual_check".into()),
+            command: None,
+        },
+        loom::cli::ValidationCmd::Run {
+            key: validation_id.clone(),
+            all: false,
+        },
+        loom::cli::ValidationCmd::Unlink {
+            validation: validation_id.clone(),
+            intent: intent_id,
+        },
+        loom::cli::ValidationCmd::Remove {
+            key: validation_id.clone(),
+        },
+    ] {
+        let rejected = loom::commands::run(loom::cli::Cli {
+            graph: Some(tmp.path().to_path_buf()),
+            json: true,
+            command: Some(loom::cli::Command::Validation { cmd }),
+        })
+        .expect_err("generic mutation of compiler-owned Journey validation must fail");
+        assert!(
+            format!("{rejected:#}").contains("compiler-owned Journey"),
+            "unexpected rejection: {rejected:#}"
+        );
+    }
+
+    for command in [
+        loom::cli::Command::Edge {
+            cmd: loom::cli::EdgeCmd::Remove {
+                edge_id: proves_id,
+                reason: Some("attempted generic removal".into()),
+            },
+        },
+        loom::cli::Command::Edge {
+            cmd: loom::cli::EdgeCmd::Verdict {
+                edge_id: validates_id,
+                verdict: "ground".into(),
+                criterion: "generic mutation is forbidden".into(),
+                evidence: "src/behavior.rs:1".into(),
+                confidence: 1.0,
+            },
+        },
+        loom::cli::Command::Edge {
+            cmd: loom::cli::EdgeCmd::Call {
+                validation: validation_id.clone(),
+                surface: surface_id,
+            },
+        },
+        loom::cli::Command::Edge {
+            cmd: loom::cli::EdgeCmd::Exercises {
+                validation: validation_id.clone(),
+                codefile: codefile_id.clone(),
+                locator: None,
+            },
+        },
+    ] {
+        let rejected = loom::commands::run(loom::cli::Cli {
+            graph: Some(tmp.path().to_path_buf()),
+            json: true,
+            command: Some(command),
+        })
+        .expect_err("generic edge mutation of compiler-owned topology must fail");
+        assert!(
+            format!("{rejected:#}").contains("compiler-owned Journey"),
+            "unexpected rejection: {rejected:#}"
+        );
+    }
+
+    let rejected = loom::commands::run(loom::cli::Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(loom::cli::Command::Codefile {
+            cmd: loom::cli::CodefileCmd::Remove {
+                key: codefile_id.clone(),
+                successor: Some(successor_codefile_id),
+            },
+        }),
+    })
+    .expect_err("codefile cascade must not retarget compiler-owned Exercises topology");
+    assert!(
+        format!("{rejected:#}").contains("compiler-owned Journey"),
+        "unexpected rejection: {rejected:#}"
+    );
+
+    let store = Store::open(tmp.path()).unwrap();
+    let unchanged = store.get_node(&validation_id).unwrap().unwrap();
+    assert_eq!(unchanged.body["type"], "journey");
+    assert_eq!(unchanged.status, "not_run");
+    assert_eq!(
+        store
+            .edges_with(Some(EdgeKind::Validates), Some(&validation_id), None)
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(store.get_node(&codefile_id).unwrap().is_some());
+    assert_eq!(
+        store
+            .edges_with(
+                Some(EdgeKind::Exercises),
+                Some(&validation_id),
+                Some(&codefile_id),
+            )
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[test]
+fn commandless_non_manual_validation_routes_to_configuration_not_verdict() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let target = intent(&store, "observable contract", "implemented");
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "unconfigured contract",
+            "must be made executable",
+            "not_run",
+            serde_json::json!({"type":"contract", "command":""}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Validates,
+            &validation.id,
+            &target.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let packet = workitem::next(&store, Some(Lane::Validate))
+        .unwrap()
+        .expect("unconfigured validation is servable");
+    assert!(packet
+        .prompt_contract
+        .write_back
+        .contains("loom validation update 'unconfigured contract' --command"));
+    assert!(packet
+        .prompt_contract
+        .write_back
+        .contains("loom validation run 'unconfigured contract'"));
+    assert!(!packet
+        .prompt_contract
+        .write_back
+        .contains("validation verdict"));
 }
 
 #[test]

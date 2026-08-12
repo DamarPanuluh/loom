@@ -38,6 +38,34 @@ available escalation, not a requirement to browse for every packet.
 
 ## The driver loop
 
+### Brownfield cold start
+
+For an existing codebase, use this machine-safe sequence rather than treating
+`door` as the only entrance:
+
+1. Verify the binary with `loom --version`. If existing `.loom` state predates
+   schema v12, preserve it, initialize a fresh v12 graph, and reconstruct
+   authored meaning from product evidence; there is no automatic migration.
+   `loom sync --rebuild` only reconstructs derived structural state in an
+   already compatible v12 graph; it does **not** migrate or reconstruct a
+   pre-v12 graph.
+2. Run `loom init`, register real source scope with the supported syntax
+   `loom codefile add '<glob>'`, then run `loom sync --json`.
+3. Run `loom bootstrap suggest`. Suggestions and clues are non-authoritative:
+   inspect product evidence and relevant code before adopting structure.
+4. Author one or more `loom.journey/v1` root artifacts from that evidence and
+   register each with `loom journey add <journey.json>`.
+5. Run `loom journey derive <journey> --json`. At the authority gate, stop and
+   obtain the human's exact substantive answer—never compose, infer, or
+   paraphrase it—before recording acceptance.
+6. Continue through `loom journey surface <journey> --json`. Build a stable,
+   production-owned black-box consumer/administrative CLI over the same
+   application, API, or service boundary as the public behavior. Do not use a
+   feature-gated proof binary, test fixture, mock-only path, or privileged
+   internal shortcut. Compile the exact profile and run it. `loom door`
+   remains the intake path for raw human or external utterances, not the sole
+   cold-start route.
+
 ```
 loom status / loom next
   → emit WorkItem + PromptContract
@@ -145,8 +173,10 @@ technical derivations, scenario families, prerequisites, interface boundaries,
 ordinary Intent validations, reasoned exemptions, and crisp product questions. Prefer graph writes over
 prose summaries. Do not answer product questions for the human, and do not mark
 proofs passed without observed runs. On a cold graph with codefiles registered
-and no intents yet, start from `loom bootstrap suggest` (a Proposal of planned
-pillars) then adopt — never invent an entire spine as `implemented`.
+and no authored Journey roots, use `loom bootstrap suggest` only for
+non-authoritative clues; inspect product evidence, author `loom.journey/v1`
+roots, and register them with `loom journey add`. Never adopt inferred code
+structure directly as product meaning or invent a spine as `implemented`.
 
 **Draining mode** closes already-routed gaps one packet at a time. A bounded or
 cheaper model can run `loom next`, inspect the packet's `read_set`, satisfy
@@ -172,14 +202,14 @@ The LLM-facing contract embedded in a WorkItem. Defines mindset, allowed actions
   "allowed_actions": [
     "run: cargo test auth::session_restores",
     "loom validation run 'remember-me token restores session after browser restart'",
-    "loom validation verdict 'remember-me session test' <passed|failed|blocked> --evidence '…'"
+    "for an explicit type=manual_check only: loom validation verdict 'remember-me session check' <passed|failed|blocked> --evidence '…'"
   ],
   "forbidden_actions": [
     "edit code to make the proof pass",
     "mark passed without observed proof"
   ],
   "required_evidence": "command output, test count, failure message, or a concrete blocker reason",
-  "write_back": "loom validation run 'remember-me token restores session after browser restart'  (or)  loom validation verdict 'remember-me session test' <passed|failed|blocked> --evidence '…'",
+  "write_back": "loom validation run 'remember-me token restores session after browser restart'; only type=manual_check may instead use loom validation verdict <validation> <passed|failed|blocked> --evidence '…'",
   "stop_condition": "after recording the result, return to loom status",
   "human_gate": null
 }
@@ -352,7 +382,7 @@ allowed:
     with a genuine behavioral criterion; must provide full --description)
 
 forbidden:
-  loom validation verdict passed (validator role)
+  loom validation run <validation> (validator role; manual verdict only for explicit manual_check)
   loom rule verdict passing (quality role)
   loom edge explore ground (analyzer role)
   creating intents that are just function/method names with no behavioral criterion
@@ -432,7 +462,9 @@ mindset:
 
 allowed:
   run validation command
-  loom validation verdict <validation> passed|failed|blocked
+  loom validation run <validation>
+  # only for an explicit type=manual_check:
+  loom validation verdict <validation> passed|failed|blocked --evidence '…'
   loom journey compile <journey> --profile proof
   loom journey run <journey> --profile proof
   loom journey diagnose <journey> --profile proof [--input <key=json>]...

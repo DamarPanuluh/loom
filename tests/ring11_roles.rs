@@ -1225,7 +1225,7 @@ fn observed_codefile_exempt_from_coverage_but_still_in_contract_plane() {
             "--name",
             "boots through prepare",
             "--type",
-            "contract",
+            "manual_check",
             "--intent",
             "engine mounts",
         ],

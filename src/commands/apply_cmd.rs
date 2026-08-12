@@ -525,6 +525,8 @@ fn record_parts(
     confidence: f64,
 ) -> Result<()> {
     let status = verdict_status(verdict)?;
+    let edge = store.resolve_edge(edge_id)?;
+    crate::completeness::require_generic_edge_mutable(store, &edge)?;
     let actor = store.execution_identity().actor();
     // `record_verdict` is the single gate + idempotence point: it validates
     // evidence/confidence, then no-ops if the edge already holds this exact

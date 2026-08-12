@@ -20,18 +20,27 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
                         "initialized": false,
                         "intro": WELCOME_INTRO,
                         "idea_help": PARTIAL_IDEA_HELP,
-                        "get_started": [
-                            "loom init",
-                            "loom door \"the user journey this codebase should support\""
-                        ],
+                        "get_started": ["loom init", "loom codefile add '<glob>'", "loom sync --json"],
+                        "brownfield_cold_start": brownfield_cold_start(),
                     }))?
                 );
             } else {
                 print_welcome_intro();
                 println!();
                 println!("  No loom graph here yet.");
-                println!("  → Get started:  loom init");
-                println!("                  then  loom door \"the user journey this codebase should support\"");
+                println!("  → Brownfield start (existing codebase):");
+                println!("      loom --version");
+                println!("      loom init");
+                println!("      loom codefile add '<glob>'");
+                println!("      loom sync --json");
+                println!("      loom bootstrap suggest");
+                println!(
+                    "    Treat suggestions only as clues; inspect product evidence, then author"
+                );
+                println!("    a loom.journey/v1 root and run `loom journey add <journey.json>`.");
+                println!(
+                    "    `loom door` remains raw-input intake; it is not the reconstruction path."
+                );
                 println!();
                 println!("  Go deeper:  loom guide");
             }
@@ -61,6 +70,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
                 "state": headline,
                 "next_command": ladder.next_command,
                 "why": why,
+                "brownfield_cold_start": brownfield_cold_start(),
             }))?
         );
         return Ok(());
@@ -83,6 +93,18 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
 
 const WELCOME_INTRO: &str = "loom — a living map from authored user Journeys to code and proof.";
 const PARTIAL_IDEA_HELP: &str = "You can start with a partial journey. Loom helps shape the authored root, derive technical Intents, surface a real CLI, and ask for your judgment one understandable question at a time.";
+
+fn brownfield_cold_start() -> serde_json::Value {
+    serde_json::json!({
+        "preserve_existing_state": "First verify the loom binary/version. If .loom state predates schema v12, preserve it, initialize a fresh v12 graph, and reconstruct authored meaning from product evidence; there is no automatic schema migration.",
+        "commands": ["loom --version", "loom init", "loom codefile add '<glob>'", "loom sync --json", "loom bootstrap suggest", "loom journey add <journey.json>", "loom journey derive <journey> --json", "loom journey derive-accept <journey> --manifest <manifest.json> --human-decision \"<exact human answer>\" --json", "loom journey surface <journey> --json", "loom journey compile <journey> --profile <profile>", "loom journey run <journey> --profile <profile>"],
+        "evidence": "Treat bootstrap suggestions and clues as non-authoritative. Inspect product evidence and code, then author loom.journey/v1 roots.",
+        "human_authority": "At derive acceptance, stop and obtain the human's exact substantive answer. Do not compose, infer, or paraphrase it.",
+        "proof_interface": "Build a stable production-owned black-box consumer/administrative CLI over the same application, API, or service boundary as the public behavior. Do not substitute a feature-gated proof binary, test fixture, mock-only path, or privileged internal shortcut.",
+        "rebuild_distinction": "loom sync --rebuild rebuilds derived structural state for an already compatible v12 graph; it does not migrate or reconstruct a pre-v12 graph.",
+        "door_scope": "loom door is raw-input intake, not the sole brownfield cold-start route."
+    })
+}
 
 fn print_welcome_intro() {
     println!("{WELCOME_INTRO}");
@@ -384,7 +406,13 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
                 "role": role,
-                "commands": ["loom sync", "loom next --all", "loom status", "loom coverage", "loom doctor", "loom export --check", "loom door", "loom finding add", "loom question add"],
+                "commands": ["loom sync --json", "loom next --all --json", "loom status --json", "loom coverage", "loom doctor --json", "loom audit --json", "loom journey drift --json", "loom export --json", "loom export --check", "loom door", "loom finding add", "loom question add"],
+                "brownfield_cold_start": brownfield_cold_start(),
+                "pending_human_resume": {
+                    "command_template": "loom journey resume <resume_token> --choice <offered-choice-id> --human-decision \"<exact substantive human answer>\" [--free-form \"<exact human revision>\"] --json",
+                    "inputs": "Use resume_token and one option id from the pending-human/v1 result. Supply --free-form only when the selected option has free_form=true.",
+                    "stop_instruction": "STOP. Present the question and offered choices, obtain the human's exact substantive answer, and relay it unchanged. Never compose, infer, paraphrase, or choose the answer."
+                },
                 "intake": {
                     "human_or_external_input": "loom door \"<utterance>\" — capture raw input, route it to an existing or newly authored Journey",
                     "evidence_backed_observation": "loom finding add \"<claim>\" --source code_audit --file <codefile> --evidence \"…\" --impact \"…\" --confidence <n>",
@@ -393,7 +421,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "falsifiable_design_claim": "loom hypothesis add --name '…' --claim '…' --target <intent> — prove supported|refuted before it becomes work",
                     "timeboxed_activity": "loom task add '<title>' --kind spike --target '<intent>' — close with a result (lands as a note on the target intent); targetless stays diary-only"
                 },
-                "roles": ["builder", "analyzer", "fixer", "validator", "quality", "rectify", "monitor"],
+                "roles": ["builder", "analyzer", "fixer", "validator", "quality", "rectify"],
                 // Derived from the lane table so this can never drift from the
                 // ladder it describes.
                 "rung_gates": crate::lane::Lane::LADDER.iter().map(|l| l.rung()).collect::<Vec<_>>(),
@@ -403,7 +431,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "axis": l.axis().as_str(),
                     "human_only": l.requires_human_decision(),
                 })).collect::<Vec<_>>(),
-                "closeout": ["loom coverage", "loom doctor", "loom next --all", "loom export", "loom export --check"],
+                "closeout": ["loom sync --json", "loom doctor --json", "loom audit --json", "loom journey drift --json", "loom status --json", "loom next --all --json", "loom export --json", "loom export --check"],
                 "operator_loops": operator_loops(),
                 "truth_axes": truth_axis_matrix(),
             }))?
@@ -441,7 +469,9 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                 println!("      then:         {}", g.after_write);
             }
             println!("Roles: builder | analyzer | fixer | validator | quality | rectify (see `loom guide --role`).");
-            println!("Integration monitoring (watch an upstream you depend on): loom guide --role monitor");
+            println!(
+                "Integration monitoring topic (not an agent identity): loom guide --role monitor"
+            );
             Ok(())
         }
         Some("monitor") => {
@@ -469,8 +499,8 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     crate::truth::TruthAxis::Implementation,
                 ),
                 "validator" => (
-                    "Run or honestly mark proofs; never edit code to make a proof pass.",
-                    "run validation; loom validation run <intent>; loom validation verdict <validation> passed|failed|blocked --evidence '…'",
+                    "Run executable proofs; only an explicit manual_check may be settled manually. Compiler-owned Journey validations must use their dedicated Journey profile.",
+                    "loom validation run <intent>; loom journey run <journey> --profile <profile>; for type=manual_check only: loom validation verdict <validation> passed|failed|blocked --evidence '…'",
                     "edit code; mark passed without observed proof",
                     crate::truth::TruthAxis::Proof,
                 ),
@@ -504,7 +534,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
     }
 }
 fn guide_monitor() {
-    println!("loom — integration monitoring (watch an upstream you depend on):");
+    println!("loom — integration monitoring topic (not a LOOM_AGENT role):");
     println!(
         "  Goal: when an upstream you consume changes, loom resets the contracts that exercise it,"
     );
@@ -529,11 +559,11 @@ fn guide_monitor() {
     println!("       (kinds: http | cli | ui_route | message_topic | sdk_method | internal_module | storage)");
     println!("  5. Put the point under contract — a validation that exercises the surface,");
     println!("     linked to the intent from step 3:");
-    println!("       loom validation add --name \"<what you rely on>\" --type contract --intent \"<intent from step 3>\"");
+    println!("       loom validation add --name \"<what you rely on>\" --type manual_check --intent \"<intent from step 3>\"");
     println!("       loom edge call \"<validation name>\" \"<surface name>\"");
     println!("  6. Baseline: sync, then record that the contract holds right now:");
     println!("       loom sync");
-    println!("       loom validation verdict \"<validation name>\" passed --evidence \"<how you verified it>\"");
+    println!("       for an explicit type=manual_check only: loom validation verdict \"<validation name>\" passed --evidence \"<how you verified it>\"");
     println!("  7. Later, after the upstream moves (re-pull, rescan for new files, then sync):");
     println!(
         "       git submodule update --remote vendor/<name>     # or update the vendored files"

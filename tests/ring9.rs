@@ -1544,4 +1544,64 @@ fn guide_json_intake_uses_hardcut_entry_points() {
         !q.contains("loom door"),
         "GUIDE JSON: product_question must NOT reference loom door, got: {q}"
     );
+
+    let roles = guide["roles"]
+        .as_array()
+        .expect("GUIDE JSON: roles must be an array");
+    assert!(!roles.iter().any(|role| role == "monitor"));
+
+    let cold_start = &guide["brownfield_cold_start"];
+    let commands = cold_start["commands"]
+        .as_array()
+        .expect("GUIDE JSON: brownfield cold start must contain ordered commands");
+    for required in [
+        "loom --version",
+        "loom init",
+        "loom codefile add '<glob>'",
+        "loom sync --json",
+        "loom bootstrap suggest",
+    ] {
+        assert!(commands.iter().any(|command| command == required));
+    }
+    assert!(cold_start["human_authority"]
+        .as_str()
+        .unwrap()
+        .contains("Do not compose, infer, or paraphrase"));
+    assert!(cold_start["rebuild_distinction"]
+        .as_str()
+        .unwrap()
+        .contains("does not migrate or reconstruct a pre-v12 graph"));
+    assert!(cold_start["proof_interface"]
+        .as_str()
+        .unwrap()
+        .contains("stable production-owned black-box"));
+
+    let resume = &guide["pending_human_resume"];
+    assert!(resume["command_template"]
+        .as_str()
+        .unwrap()
+        .contains("--human-decision"));
+    assert!(resume["command_template"]
+        .as_str()
+        .unwrap()
+        .contains("--free-form"));
+    assert!(resume["stop_instruction"]
+        .as_str()
+        .unwrap()
+        .contains("Never compose, infer, paraphrase, or choose"));
+
+    let closeout = guide["closeout"]
+        .as_array()
+        .expect("GUIDE JSON: closeout must be an array");
+    for required in [
+        "loom sync --json",
+        "loom doctor --json",
+        "loom audit --json",
+        "loom journey drift --json",
+        "loom status --json",
+        "loom export --json",
+        "loom export --check",
+    ] {
+        assert!(closeout.iter().any(|command| command == required));
+    }
 }

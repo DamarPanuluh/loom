@@ -8,6 +8,12 @@ Terminology follows [`terminology.md`](terminology.md). A Journey is authored
 meaning; its surface manifest is the hash-bound, structured CLI projection that
 makes that meaning executable.
 
+The accepted projection should be a stable, production-owned black-box
+consumer/administrative CLI over the same application, API, or service
+boundary used by the public behavior. The CLI may be operator-only, but a
+feature-gated proof binary, test fixture, mock-only path, or privileged shortcut
+around production behavior is not an acceptable architectural substitute.
+
 ## Authoring workflow
 
 1. Author and register the `loom.journey/v1` artifact.

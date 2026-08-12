@@ -338,6 +338,9 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                     r#type
                 ),
             };
+            if matches!(vtype, crate::model::ValidationType::Journey) {
+                bail!("Journey validations are compiler-owned; use `loom journey compile <journey> --profile <profile>` instead of validation add");
+            }
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
             let collision = warn_if_command_already_proves_another(&store, &command, &i.id, None)?;
             // Registration is one fact: a Validation without its Validates
@@ -372,6 +375,31 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             reason,
         } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
+            if let Some((journey, profile)) =
+                crate::completeness::compiler_owned_journey_validation(&store, &val)?
+            {
+                bail!(
+                    "compiler-owned Journey validations cannot receive manual verdicts; use `loom journey run {} --profile {}`",
+                    journey.id,
+                    profile
+                );
+            }
+            let validation_type = val
+                .body
+                .get("type")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("");
+            if validation_type == "journey" {
+                bail!("Journey validations cannot receive manual verdicts; remove an orphaned proof or use `loom journey run <journey> --profile <profile>`");
+            }
+            let has_command = val
+                .body
+                .get("command")
+                .and_then(serde_json::Value::as_str)
+                .is_some_and(|c| !c.trim().is_empty());
+            if validation_type != "manual_check" && !has_command {
+                bail!("non-manual validation '{}' has no runnable command and cannot receive a manual verdict", val.name);
+            }
             mark_validation(&store, &val.id, &outcome, &evidence, &reason, None)?;
             regrade(&store, &val.id)?;
             pulse::emit_line(
@@ -459,6 +487,15 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             command,
         } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
+            if let Some((journey, profile)) =
+                crate::completeness::compiler_owned_journey_validation(&store, &val)?
+            {
+                bail!(
+                    "compiler-owned Journey validations cannot be updated generically; use `loom journey compile {} --profile {}`",
+                    journey.id,
+                    profile
+                );
+            }
             let mut body = val.body.clone();
             let mut collision = ProofCommandCollision::none("");
             if let Some(t) = &r#type {
@@ -518,6 +555,15 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         }
         ValidationCmd::Unlink { validation, intent } => {
             let v = store.resolve_node(&validation, Some(NodeType::Validation))?;
+            if let Some((journey, profile)) =
+                crate::completeness::compiler_owned_journey_validation(&store, &v)?
+            {
+                bail!(
+                    "compiler-owned Journey validation topology cannot be unlinked generically; use `loom journey compile {} --profile {}`",
+                    journey.id,
+                    profile
+                );
+            }
             let i = store.resolve_node(&intent, Some(NodeType::Intent))?;
             match store
                 .edges_with(Some(EdgeKind::Validates), Some(&v.id), Some(&i.id))?
@@ -545,6 +591,15 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
         }
         ValidationCmd::Remove { key } => {
             let val = store.resolve_node(&key, Some(NodeType::Validation))?;
+            if let Some((journey, profile)) =
+                crate::completeness::compiler_owned_journey_validation(&store, &val)?
+            {
+                bail!(
+                    "compiler-owned Journey validations cannot be removed generically; recompile with `loom journey compile {} --profile {}`",
+                    journey.id,
+                    profile
+                );
+            }
             store.delete_node(&val.id)?;
             pulse::emit_line(
                 &store,
@@ -807,6 +862,18 @@ pub fn observe_validation(
     val: &crate::model::Node,
 ) -> Result<crate::proof::ProofOutcome> {
     use crate::proof::ProofOutcome;
+    if let Some((journey, profile)) =
+        crate::completeness::compiler_owned_journey_validation(store, val)?
+    {
+        bail!(
+            "compiler-owned Journey validations require `loom journey run {} --profile {}`",
+            journey.id,
+            profile
+        );
+    }
+    if val.body.get("type").and_then(serde_json::Value::as_str) == Some("journey") {
+        bail!("Journey validations cannot run through the generic proof runner; remove an orphaned proof or use `loom journey run <journey> --profile <profile>`");
+    }
     let ty = val
         .body
         .get("type")
@@ -938,6 +1005,25 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
             "no validations to run",
         );
     }
+    for validation in &vals {
+        if let Some((journey, profile)) =
+            crate::completeness::compiler_owned_journey_validation(&store, validation)?
+        {
+            bail!(
+                "compiler-owned Journey validations cannot run through validation run; use `loom journey run {} --profile {}`",
+                journey.id,
+                profile
+            );
+        }
+        if validation
+            .body
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            == Some("journey")
+        {
+            bail!("Journey validations cannot run through validation run; remove an orphaned proof or use `loom journey run <journey> --profile <profile>`");
+        }
+    }
     let root = store.root().to_path_buf();
     let execution = store.execution_identity();
     drop(store);
@@ -1034,16 +1120,25 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
                 human_lines.push(format!("BLOCKED {} ({reason})", v.name));
             }
             crate::proof::ProofOutcome::Manual { reason } => {
+                let next_command = if matches!(ty, crate::model::ValidationType::ManualCheck) {
+                    format!(
+                        "loom validation verdict '{}' <passed|failed|blocked> --evidence '<observed evidence>'",
+                        v.name
+                    )
+                } else {
+                    format!(
+                        "loom validation update '{}' --command '<runnable-command>'; loom validation run '{}'",
+                        v.name, v.name
+                    )
+                };
                 results.push(serde_json::json!({
                     "id": v.id,
                     "name": v.name,
                     "status": "skipped",
                     "reason": reason,
+                    "next_command": next_command,
                 }));
-                human_lines.push(format!(
-                    "skip '{}' ({reason} — use loom validation verdict)",
-                    v.name
-                ));
+                human_lines.push(format!("skip '{}' ({reason} — {next_command})", v.name));
             }
         }
     }
@@ -1314,6 +1409,16 @@ fn existing_or_new_proof(
     for e in store.edges_with(Some(EdgeKind::Validates), None, Some(intent_id))? {
         if let Some(v) = store.get_node(&e.from_id)? {
             if v.body.get("command").and_then(|c| c.as_str()) == Some(command) {
+                if let Some((journey, profile)) =
+                    crate::completeness::compiler_owned_journey_validation(store, &v)?
+                {
+                    bail!(
+                        "loom observe cannot reuse compiler-owned Journey validation '{}'; use `loom journey run {} --profile {}`",
+                        v.name,
+                        journey.id,
+                        profile
+                    );
+                }
                 return Ok(v);
             }
         }

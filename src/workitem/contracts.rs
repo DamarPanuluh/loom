@@ -146,7 +146,7 @@ pub(super) fn surface_contract(
     let missing = readiness.surface_gaps.join("; ");
     PromptContract {
         role: "builder".into(),
-        mindset: "Build a real CLI surface in the target repository from Loom's structured surface contract. Loom does not template-generate source. Preserve the authored command/argument/JSON-output contract, use the repository's established language and patterns, and expose a deeper debug/inspect mode without cluttering the ordinary command. Bind the accepted manifest to the Journey's current semantic hash.".into(),
+        mindset: "Build a stable, production-owned black-box CLI surface in the target repository from Loom's structured surface contract. Prefer one unified consumer/administrative CLI that invokes the same application, API, or service boundary as the public interface. It may be operator-only, but it must not be a feature-gated proof binary, test fixture, mock-only path, or privileged shortcut around production behavior. Loom does not template-generate source. Preserve the authored command/argument/JSON-output contract, use the repository's established language and patterns, and expose a deeper debug/inspect mode without cluttering the ordinary command. Bind the accepted manifest to the Journey's current semantic hash.".into(),
         why_now: format!(
             "journey '{}' has current ratified derivations with realizing groundings but is not surfaced into live target-repository code: {}",
             journey.name,
@@ -164,6 +164,8 @@ pub(super) fn surface_contract(
         ],
         forbidden_actions: vec![
             "asking Loom to template-generate the target repository's source code".into(),
+            "creating a test-only or feature-gated proof binary instead of a stable production-owned black-box CLI".into(),
+            "bypassing the application/API/service boundary that the public behavior actually uses".into(),
             "accepting shell-string operations instead of structured argv/typed arguments and JSON outputs".into(),
             "surfacing before every current derivation is ratified, implemented, and realizing-grounded".into(),
             "recording a passing proof from the builder role — Validate runs the compiled Journey".into(),
@@ -659,13 +661,13 @@ pub(super) fn validator_contract(
     // and offering `validation verdict` here sends the worker at a wall the
     // write boundary will refuse. Offer it ONLY for a manual check, which is
     // the one shape that has no command for loom to execute.
-    let runnable = !command.trim().is_empty()
-        && !matches!(
-            val.as_ref()
-                .and_then(|n| n.body.get("type").and_then(|t| t.as_str()))
-                .unwrap_or("test"),
-            "manual_check"
-        );
+    let validation_type = val
+        .as_ref()
+        .and_then(|n| n.body.get("type").and_then(|t| t.as_str()))
+        .unwrap_or("test");
+    let manual_check = validation_type == "manual_check";
+    let runnable = !command.trim().is_empty() && !manual_check;
+    let unconfigured = command.trim().is_empty() && !manual_check;
     let write_back = if runnable {
         format!(
             "loom observe --for {} -- {}   (or)   loom validation run {}",
@@ -676,6 +678,12 @@ pub(super) fn validator_contract(
                 &command
             },
             q(intent_name)
+        )
+    } else if unconfigured {
+        format!(
+            "loom validation update {} --command '<runnable-command>'; loom validation run {}",
+            q(val_name),
+            q(val_name)
         )
     } else {
         verdict_write_back(edge, val_name, intent_name)
@@ -720,9 +728,16 @@ pub(super) fn validator_contract(
                     ));
                     actions.push(format!("loom validation run {}", q(intent_name)));
                 }
-            } else {
+            } else if manual_check {
                 actions.push("<no command — this is a manual check>".into());
                 actions.push(verdict_write_back(edge, val_name, intent_name));
+            } else {
+                actions.push(format!("loom validation show {}", q(val_name)));
+                actions.push(format!(
+                    "loom validation update {} --command '<runnable-command>'",
+                    q(val_name)
+                ));
+                actions.push(format!("loom validation run {}", q(val_name)));
             }
             actions.push(FINDING_ADD_ACTION.into());
             actions
@@ -738,7 +753,7 @@ pub(super) fn validator_contract(
                 level: "verified".into(),
             },
         ],
-        required_evidence: if runnable {
+        required_evidence: if runnable || unconfigured {
             "a run loom performed — its exit code and output. A reported outcome is refused".into()
         } else {
             "what you observed in the manual check, citing file:line or a journal entry".into()
@@ -847,7 +862,12 @@ pub(super) fn unproven_contract(
 /// Compilation creates the validation-specific Proves/Validates/Calls/
 /// Exercises closure; running records only what Loom actually observes.
 pub(super) fn journey_proof_contract(journey: &Node) -> PromptContract {
+    journey_proof_contract_for_profile(journey, "proof")
+}
+
+pub(super) fn journey_proof_contract_for_profile(journey: &Node, profile: &str) -> PromptContract {
     let id = q(&journey.id);
+    let profile = q(profile);
     PromptContract {
         role: "validator".into(),
         mindset: "Compile the current authored Journey into its proof profile, then run that exact profile. Do not hand-author a sibling Validation or attach an intent-wide witness: Journey compile owns the validation-specific Proves/Validates/Calls/Exercises closure. Run it; do not guess, and do not edit code to make the proof pass.".into(),
@@ -856,8 +876,8 @@ pub(super) fn journey_proof_contract(journey: &Node) -> PromptContract {
             journey.name
         ),
         allowed_actions: vec![
-            format!("loom journey compile {id} --profile proof"),
-            format!("loom journey run {id} --profile proof"),
+            format!("loom journey compile {id} --profile {profile}"),
+            format!("loom journey run {id} --profile {profile}"),
             "inspect the compiled validation's call evidence and exact failure output".into(),
             FINDING_ADD_ACTION.into(),
         ],
@@ -878,7 +898,7 @@ pub(super) fn journey_proof_contract(journey: &Node) -> PromptContract {
         pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
-            "loom journey compile {id} --profile proof; loom journey run {id} --profile proof"
+            "loom journey compile {id} --profile {profile}; loom journey run {id} --profile {profile}"
         ),
         stop_condition: "stop when the current Journey has a passing S3 proof through its surfaced CLI, or when Loom records the honest failure/blocker; then return to loom status".into(),
         human_gate: None,
@@ -1171,8 +1191,9 @@ pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
         why_now: "a raw inbox item is still new".into(),
         allowed_actions: vec![
             format!("loom inbox show {id}"),
-            "routing commands: loom intent add / loom hypothesis add / loom rule add / loom task add / loom note add".into(),
-            format!("loom inbox mark {id} routed --reason <where it was routed>"),
+            "choose one supported landing: existing_journey | new_journey | existing_intent | hypothesis | spike | external_research; run its creation/lookup command and retain the returned stable node id".into(),
+            "routing commands: loom journey add / loom intent add / loom hypothesis add / loom task add --kind spike|research".into(),
+            format!("loom inbox mark {id} routed --reason '<supported-destination-kind>:<returned-stable-node-id>'"),
             format!("loom inbox mark {id} rejected --reason <why it is not actionable>"),
         ],
         forbidden_actions: vec![
@@ -1185,7 +1206,7 @@ pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: format!("loom inbox mark {id} <routed|rejected|duplicate|deferred> --reason '…'"),
+        write_back: format!("loom inbox mark {id} routed --reason '<existing_journey|new_journey|existing_intent|hypothesis|spike|external_research>:<returned-stable-node-id>' (or use rejected|duplicate|deferred with a concrete prose reason)"),
         stop_condition: "after disposition, return to loom status".into(),
         human_gate: None,
     }
@@ -1277,7 +1298,7 @@ pub(super) fn audit_contract(remedy: &str) -> PromptContract {
         // remedies get the universal state-closure: fix, then re-read the
         // record — the finding must be absent.
         write_back: if remedy.contains("loom ") {
-            remedy.to_string()
+            format!("{remedy}; close: loom audit --json — the finding must be absent")
         } else {
             format!(
                 "{remedy}; close: fix per the remedy, then loom audit --json — the finding must be absent"

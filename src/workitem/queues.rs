@@ -10,9 +10,10 @@ use super::context::{edge_context, node_context};
 use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, derive_contract, elaborator_contract,
     exemplar_contract, fixer_contract, inbox_triage_contract, journey_proof_contract,
-    prove_contract, quality_contract, quality_contract_body, ratify_contract, rectify_contract,
-    research_contract, reviewer_contract, structural_finding_triage_contract, surface_contract,
-    triage_contract, unproven_contract, validator_contract,
+    journey_proof_contract_for_profile, prove_contract, quality_contract, quality_contract_body,
+    ratify_contract, rectify_contract, research_contract, reviewer_contract,
+    structural_finding_triage_contract, surface_contract, triage_contract, unproven_contract,
+    validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -675,54 +676,51 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
 }
 
 pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
-    // Proof lane only: unrun and stale proofs are (re-)run here. A FAILING
-    // proof means the code is broken — that is fix-queue repair work.
-    // `live_edges_by_status` is the SAME set the `proven` rung counts: it drops
-    // superseded proofs and claims about retired behaviors, so the item served
-    // is always one the depth admitted.
-    let validates: Vec<Edge> = store
-        .live_edges_by_status(
-            crate::model::TruthClass::Asserted,
-            &[
-                InspectionStatus::Uninspected,
-                InspectionStatus::NeedsReverification,
-            ],
-        )?
-        .into_iter()
-        .filter(|e| e.kind == EdgeKind::Validates)
-        .collect();
-    if let Some(e) = validates
-        .iter()
-        .find(|e| e.status == InspectionStatus::Uninspected)
-    {
-        return Ok(Some(edge_work(
+    let Some(unit) = validation_work_units(store)?.into_iter().next() else {
+        return Ok(None);
+    };
+    match unit {
+        ValidationWorkUnit::JourneyValidation {
+            journey, profile, ..
+        } => Ok(Some(WorkItem {
+            packet_id: None,
+            pattern_guidance: None,
+            mode: "validate".into(),
+            owner_role: "validator".into(),
+            effort: "high".into(),
+            routing_hint: super::hint_judgment(),
+            reason: format!(
+                "compiled Journey '{}' requires its dedicated proof run",
+                journey.name
+            ),
+            target: node_target(&journey),
+            stale_causes: Vec::new(),
+            prompt_contract: journey_proof_contract_for_profile(&journey, &profile),
+            context: node_context(
+                store,
+                &journey,
+                "Run the compiler-owned Journey validation through its exact profile.",
+            )?,
+            scorecard: None,
+            truth_gap: crate::truth::TruthAxis::Proof.gap(),
+            next_step: format!(
+                "after `loom journey run {} --profile {}`, run `loom status --json`",
+                journey.id,
+                super::q(&profile)
+            ),
+        })),
+        ValidationWorkUnit::GenericEdge(e) => Ok(Some(edge_work(
             store,
-            e,
+            &e,
             "validate",
             "validator",
-            "unrun proof",
-        )?));
-    }
-    if let Some(e) = validates
-        .iter()
-        .find(|e| e.status == InspectionStatus::NeedsReverification)
-    {
-        return Ok(Some(edge_work(
-            store,
-            e,
-            "validate",
-            "validator",
-            "proof went stale — a dependency changed; re-run it",
-        )?));
-    }
-    // Once Surface has compiled a real target-repository entry point, Validate
-    // owns the proof profile. Journey compile creates the validation-specific
-    // closure; Journey run records the observed verdict.
-    if let Some(readiness) = journey_proof_gaps(store)?.into_iter().next() {
-        let Some(journey) = store.get_node(&readiness.journey_id)? else {
-            return Ok(None);
-        };
-        return Ok(Some(WorkItem {
+            if e.status == InspectionStatus::Uninspected {
+                "unrun proof"
+            } else {
+                "proof went stale — a dependency changed; re-run it"
+            },
+        )?)),
+        ValidationWorkUnit::JourneyGap(journey) => Ok(Some(WorkItem {
             packet_id: None,
             pattern_guidance: None,
             mode: "validate".into(),
@@ -744,13 +742,8 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             scorecard: None,
             truth_gap: crate::truth::TruthAxis::Proof.gap(),
             next_step: "after `loom journey compile <journey> --profile proof` and `loom journey run <journey> --profile proof`, run `loom status`".into(),
-        }));
-    }
-
-    // An implemented leaf intent without a meaningful passing proof counts
-    // toward the `proven` rung, so the lane must serve it — otherwise the
-    // compass points here and the queue answers "no work".
-    if let Some(intent) = unproven_implemented_intents(store)?.into_iter().next() {
+        })),
+        ValidationWorkUnit::UnprovenIntent(intent) => {
         let proof = crate::proofstrength::assess(store, &intent.id)?;
         let reason = if proof.any_passing && !proof.meaningful_passing {
             let best = proof
@@ -772,7 +765,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
                 intent.name
             )
         };
-        return Ok(Some(WorkItem {
+        Ok(Some(WorkItem {
             packet_id: None,
             pattern_guidance: None,
             mode: "validate".into(),
@@ -791,9 +784,100 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             scorecard: None,
             truth_gap: crate::truth::TruthAxis::Proof.gap(),
             next_step: "after the proof runs, run `loom status`".into(),
-        }));
+            }))
+        }
     }
-    Ok(None)
+}
+
+/// One exact unit of Validate work. Compiler-created validations are keyed by
+/// their Validation id and retain the profile that must be run; their several
+/// `Validates` edges are evidence closure, not several queue items.
+#[derive(Debug, Clone)]
+pub(crate) enum ValidationWorkUnit {
+    JourneyValidation {
+        validation_id: String,
+        journey: Node,
+        profile: String,
+    },
+    GenericEdge(Edge),
+    JourneyGap(Node),
+    UnprovenIntent(Node),
+}
+
+/// The single profile-bearing Validate roster consumed by lane depth, the
+/// lightweight roster, and singular packet selection.
+pub(crate) fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkUnit>> {
+    let mut validates: Vec<Edge> = store
+        .live_edges_by_status(
+            crate::model::TruthClass::Asserted,
+            &[
+                InspectionStatus::Uninspected,
+                InspectionStatus::NeedsReverification,
+            ],
+        )?
+        .into_iter()
+        .filter(|edge| edge.kind == EdgeKind::Validates)
+        .collect();
+    validates.sort_by(|left, right| left.id.cmp(&right.id));
+
+    let mut compiled = std::collections::BTreeMap::new();
+    let mut generic_unrun = Vec::new();
+    let mut generic_stale = Vec::new();
+    for edge in validates {
+        let Some(validation) = store.get_node(&edge.from_id)? else {
+            continue;
+        };
+        if let Some((journey, profile)) =
+            crate::completeness::compiler_owned_journey_validation(store, &validation)?
+        {
+            compiled
+                .entry(validation.id.clone())
+                .or_insert((journey, profile));
+        } else if edge.status == InspectionStatus::Uninspected {
+            generic_unrun.push(edge);
+        } else {
+            generic_stale.push(edge);
+        }
+    }
+
+    let routed_journeys: std::collections::BTreeSet<_> = compiled
+        .values()
+        .map(|(journey, _)| journey.id.clone())
+        .collect();
+    let mut units = compiled
+        .into_iter()
+        .map(
+            |(validation_id, (journey, profile))| ValidationWorkUnit::JourneyValidation {
+                validation_id,
+                journey,
+                profile,
+            },
+        )
+        .collect::<Vec<_>>();
+    units.extend(
+        generic_unrun
+            .into_iter()
+            .map(ValidationWorkUnit::GenericEdge),
+    );
+    units.extend(
+        generic_stale
+            .into_iter()
+            .map(ValidationWorkUnit::GenericEdge),
+    );
+    for readiness in journey_proof_gaps(store)? {
+        if routed_journeys.contains(&readiness.journey_id) {
+            continue;
+        }
+        if let Some(journey) = store.get_node(&readiness.journey_id)? {
+            units.push(ValidationWorkUnit::JourneyGap(journey));
+        }
+    }
+    units.extend(
+        unproven_implemented_intents(store)?
+            .into_iter()
+            .map(ValidationWorkUnit::UnprovenIntent),
+    );
+    Ok(units)
 }
 
 /// Implemented LEAF intents with no passing `validates` edge. Hierarchy parents
@@ -1723,63 +1807,51 @@ fn roster_analyze(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// `queue_items` was a 297-line match that only dispatched, so every lane's
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_validate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
-    use crate::model::TruthClass;
-    let validates: Vec<Edge> = store
-        .live_edges_by_status(
-            TruthClass::Asserted,
-            &[
-                InspectionStatus::Uninspected,
-                InspectionStatus::NeedsReverification,
-            ],
-        )?
-        .into_iter()
-        .filter(|e| e.kind == EdgeKind::Validates)
-        .collect();
-    for e in validates
-        .iter()
-        .filter(|e| e.status == InspectionStatus::Uninspected)
-    {
-        out.push(edge_entry(store, e, "validate", "unrun proof")?);
-    }
-    for e in validates
-        .iter()
-        .filter(|e| e.status == InspectionStatus::NeedsReverification)
-    {
-        out.push(edge_entry(
-            store,
-            e,
-            "validate",
-            "proof went stale — a dependency changed; re-run it",
-        )?);
-    }
-    // The other two things the `proven` rung counts. Omitting them made
-    // the roster shorter than the depth it is supposed to enumerate —
-    // the same quantity derived a third time and drifting again.
-    for intent in unproven_implemented_intents(store)? {
-        let proof = crate::proofstrength::assess(store, &intent.id)?;
-        let reason = if proof.any_passing && !proof.meaningful_passing {
-            let best = proof
-                .best_passing_strength
-                .unwrap_or(crate::proofstrength::Strength::S0)
-                .as_str();
-            format!(
-                "implemented; passing proof is {best} (liveness only) — strengthen to S2 with an output/content assertion and rerun"
-            )
-        } else {
-            "implemented, with no proof that establishes the behavior".into()
-        };
-        out.push(node_entry("validate", "mid", &intent, reason));
-    }
-    for readiness in journey_proof_gaps(store)? {
-        let Some(journey) = store.get_node(&readiness.journey_id)? else {
-            continue;
-        };
-        out.push(node_entry(
-            "validate",
-            "high",
-            &journey,
-            "compiled Journey lacks a current passing S3 proof through its surfaced CLI".into(),
-        ));
+    for unit in validation_work_units(store)? {
+        match unit {
+            ValidationWorkUnit::JourneyValidation {
+                validation_id,
+                journey,
+                profile,
+            } => out.push(node_entry(
+                "validate",
+                "high",
+                &journey,
+                format!(
+                    "compiler-owned Validation '{}' requires `loom journey run '{}' --profile '{}'`",
+                    validation_id, journey.id, profile
+                ),
+            )),
+            ValidationWorkUnit::GenericEdge(edge) => {
+                let reason = if edge.status == InspectionStatus::Uninspected {
+                    "unrun proof"
+                } else {
+                    "proof went stale — a dependency changed; re-run it"
+                };
+                out.push(edge_entry(store, &edge, "validate", reason)?);
+            }
+            ValidationWorkUnit::JourneyGap(journey) => out.push(node_entry(
+                "validate",
+                "high",
+                &journey,
+                "compiled Journey lacks a current passing S3 proof through its surfaced CLI".into(),
+            )),
+            ValidationWorkUnit::UnprovenIntent(intent) => {
+                let proof = crate::proofstrength::assess(store, &intent.id)?;
+                let reason = if proof.any_passing && !proof.meaningful_passing {
+                    let best = proof
+                        .best_passing_strength
+                        .unwrap_or(crate::proofstrength::Strength::S0)
+                        .as_str();
+                    format!(
+                        "implemented; passing proof is {best} (liveness only) — strengthen to S2 with an output/content assertion and rerun"
+                    )
+                } else {
+                    "implemented, with no proof that establishes the behavior".into()
+                };
+                out.push(node_entry("validate", "mid", &intent, reason));
+            }
+        }
     }
     Ok(())
 }

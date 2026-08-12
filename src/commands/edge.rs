@@ -392,6 +392,7 @@ fn edge_retarget(
     json: bool,
 ) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
+    crate::completeness::require_generic_edge_mutable(store, &e)?;
     let successor = store.resolve_node(&to, None)?;
     let old_to = e.to_id.clone();
     let old_name = store
@@ -449,6 +450,9 @@ fn edge_exercises(
     json: bool,
 ) -> Result<()> {
     let validation = store.resolve_node(&validation, Some(NodeType::Validation))?;
+    if crate::completeness::compiler_owned_journey_validation(store, &validation)?.is_some() {
+        bail!("compiler-owned Journey proof topology cannot be changed with edge exercises; use loom journey compile/run");
+    }
     let codefile = store.resolve_node(&codefile, Some(NodeType::CodeFile))?;
     if let Some(locator) = &locator {
         require_resolvable_locator(store, &codefile, locator)?;
@@ -511,6 +515,9 @@ fn edge_exercises(
 
 fn edge_call(store: &Store, validation: String, surface: String, json: bool) -> Result<()> {
     let v = store.resolve_node(&validation, Some(NodeType::Validation))?;
+    if crate::completeness::compiler_owned_journey_validation(store, &v)?.is_some() {
+        bail!("compiler-owned Journey proof topology cannot be changed with edge call; use loom journey compile/run");
+    }
     let s = store.resolve_node(&surface, Some(NodeType::InterfaceSurface))?;
     let existing = store.edges_with(Some(EdgeKind::Calls), Some(&v.id), Some(&s.id))?;
     let e = match existing.into_iter().next() {
@@ -547,6 +554,7 @@ fn edge_call(store: &Store, validation: String, surface: String, json: bool) -> 
 /// remove its source. Asserted edges (a redundant grounding/relationship) go.
 fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
+    crate::completeness::require_generic_edge_mutable(store, &e)?;
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
             "edge [{}] is a derived {} edge — it is rebuilt by `loom sync`; remove its source, not the edge",
@@ -622,6 +630,7 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: boo
 /// whose target symbol moved or was misnamed. Upserts; refuses derived edges.
 fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
+    crate::completeness::require_generic_edge_mutable(store, &e)?;
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(
             "edge [{}] is derived — its facets are sync-owned",
@@ -731,6 +740,7 @@ fn edge_verdict(
 ) -> Result<()> {
     let status = verdict_status(&verdict)?;
     let target = store.resolve_edge(&edge_id)?;
+    crate::completeness::require_generic_edge_mutable(store, &target)?;
     let actor = store.execution_identity().actor();
     let e = store.record_verdict(
         &target.id, status, &criterion, &evidence, confidence, &actor,

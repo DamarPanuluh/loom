@@ -30,6 +30,87 @@ pub const AXES: &[&str] = &[
     "questions",
 ];
 
+/// Resolve the Journey/profile that structurally owns a compiler-created
+/// Validation. The Proves edge is the ownership fact; the mutable body type is
+/// only checked for consistency and never grants or removes compiler ownership.
+pub fn compiler_owned_journey_validation(
+    store: &Store,
+    validation: &Node,
+) -> Result<Option<(Node, String)>> {
+    let proves = store.edges_with(Some(EdgeKind::Proves), Some(&validation.id), None)?;
+    let mut owners = Vec::new();
+    for edge in proves {
+        if let Some(target) = store.get_node(&edge.to_id)? {
+            if target.node_type == NodeType::Journey {
+                owners.push(target);
+            }
+        }
+    }
+    if owners.is_empty() {
+        return Ok(None);
+    }
+    if owners.len() != 1 {
+        bail!(
+            "compiler-owned Validation '{}' must prove exactly one Journey",
+            validation.name
+        );
+    }
+    if validation.body.get("type").and_then(|value| value.as_str()) != Some("journey") {
+        bail!(
+            "compiler-owned Validation '{}' has a mutated proof type; recompile its Journey",
+            validation.name
+        );
+    }
+    let profile = validation
+        .body
+        .get("profile")
+        .and_then(|value| value.as_str())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "compiler-owned Validation '{}' has no profile",
+                validation.name
+            )
+        })?;
+    crate::journey::validate_stable_id("Journey profile", profile)?;
+    let owner = owners.pop().expect("one owner was checked");
+    let profile_declared = owner
+        .body
+        .get("profile_ids")
+        .and_then(|value| value.as_array())
+        .is_some_and(|profiles| profiles.iter().any(|value| value.as_str() == Some(profile)));
+    if !profile_declared {
+        bail!(
+            "compiler-owned Validation '{}' names profile '{}' outside Journey '{}'",
+            validation.name,
+            profile,
+            owner.name
+        );
+    }
+    Ok(Some((owner, profile.to_string())))
+}
+
+/// Generic edge commands must not rewrite compiler-owned Journey proof
+/// topology. Journey compile/run are the only owners of these closure edges.
+pub fn require_generic_edge_mutable(store: &Store, edge: &Edge) -> Result<()> {
+    if !matches!(
+        edge.kind,
+        EdgeKind::Proves | EdgeKind::Validates | EdgeKind::Calls | EdgeKind::Exercises
+    ) {
+        return Ok(());
+    }
+    let Some(source) = store.get_node(&edge.from_id)? else {
+        return Ok(());
+    };
+    if source.node_type == NodeType::Validation
+        && compiler_owned_journey_validation(store, &source)?.is_some()
+    {
+        bail!(
+            "compiler-owned Journey proof topology cannot be changed generically; use loom journey compile/run"
+        );
+    }
+    Ok(())
+}
+
 /// The scenario aspects a happy path should be surrounded by.
 const SCENARIO_ASPECTS: &[&str] = &["sad", "fallback", "edge_case"];
 

@@ -243,10 +243,7 @@ pub(crate) fn journey_remove(graph: Option<&Path>, id: &str, json: bool) -> Resu
         .edges_with(Some(EdgeKind::Proves), None, Some(&journey.id))?
         .into_iter()
         .filter_map(|edge| store.get_node(&edge.from_id).ok().flatten())
-        .filter(|validation| {
-            validation.node_type == NodeType::Validation
-                && validation.body.get("type").and_then(Value::as_str) == Some("journey")
-        })
+        .filter(|validation| validation.node_type == NodeType::Validation)
         .collect();
     let compiled_count = compiled.len();
     let tx = store.begin()?;
@@ -1743,12 +1740,22 @@ fn compile_source(store: &Store, journey_key: &str, profile: &str) -> Result<Com
         bail!("Journey '{}' has no profile '{profile}'", journey.name);
     }
     let readiness = crate::completeness::journey_readiness(store, &journey)?;
-    if !readiness.derived || !readiness.derivations_ratified || !readiness.implemented {
+    if !readiness.derived {
         bail!(
-            "Journey '{}' is not compile-ready: derivations must be current, ratified, and realizing-grounded. Run `loom journey derive {} --json`, present its structured human_gate options with a recommendation, wait for the human's exact answer, and only then use derive-accept. Missing human authority is a pause, not a terminal handoff",
+            "Journey '{}' is not compile-ready: derivation is absent or stale. Run `loom journey derive {} --json`",
             journey.name,
             spec.id
         );
+    }
+    if !readiness.derivations_ratified {
+        bail!(
+            "Journey '{}' is not compile-ready: derivation acceptance is pending. Run `loom journey derive {} --json`, present its structured human_gate options, stop for the human's exact substantive answer, and only then use derive-accept",
+            journey.name,
+            spec.id
+        );
+    }
+    if !readiness.implemented {
+        bail!("Journey '{}' is not compile-ready: accepted technical intents are not implemented and realizing-grounded. Run `loom next --mode build --json`", journey.name);
     }
 
     let mut current_surfaces = Vec::new();
@@ -2250,11 +2257,15 @@ pub(crate) fn journey_drift(
                 rows.push(json!({
                     "journey_id": journey.name,
                     "current": false,
+                    "repair_class": "authored_artifact_absent_or_invalid",
+                    "next_command": Value::Null,
+                    "next_action": format!("Inspect product evidence and repair the authored Journey artifact at '{}'; no automatic mutation is safe", artifact),
                     "detail": error.to_string(),
                 }));
                 continue;
             }
         };
+        let readiness = crate::completeness::journey_readiness(&store, &journey)?;
         for profile_id in spec.profiles.keys() {
             match compile_source(&store, &journey.id, profile_id).and_then(|source| {
                 crate::journey_runtime::compile_surface(
@@ -2277,14 +2288,31 @@ pub(crate) fn journey_drift(
                         "cache_current": cache_current,
                         "baseline_current": baseline_current,
                         "current": cache_current && baseline_current != Some(false),
+                        "repair_class": if !cache_current { "compiled_cache_stale" } else if baseline_current == Some(false) { "baseline_stale" } else { "current" },
+                        "next_command": if !cache_current {
+                            Some(format!("loom journey compile {} --profile {}", crate::workitem::q(&journey.name), crate::workitem::q(profile_id)))
+                        } else if baseline_current == Some(false) {
+                            Some(format!("loom journey freeze {} --profile {}", crate::workitem::q(&journey.name), crate::workitem::q(profile_id)))
+                        } else { None },
                     }));
                 }
-                Err(error) => rows.push(json!({
-                    "journey_id": journey.name,
-                    "profile": profile_id,
-                    "current": false,
-                    "detail": error.to_string(),
-                })),
+                Err(error) => {
+                    let detail = error.to_string();
+                    let (repair_class, next_command) =
+                        classify_drift_repair(&journey.name, &readiness);
+                    let next_action = next_command.is_none().then_some(
+                        "Inspect the reported blocker and product/code evidence; no automatic mutation is safe",
+                    );
+                    rows.push(json!({
+                        "journey_id": journey.name,
+                        "profile": profile_id,
+                        "current": false,
+                        "repair_class": repair_class,
+                        "next_command": next_command,
+                        "next_action": next_action,
+                        "detail": detail,
+                    }))
+                }
             }
         }
     }
@@ -2301,6 +2329,40 @@ pub(crate) fn journey_drift(
             "Journey compiled artifact drift detected"
         },
     )
+}
+
+fn classify_drift_repair(
+    journey: &str,
+    readiness: &crate::completeness::JourneyReadiness,
+) -> (&'static str, Option<String>) {
+    let journey = crate::workitem::q(journey);
+    if !readiness.derived {
+        // Derive is inspect-only. It may reveal an authority gate, but drift
+        // must not request authority before Loom says acceptance is pending.
+        return (
+            "derivation_absent_or_stale",
+            Some(format!("loom journey derive {journey} --json")),
+        );
+    }
+    if !readiness.derivations_ratified {
+        return (
+            "derivation_acceptance_pending",
+            Some(format!("loom journey derive {journey} --json")),
+        );
+    }
+    if !readiness.implemented {
+        return (
+            "not_implemented_or_ungrounded",
+            Some("loom next --mode build --json".into()),
+        );
+    }
+    if !readiness.surfaced {
+        return (
+            "no_accepted_current_surface",
+            Some(format!("loom journey surface {journey} --json")),
+        );
+    }
+    ("inspection_required", None)
 }
 
 fn blocked_report(

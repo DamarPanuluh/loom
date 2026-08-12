@@ -220,12 +220,7 @@ impl Lane {
             // serves an implemented intent that has no registered proof at all;
             // before the unification the compass pointed here and the lane
             // returned nothing.
-            Lane::Validate => {
-                c.stale_validates
-                    + c.uninspected_validates
-                    + c.unproven_implemented
-                    + c.open_journey_proof_smells
-            }
+            Lane::Validate => c.validation_work_units,
             Lane::Quality => c.stale_governs + c.uninspected_governs + c.unmeasured_quality_pairs,
             Lane::Analyze => {
                 c.failing_exemplars
@@ -364,6 +359,9 @@ pub struct LadderInputs {
     pub uninspected_governs: usize,
     pub stale_validates: usize,
     pub uninspected_validates: usize,
+    /// Exact shared Validate roster size (compiler profile, generic edge,
+    /// Journey S3 gap, or unproven Intent).
+    pub validation_work_units: usize,
     pub unmeasured_quality_pairs: usize,
     pub validations: crate::maturity::ValidationSummary,
     pub unproven_implemented: usize,

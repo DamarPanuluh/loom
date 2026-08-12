@@ -177,6 +177,7 @@ impl LadderInputs {
         let (stale_relationships, stale_governs, stale_validates) = split(&stale);
         let (uninspected_relationships, uninspected_governs, uninspected_validates) =
             split(&uninspected);
+        let validation_work_units = crate::workitem::validation_work_units(store)?.len();
 
         // Proofs: registered validations are not proof until they pass.
         let validations = validation_summary(store)?;
@@ -257,6 +258,7 @@ impl LadderInputs {
             uninspected_governs,
             stale_validates,
             uninspected_validates,
+            validation_work_units,
             unmeasured_quality_pairs: crate::workitem::unmeasured_quality_pairs(store)?.len(),
             validations,
             unproven_implemented,

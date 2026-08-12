@@ -270,9 +270,9 @@ Detects repo languages and recommends seedable quality packs only. Available pac
 loom bootstrap suggest [--json]
 ```
 
-Cold-start assist when the graph has **registered codefiles and zero intents**. Scans derived signals (top-level `src/` modules from registered codefiles, `tests/*.rs`, README `##` headings) and writes a **Proposal** whose items are candidate pillar intents (suggested name/description/level/visibility). The operator adopts with `loom proposal item adopt <proposal> <n> --as intent` → `lifecycle=planned` only.
+Cold-start assist when the graph has registered codefiles and no authored Journey roots. It scans derived signals (top-level `src/` modules from registered codefiles, `tests/*.rs`, README `##` headings) and writes a **Proposal** of non-authoritative Journey clues. Review those clues against product evidence, then author `loom.journey/v1` artifacts and register them with `loom journey add <spec>`. Do not adopt inferred repository structure directly as product meaning.
 
-Hard rules: never creates `implements`/`governs`/`validates` verdicts; never sets `implemented`; refuses if any intent already exists. `loom session` offers this command when `intents == 0 && codefiles > 0`.
+Hard rules: never creates Journey roots, Intents, `implements`/`governs`/`validates` verdicts, or `implemented` lifecycle; refuses when authored Journeys already exist. `loom session` offers this command when code is registered but no Journey root exists.
 
 ```text
 loom scan add <name> "<command>" [--map <map>] [--format lines|json] [--json]
@@ -608,7 +608,7 @@ Every authored step must be covered by at least one Intent entry. `operation:cre
 
 Before acceptance, present the human one conversational hash-table batch containing the proposal ID, Journey hash, manifest hash, each create/reuse row, criteria, rationales, covered step IDs, and relationships. On acceptance Loom creates or updates the adopted Proposal and reconciles its `Derives`, `requires`, and `hierarchy` projection. Replaying byte-identical accepted content is idempotent; using an already-adopted `proposal_id` with a different manifest is rejected rather than silently changing the authorized decision.
 
-`surface` is also read-only. Once every current derivation is accepted, implemented, and realizing-grounded, it emits the contract for a real CLI in the target repository. The builder writes that source in the repository's language and idiom. A `loom.journey.surface/v1` manifest binds every Journey step to a reusable operation on a `loom.interface-surface/v1`; operations use structured argv, typed arguments, and JSON output. `surface-accept` records the hash-bound surface, its operation bindings, and the exposed registered CodeFile. Loom does not template-generate application source.
+`surface` is also read-only. Once every current derivation is accepted, implemented, and realizing-grounded, it emits the contract for a stable, production-owned black-box CLI in the target repository. Prefer one unified consumer/administrative CLI over the same application, API, or service boundary as the public behavior. It may be operator-only, but a feature-gated proof binary, test fixture, mock-only path, or privileged shortcut around production behavior is not the Journey surface. The builder writes that source in the repository's language and idiom. A `loom.journey.surface/v1` manifest binds every Journey step to a reusable operation on a `loom.interface-surface/v1`; operations use structured argv, typed arguments, and JSON output. `surface-accept` records the hash-bound surface, its operation bindings, and the exposed registered CodeFile. Loom does not template-generate application source.
 
 Machine-operation timeouts resolve from an optional positive surface-operation
 `timeout_seconds` override, otherwise from the selected profile's positive
@@ -801,11 +801,12 @@ Hypotheses are invisible to coverage and maturity until adopted. Speculation nev
 loom inbox add "<raw text>" [--source <source>] [--link <ref>] [--json]
 loom inbox list [--status new|routed|rejected|duplicate|deferred] [--limit N] [--offset N] [--json]
 loom inbox show <key> [--json]
-loom inbox mark <key> routed|rejected|duplicate|deferred [--reason "<why>"] [--json]
+loom inbox mark <key> routed --reason "<destination-kind>:<stable-node-id>" [--json]
+loom inbox mark <key> rejected|duplicate|deferred --reason "<why>" [--json]
 loom inbox remove <key> [--json]
 ```
 
-The single free-form input boundary. Raw text enters as `InboxItem`; allowed sources are `human|external|support|import`. Evidence-backed observations belong in `loom finding add`; product decisions belong in `loom question add`. Typed creation commands plus positional `mark` dispositions close the loop.
+The single free-form input boundary. Raw text enters as `InboxItem`; allowed sources are `human|external|support|import`. Evidence-backed observations belong in `loom finding add`; product decisions belong in `loom question add`. A routed disposition must name one supported typed landing—`existing_journey`, `new_journey`, `existing_intent`, `hypothesis`, `spike`, or `external_research`—and the exact stable node ID returned by its creation or lookup command. Other dispositions take a concrete prose reason.
 
 ---
 

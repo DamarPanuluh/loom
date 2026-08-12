@@ -216,7 +216,7 @@
     "before_steps": {
       "attach-anchor": [
         {
-          "expected_hash": "251718910273bdb6",
+          "expected_hash": "b413a19203f5b85d",
           "path": "src/commands/codefile_cmd.rs",
           "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor() {}\n"
         }

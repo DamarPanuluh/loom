@@ -164,8 +164,9 @@ impl HumanPrompt {
     }
 }
 
-/// Host-facing pause result. It deliberately has no argv, write-back command,
-/// default answer, or human-decision field.
+/// Host-facing pause result. The strict v1 wire shape remains stable. Hosts
+/// combine its opaque token and offered option ids with the canonical resume
+/// protocol emitted by `loom guide --json`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PendingHuman {

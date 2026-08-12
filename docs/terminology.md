@@ -143,6 +143,14 @@ The human-authored semantic root of delivery. A `loom.journey/v1` artifact says 
 
 Technical Intents, the real repository CLI surface, and the compiler-owned proof are hash-bound projections of the Journey. If authored meaning changes, those projections become stale rather than being silently reinterpreted.
 
+### Journey black-box CLI
+
+The stable, production-owned consumer or administrative CLI through which a
+compiled Journey exercises the same application, API, or service boundary as
+the public behavior. Prefer one coherent CLI that composes reusable operations.
+It may be operator-only; it is not a feature-gated proof binary, test fixture,
+mock-only path, or privileged shortcut around production behavior.
+
 ### Journey surface lint
 
 The deterministic, read-only portability and durability check applied to an

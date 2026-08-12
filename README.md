@@ -65,7 +65,7 @@ false*.
 - **Scenario families:** `loom intent add/update --aspect happy|sad|fallback|edge_case` plus `scenario-of` edges model happy paths, sad paths, fallbacks, and edge cases without inventing a separate scenario node type.
 - **Question loop:** product questions are captured with `loom question add "..." --intent <intent>` and surface through `loom session` / `graph_state.open_questions` for batched human answers. Evidence-backed observations use `loom finding add`, not the inbox.
 - **Cheap residue routing:** work packets carry `routing_hint` (`mechanical` | `judgment`) and sync grades `cheap re-confirm` vs full re-inspection; orchestrators may batch-reaffirm mechanical items via `loom apply` verdicts.
-- **Cold-start assist:** `loom bootstrap suggest` drafts a Proposal of planned pillar intents from codefiles/tests/README (never auto-verdicts).
+- **Cold-start assist:** `loom bootstrap suggest` drafts a Proposal of non-authoritative Journey clues from codefiles/tests/README. Inspect product evidence, then author and register `loom.journey/v1` roots; inferred repository structure never becomes product meaning automatically.
 - **Find + explain:** `loom find --tag` / `--where` and `loom explain <intent>` for facet search and neighborhood briefs.
 - **Calibrated structural detectors:** sync's built-in findings (`oversized_file`, `complex_symbol`, `large_symbol`, `deep_nesting`, `excess_args`) run on configurable thresholds; `loom calibrate [--write]` fits gates to the repo's own distribution. Calibration only ever RELAXES: the default says "this is bad in any codebase", the repo's distribution says "our normal runs looser than that", and a gate fitted *below* the default would flag code that is fine by any absolute standard for sitting above its neighbours — which is how a percentile-based detector manufactures a debt wall in proportion to repo size.
 - **Validation-specific proof strength:** the S3 call witness is earned by a validation's own evidence — an explicit `loom edge exercises <validation> <codefile> --locator <entry-symbol>` entry (the locator is required for S3; a bare file claim is diagnostic only), or an entry point derived from its journey/command (`cargo test --test …`, `cargo run --bin …`, scripts, binaries). A sibling validation on the same intent never inherits another proof's reach, and the legacy intent-wide surface is recorded visibly as non-eligible fallback. `loom validation show` explains the grade with the exact source, file, entry symbol, and reached symbol.
@@ -274,7 +274,7 @@ deepen      Rank what to strengthen next, once every floor is met
 wiki        Reader-first wiki pages tracked as a graph projection
 graph       Cross-graph federation (link/unlink/list upstreams)
 impact      What a change here could reach (callers, intents at risk)
-bootstrap   Cold-start assist: draft a Proposal of planned pillar intents
+bootstrap   Cold-start assist: draft non-authoritative Journey clues
 mcp         Serve loom in-band over MCP (stdio JSON-RPC)
 ```
 

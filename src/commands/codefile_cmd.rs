@@ -208,6 +208,13 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             };
             let mut retargeted = Vec::new();
             if let Some(s) = &succ {
+                // Validate the whole cascade before its first write. In
+                // particular, an Exercises edge belongs to Journey compile;
+                // `codefile remove --successor` must not provide a generic
+                // retargeting back door into that compiler-owned closure.
+                for e in &to_incident {
+                    crate::completeness::require_generic_edge_mutable(&store, e)?;
+                }
                 for e in &to_incident {
                     let reason = format!(
                         "codefile '{}' removed; behavior carried by successor '{}'",
