@@ -8,6 +8,9 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.30.1] - 2026-08-12
+- clarify cold-LLM Journey guidance and protect compiler-owned proof topology; schema v12 graphs require no rebuild
+
 ## [0.30.0] - 2026-08-12
 - ship Journey authoring lint, portable release trust seams, and proven 30-Journey rehearsal closure
 
