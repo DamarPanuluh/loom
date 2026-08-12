@@ -355,8 +355,9 @@ mindset:
     if the intent should be a locator instead, capture the modeling concern as a finding and propose
     the right model (behavioral intent + implements locator) rather than proceeding.
   Add a validation stub if none exists. Do not attach or mutate proof evidence
-    yourself — attaching the validator's entry surface (`loom edge exercises`)
-    is validator work; hand that decision to the validator contract.
+    yourself — attaching a non-Journey validator's entry surface (`loom edge exercises`)
+    is validator work; for Journeys, declare operation `exercises` on the surface
+    manifest instead. Hand proof settlement to the validator contract.
   Run sync after code changes.
   Do not mark proof passing — that is validator work.
 
@@ -456,6 +457,7 @@ Runs or marks proofs. Records what was actually observed.
 mindset:
   Run it. Do not guess.
   S3 belongs to this validation's own entry path: inspect `validation show` call_evidence; an intent-wide fallback is visible but not eligible.
+  For compiler-owned Journeys, declare cross-process downstream entries on the surface operation `exercises` array — never `loom edge exercises`.
   Record exactly what the command produced.
   Do not edit code to make the proof pass.
   A blocked proof is honest; record it with a reason.
@@ -469,7 +471,7 @@ allowed:
   loom journey run <journey> --profile proof
   loom journey diagnose <journey> --profile proof [--input <key=json>]...
   loom validation run <intent>
-  loom edge exercises <validation> <codefile> --locator <entry-symbol> (only when command derivation cannot identify the custom runner)
+  loom edge exercises <validation> <codefile> --locator <entry-symbol> (only for non-Journey validations when command derivation cannot identify the custom runner)
 
 forbidden:
   edit source code
@@ -477,6 +479,7 @@ forbidden:
   mark failed without inspecting the failure
   rely on an intent-wide `verifies` grounding to strengthen a sibling proof
   change validation command to suppress a real failure
+  loom edge exercises on a compiler-owned Journey validation
 
 evidence required:
   command stdout/stderr, test count, failure message, or blocking reason
@@ -499,7 +502,7 @@ human answers
 builder realizes and grounds every accepted technical Intent
   → inspects loom journey surface <journey>
   → writes the real target-repository CLI source
-  → accepts the complete structured surface manifest
+  → accepts the complete structured surface manifest (optional operation.exercises for downstream entries)
 validator compiles the selected profile
   → compiler owns Proves / Validates / Calls / Exercises
   → validator runs it and records only the observed outcome
@@ -507,9 +510,11 @@ validator compiles the selected profile
 
 Authored Journey steps contain actors, actions, and expected outcomes. Implementation details belong to the derivation and surface projections. A semantic hash change invalidates those projections and returns the work to derive; it never invites an agent to reinterpret an old acceptance.
 
+A compiled Journey reaches S3 only through its own accepted surface, compiled Exercises closure, and realizing code path. Downstream process/protocol handlers must be declared as operation `exercises` bound to a passed `observed_by` assertion — Loom does not infer handlers from matching names.
+
 `derive-accept` is a human gate. The strict derivation manifest contains `proposal_id`, `proposal_rationale`, `intents[]`, `relationships[]`, and `unresolved_question`; every Intent entry declares `operation: create|reuse`, its stable entry `id`, `step_ids`, `level`, `visibility`, and `rationale`. A `create` entry additionally supplies `name` and a falsifiable `criterion`; a `reuse` entry supplies `intent_id` instead. Every relationship declares `id`, `kind` (`requires|hierarchy`), `from`, `to`, and `rationale`, with endpoints referring to included entry IDs. Loom rejects duplicate entries/relationships, relationship cycles, unresolved questions, stale hashes, and an adopted `proposal_id` paired with different content. An identical accepted replay is an idempotent no-op. The human reviews this as one conversational hash-table batch—proposal ID, Journey hash, manifest hash, entries, criteria, rationales, step IDs, and relationships—and authorizes that exact table, never an LLM summary.
 
-`surface-accept` is not a product decision, but it requires cited live source and complete step bindings. `compile` and `run` belong to Validate. `diagnose` may override typed inputs for investigation but does not settle the proof. A compiled Journey reaches S3 only through its own accepted surface and code entry path.
+`surface-accept` is not a product decision, but it requires cited live source and complete step bindings. `compile` and `run` belong to Validate. `diagnose` may override typed inputs for investigation but does not settle the proof. A compiled Journey reaches S3 only through its own accepted surface, compiled Exercises closure (including declared operation exercises with passed `observed_by` assertions), and realizing code path.
 
 ### Host-mediated resume and release rehearsal
 

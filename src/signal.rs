@@ -1431,6 +1431,29 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
                     && facet_value(snap, &candidate.id, "locator")
                         .is_some_and(|value| !value.trim().is_empty())
             });
+            let mut malformed_exercise = false;
+            for candidate in snap.edges.iter().filter(|candidate| {
+                candidate.kind == EdgeKind::Exercises && candidate.from_id == validation.id
+            }) {
+                if let Some(raw) = facet_value(snap, &candidate.id, "journey_operation_exercises") {
+                    match serde_json::from_str::<Vec<crate::journey::JourneyOperationExerciseFacet>>(
+                        raw,
+                    ) {
+                        Ok(entries) => {
+                            if entries.iter().any(|entry| {
+                                entry.operation_id.trim().is_empty()
+                                    || entry.exercise_id.trim().is_empty()
+                                    || entry.observed_by.trim().is_empty()
+                                    || entry.locator.trim().is_empty()
+                                    || crate::locator::is_anchor_locator(&entry.locator)
+                            }) {
+                                malformed_exercise = true;
+                            }
+                        }
+                        Err(_) => malformed_exercise = true,
+                    }
+                }
+            }
             let validates_all = derives.iter().all(|derived| {
                 snap.edges.iter().any(|candidate| {
                     candidate.kind == EdgeKind::Validates
@@ -1447,6 +1470,7 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
                 || !calls_surface
                 || !exercises_locator
                 || !validates_all
+                || malformed_exercise
             {
                 issues.push(DoctorIssue {
                     kind: "broken_journey_proof_chain".into(),

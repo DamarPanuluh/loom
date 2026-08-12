@@ -1,6 +1,6 @@
 # Journey authoring and surface lint
 
-Status: canonical for the Loom 0.30.0 Journey authoring/lint contract. This
+Status: canonical for the Loom 0.31.0 Journey authoring/lint contract. This
 document is intentionally limited to authored Journey surfaces and lint.
 Broader release and resume guidance belongs to Phase 5.
 
@@ -13,6 +13,14 @@ consumer/administrative CLI over the same application, API, or service
 boundary used by the public behavior. The CLI may be operator-only, but a
 feature-gated proof binary, test fixture, mock-only path, or privileged shortcut
 around production behavior is not an acceptable architectural substitute.
+
+When the public CLI crosses a process or protocol boundary, keep the surface's
+top-level `codefile`/`locator` as the one real public entrypoint. Declare
+downstream handlers on the bound operation as optional `exercises` entries
+(`id`, `codefile`, `locator`, `observed_by`). Those are not additional surface
+owners; `journey compile` turns them into compiler-owned proof topology, and S3
+still requires the referenced assertion to pass plus call-graph reach to a
+realizing symbol.
 
 ## Authoring workflow
 

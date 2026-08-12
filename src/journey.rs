@@ -18,7 +18,7 @@ pub const SURFACE_SCHEMA: &str = "loom.journey.surface/v1";
 pub const INTERFACE_SURFACE_SCHEMA: &str = "loom.interface-surface/v1";
 pub const COMPILED_PROOF_SCHEMA: &str = "loom.journey.proof/v1";
 pub const BASELINE_SCHEMA: &str = "loom.journey.baseline/v1";
-pub const JOURNEY_COMPILER_VERSION: &str = "3";
+pub const JOURNEY_COMPILER_VERSION: &str = "4";
 pub const JOURNEY_LINT_REPORT_SCHEMA: &str = "loom.journey-lint/v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1329,6 +1329,48 @@ fn confined_regular_file(root: &Path, path: &str, label: &str) -> Result<PathBuf
     Ok(current)
 }
 
+/// Operation exercises must name a live callable symbol. Navigation anchors and
+/// non-callable declarations are refused at acceptance time so compile cannot
+/// invent an S3-ineligible "entry" that looks authored.
+fn require_callable_exercise_locator(
+    store: &crate::store::Store,
+    codefile: &crate::model::Node,
+    locator: &str,
+) -> Result<()> {
+    if crate::locator::is_anchor_locator(locator) {
+        bail!("navigation-only anchor locators are not valid operation exercise entries");
+    }
+    crate::locator::validate_for_codefile(store, codefile, locator)?;
+    let symbols = crate::locator::symbols(locator);
+    if symbols.is_empty() {
+        bail!("operation exercise locator must name a callable symbol");
+    }
+    let path = store.root().join(&codefile.name);
+    let content = std::fs::read_to_string(&path)
+        .with_context(|| format!("reading CodeFile '{}'", codefile.name))?;
+    let extracted = crate::extract::extract(&codefile.name, &content);
+    for symbol in symbols {
+        let Some(entry) = extracted
+            .symbols
+            .iter()
+            .find(|candidate| candidate.name == symbol)
+        else {
+            bail!(
+                "operation exercise locator '{locator}' does not resolve in '{}'",
+                codefile.name
+            );
+        };
+        if !matches!(entry.kind.as_str(), "function" | "method") {
+            bail!(
+                "operation exercise locator '{locator}' resolves to non-callable '{}' in '{}'",
+                entry.kind,
+                codefile.name
+            );
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct InterfaceSurfaceDefinition {
@@ -1340,6 +1382,35 @@ pub struct InterfaceSurfaceDefinition {
     /// Live symbol locator for the entrypoint in `codefile`.
     pub locator: String,
     pub operations: Vec<CliOperation>,
+}
+
+/// Downstream code entry reached through a public CLI operation.
+///
+/// These are not additional surface owners. The InterfaceSurface still exposes
+/// exactly one public executable entrypoint; an operation exercise names a
+/// later boundary entry that the operation's observed assertion evidence
+/// actually bridges to.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OperationExercise {
+    pub id: String,
+    pub codefile: String,
+    pub locator: String,
+    /// Assertion id in this operation's `output.assertions` that observes the
+    /// boundary crossing that reaches this entry.
+    pub observed_by: String,
+}
+
+/// Compiler-owned provenance for one operation exercise on an Exercises edge.
+/// Multiple entries that target the same CodeFile are aggregated on one edge;
+/// this facet preserves the exact operation mapping.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JourneyOperationExerciseFacet {
+    pub operation_id: String,
+    pub exercise_id: String,
+    pub observed_by: String,
+    pub locator: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1366,6 +1437,9 @@ pub struct CliOperation {
     #[serde(default)]
     pub arguments: Vec<OperationArgument>,
     pub output: OperationOutput,
+    /// Optional downstream proof entries reached through this public operation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub exercises: Vec<OperationExercise>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1855,6 +1929,63 @@ impl InterfaceSurfaceDefinition {
             for pointer in &operation.output.redact {
                 validate_json_pointer("redaction", &operation.id, pointer)?;
             }
+            let assertion_ids: BTreeSet<&str> = operation
+                .output
+                .assertions
+                .iter()
+                .map(|assertion| assertion.id.as_str())
+                .collect();
+            let mut exercise_ids = BTreeSet::new();
+            for exercise in &operation.exercises {
+                insert_unique(
+                    &mut exercise_ids,
+                    &format!("operation '{}' exercise", operation.id),
+                    &exercise.id,
+                )?;
+                nonempty(
+                    &format!(
+                        "operation '{}' exercise '{}' codefile",
+                        operation.id, exercise.id
+                    ),
+                    &exercise.codefile,
+                )?;
+                nonempty(
+                    &format!(
+                        "operation '{}' exercise '{}' locator",
+                        operation.id, exercise.id
+                    ),
+                    &exercise.locator,
+                )?;
+                nonempty(
+                    &format!(
+                        "operation '{}' exercise '{}' observed_by",
+                        operation.id, exercise.id
+                    ),
+                    &exercise.observed_by,
+                )?;
+                if crate::locator::is_anchor_locator(&exercise.locator) {
+                    bail!(
+                        "operation '{}' exercise '{}' locator must not be a navigation-only anchor",
+                        operation.id,
+                        exercise.id
+                    );
+                }
+                if crate::locator::symbols(&exercise.locator).is_empty() {
+                    bail!(
+                        "operation '{}' exercise '{}' locator must name a resolvable callable symbol",
+                        operation.id,
+                        exercise.id
+                    );
+                }
+                if !assertion_ids.contains(exercise.observed_by.as_str()) {
+                    bail!(
+                        "operation '{}' exercise '{}' observed_by '{}' is not an assertion in the same operation",
+                        operation.id,
+                        exercise.id,
+                        exercise.observed_by
+                    );
+                }
+            }
         }
         Ok(())
     }
@@ -1866,6 +1997,7 @@ impl InterfaceSurfaceDefinition {
         for operation in &mut operations {
             operation.arguments.sort_by(|a, b| a.id.cmp(&b.id));
             operation.environment.sort();
+            operation.exercises.sort_by(|a, b| a.id.cmp(&b.id));
         }
         Ok(canonicalize_value(serde_json::to_value(operations)?))
     }
@@ -2301,6 +2433,41 @@ impl SurfaceManifest {
     pub fn validate_setup_for_store(&self, store: &crate::store::Store) -> Result<()> {
         if let Some(setup) = &self.setup {
             setup.validate_for_store(store)?;
+        }
+        self.validate_exercises_for_store(store)?;
+        Ok(())
+    }
+
+    /// Resolve every operation exercise against live CodeFiles and callable
+    /// locators. Schema validation already checked ids/assertions; this binds
+    /// the declaration to repository content.
+    pub fn validate_exercises_for_store(&self, store: &crate::store::Store) -> Result<()> {
+        for operation in &self.surface.operations {
+            for exercise in &operation.exercises {
+                let codefile = store
+                    .resolve_node(&exercise.codefile, Some(crate::model::NodeType::CodeFile))
+                    .with_context(|| {
+                        format!(
+                            "operation '{}' exercise '{}' codefile '{}'",
+                            operation.id, exercise.id, exercise.codefile
+                        )
+                    })?;
+                if !store.root().join(&codefile.name).is_file() {
+                    bail!(
+                        "operation '{}' exercise '{}' codefile '{}' is not a live file",
+                        operation.id,
+                        exercise.id,
+                        codefile.name
+                    );
+                }
+                require_callable_exercise_locator(store, &codefile, &exercise.locator)
+                    .with_context(|| {
+                        format!(
+                            "operation '{}' exercise '{}' locator '{}'",
+                            operation.id, exercise.id, exercise.locator
+                        )
+                    })?;
+            }
         }
         Ok(())
     }
@@ -2803,6 +2970,7 @@ mod tests {
                 assertions: Vec::new(),
                 redact: Vec::new(),
             },
+            exercises: Vec::new(),
         };
         assert!(relies_on_real_clock_minute_bucket(&operation));
         let mut merely_mentions_audit = operation;

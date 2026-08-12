@@ -51,6 +51,7 @@ fn operation(value: &str) -> CliOperation {
             }],
             redact: Vec::new(),
         },
+        exercises: Vec::new(),
     }
 }
 

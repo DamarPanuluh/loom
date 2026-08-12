@@ -304,7 +304,7 @@ created_at
 updated_at
 ```
 
-For Journey-root delivery, an accepted surface uses `loom.interface-surface/v1`, kind `cli`, structured argv, typed arguments, JSON output, and stable operation IDs. A `surfaces` edge binds the Journey to that surface and stores complete step-to-operation bindings plus the Journey hash. An `exposes` edge points from the surface to the real registered source file.
+For Journey-root delivery, an accepted surface uses `loom.interface-surface/v1`, kind `cli`, structured argv, typed arguments, JSON output, and stable operation IDs. A `surfaces` edge binds the Journey to that surface and stores complete step-to-operation bindings plus the Journey hash. An `exposes` edge points from the surface to the real registered source file. Optional per-operation `exercises` arrays name downstream code entries reached through that public operation; they participate in surface hashing and compile into compiler-owned `Exercises` provenance without changing surface ownership.
 
 ### Note
 
@@ -450,7 +450,7 @@ The write-time check verifies the supplied truth class is in the allowed set for
 | `assesses` | Finding | CodeRule | derived | sync | finding is occurrence of code rule |
 | `exposes` | InterfaceSurface | CodeFile | asserted | builder | declared surface exposed by a codefile |
 | `calls` | Validation | InterfaceSurface | asserted | validator | proof exercises a surface |
-| `exercises` | Validation | CodeFile | asserted | validator | proof reaches a specific code entry point |
+| `exercises` | Validation | CodeFile | asserted | validator / Journey compiler | proof reaches a specific code entry point (public adapter or declared downstream operation exercise) |
 | `relates` | Intent | Intent | asserted | analyzer | manual relationship, kind TBD |
 | `derives` | Journey | Intent | asserted | builder | accepted technical Intent derives from stable Journey steps |
 | `surfaces` | Journey | InterfaceSurface | asserted | builder | accepted surface exposes every Journey step through real repository code |

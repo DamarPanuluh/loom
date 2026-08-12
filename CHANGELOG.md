@@ -8,6 +8,13 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.31.0] - 2026-08-12
+- add compiler-owned Journey operation exercises for cross-process S3 proof entries; schema v12 graphs require no rebuild
+  - Optional `CliOperation.exercises` (`id`, `codefile`, `locator`, `observed_by`) declare downstream boundary entries without changing surface ownership.
+  - `journey compile` creates Exercises topology for bound operation exercises, aggregates same-CodeFile locators, and stores provenance facets.
+  - S3 remains derived: a downstream entry is eligible only when its observed assertion passed and call-graph reach finds a realizing symbol.
+  - Journey S2 guidance never recommends `loom edge exercises`; doctor rejects malformed exercise provenance.
+
 ## [0.30.1] - 2026-08-12
 - clarify cold-LLM Journey guidance and protect compiler-owned proof topology; schema v12 graphs require no rebuild
 

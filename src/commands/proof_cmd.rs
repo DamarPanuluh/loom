@@ -455,8 +455,8 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                         w.boundary.as_deref().unwrap_or("none"),
                     );
                     if let Some(evidence) = &w.call_evidence {
-                        println!(
-                            "    call evidence: {} {}{}{}",
+                        let mut detail = format!(
+                            "{} {}{}",
                             evidence.source,
                             evidence.file,
                             evidence
@@ -464,12 +464,20 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
                                 .as_deref()
                                 .map(|symbol| format!("::{symbol}"))
                                 .unwrap_or_default(),
-                            if evidence.s3_eligible {
-                                ""
-                            } else {
-                                " (intent-wide fallback; not S3-eligible)"
-                            }
                         );
+                        if let (Some(operation), Some(exercise), Some(observed)) = (
+                            evidence.operation_id.as_deref(),
+                            evidence.exercise_id.as_deref(),
+                            evidence.observed_by.as_deref(),
+                        ) {
+                            detail.push_str(&format!(
+                                " via operation '{operation}' exercise '{exercise}' observed_by '{observed}'"
+                            ));
+                        }
+                        if !evidence.s3_eligible {
+                            detail.push_str(" (not S3-eligible)");
+                        }
+                        println!("    call evidence: {detail}");
                     }
                     if !w.next.is_empty() {
                         println!("    next: {}", w.next);

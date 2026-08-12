@@ -166,6 +166,13 @@ impl RuntimeStatus {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PassedAssertion {
+    pub operation_id: String,
+    pub assertion_id: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeReport {
@@ -184,6 +191,9 @@ pub struct RuntimeReport {
     pub file_transitions: Vec<FileTransitionReport>,
     pub steps: Vec<StepReport>,
     pub captures: BTreeMap<String, Value>,
+    /// Typed output assertions that held during this observed run.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub passed_assertions: Vec<PassedAssertion>,
 }
 
 #[derive(Debug)]
@@ -1132,6 +1142,7 @@ fn blocked_runtime_report(
         file_transitions: Vec::new(),
         steps: Vec::new(),
         captures: BTreeMap::new(),
+        passed_assertions: Vec::new(),
     }
 }
 
@@ -1154,6 +1165,7 @@ fn runtime_surface_plan(
                 assertions: operation.assertions.clone(),
                 redact: operation.redact.clone(),
             },
+            exercises: Vec::new(),
         }));
     }
     operations.extend(
@@ -1175,6 +1187,7 @@ fn runtime_surface_plan(
                     assertions: step.assertions.clone(),
                     redact: step.redact.clone(),
                 },
+                exercises: Vec::new(),
             }),
     );
     crate::candidate_surface_policy::inspect_compiled_operations(
@@ -1444,6 +1457,7 @@ fn execute_fresh(
         captures,
         redacted_captures,
         assertions_passed,
+        passed_assertions: Vec::new(),
         human_decisions: Vec::new(),
     };
     run_steps(root, spec, proof, temp, isolated, 0, active)
@@ -1463,6 +1477,8 @@ struct ActiveRun {
     captures: BTreeMap<String, Value>,
     redacted_captures: BTreeSet<String>,
     assertions_passed: usize,
+    #[serde(default)]
+    passed_assertions: Vec<PassedAssertion>,
     human_decisions: Vec<Value>,
 }
 
@@ -1564,6 +1580,10 @@ fn run_steps(
                 &active.run_id,
             ) {
                 step_passed += 1;
+                active.passed_assertions.push(PassedAssertion {
+                    operation_id: step.operation_id.clone(),
+                    assertion_id: assertion.id.clone(),
+                });
             } else {
                 step_failed += 1;
             }
@@ -1650,6 +1670,7 @@ fn completed_outcome(
             file_transitions: active.file_transition_reports,
             steps: active.reports,
             captures,
+            passed_assertions: active.passed_assertions,
         },
         human_decisions: active.human_decisions,
     }
@@ -2195,6 +2216,7 @@ fn report_with(
         file_transitions: progress.file_transitions,
         steps: progress.steps,
         captures: progress.captures,
+        passed_assertions: Vec::new(),
     }
 }
 
@@ -3235,6 +3257,7 @@ pub fn report_observation_json(report: &RuntimeReport) -> Result<Vec<u8>> {
         "status": report.status,
         "assertions_passed": report.assertions_passed,
         "assertions_failed": report.assertions_failed,
+        "passed_assertions": report.passed_assertions,
     }))?)
 }
 

@@ -313,6 +313,7 @@ fn s3_journey_proof_with_ratification(
             }],
             redact: Vec::new(),
         },
+        exercises: Vec::new(),
     };
     let surface = store
         .add_node(

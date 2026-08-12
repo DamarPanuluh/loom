@@ -168,8 +168,9 @@ fn legacy_witness_model() -> String {
 /// The validation-owned entry evidence inspected for the S3 call witness.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CallEvidenceWitness {
-    /// `validation_grounding`, `journey_command`, `validation_command`, or the
-    /// legacy diagnostic-only `intent_wide_fallback`.
+    /// `validation_grounding`, `journey_command`, `validation_command`,
+    /// `journey_operation_exercise`, or the legacy diagnostic-only
+    /// `intent_wide_fallback`.
     pub source: String,
     /// Registered CodeFile used as an entry surface.
     pub file: String,
@@ -182,6 +183,15 @@ pub struct CallEvidenceWitness {
     pub grounded_symbol: Option<String>,
     /// False for the visible legacy fallback: useful diagnosis, never S3 credit.
     pub s3_eligible: bool,
+    /// Journey operation that declared a downstream exercise entry.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operation_id: Option<String>,
+    /// Stable exercise id within that operation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub exercise_id: Option<String>,
+    /// Output assertion that observed the boundary crossing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observed_by: Option<String>,
 }
 
 /// Every conjunct, recorded. The point is that a grade can be argued with.
@@ -343,6 +353,41 @@ pub struct EntryEvidence {
     pub file: String,
     pub entry_symbol: Option<String>,
     pub s3_eligible: bool,
+    pub operation_id: Option<String>,
+    pub exercise_id: Option<String>,
+    pub observed_by: Option<String>,
+}
+
+impl EntryEvidence {
+    fn plain(
+        source: &'static str,
+        file: String,
+        entry_symbol: Option<String>,
+        s3_eligible: bool,
+    ) -> Self {
+        Self {
+            source,
+            file,
+            entry_symbol,
+            s3_eligible,
+            operation_id: None,
+            exercise_id: None,
+            observed_by: None,
+        }
+    }
+
+    fn into_call_evidence(self, grounded_symbol: Option<String>) -> CallEvidenceWitness {
+        CallEvidenceWitness {
+            source: self.source.into(),
+            file: self.file,
+            entry_symbol: self.entry_symbol,
+            grounded_symbol,
+            s3_eligible: self.s3_eligible,
+            operation_id: self.operation_id,
+            exercise_id: self.exercise_id,
+            observed_by: self.observed_by,
+        }
+    }
 }
 
 /// Does this validation-specific entry reach a symbol the intent is grounded
@@ -381,13 +426,7 @@ fn call_witness(
                             .is_none_or(|expected| caller.symbol == expected)
                 });
             if reaches {
-                return Ok(Some(CallEvidenceWitness {
-                    source: entry.source.into(),
-                    file: entry.file.clone(),
-                    entry_symbol: entry.entry_symbol.clone(),
-                    grounded_symbol: Some(symbol),
-                    s3_eligible: entry.s3_eligible,
-                }));
+                return Ok(Some(entry.clone().into_call_evidence(Some(symbol))));
             }
         }
     }
@@ -398,49 +437,160 @@ fn call_witness(
 /// of a per-validation grounding: unlike `implements`, it owns no behavior/code
 /// coverage and exists only to say which code surface this proof exercises.
 fn validation_entries(store: &Store, validation_id: &str) -> Result<Vec<EntryEvidence>> {
+    let passed_assertions = passed_journey_assertions(store, validation_id)?;
     let mut out = Vec::new();
     for edge in store.edges_with(Some(EdgeKind::Exercises), Some(validation_id), None)? {
         let Some(file) = store.get_node(&edge.to_id)? else {
             continue;
         };
         let locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+        let surface_locator = store.get_facet(&edge.id, TargetKind::Edge, "surface_locator")?;
+        let operation_exercises = store
+            .get_facet(&edge.id, TargetKind::Edge, "journey_operation_exercises")?
+            .and_then(|raw| {
+                serde_json::from_str::<Vec<crate::journey::JourneyOperationExerciseFacet>>(&raw)
+                    .ok()
+            })
+            .unwrap_or_default();
+
         if locator
             .as_deref()
             .is_some_and(crate::locator::is_anchor_locator)
+            && operation_exercises.is_empty()
         {
             // Source anchors stabilize navigation only. Even when attached to
             // a callable entry, they must not become an S3 proof declaration.
-            out.push(EntryEvidence {
-                source: "anchor_navigation",
-                file: file.name,
-                entry_symbol: None,
-                s3_eligible: false,
-            });
+            out.push(EntryEvidence::plain(
+                "anchor_navigation",
+                file.name.clone(),
+                None,
+                false,
+            ));
             continue;
         }
-        let locators = locator
-            .map(|locator| crate::locator::symbols(&locator))
-            .unwrap_or_default();
-        // Bare file claim: diagnostic only. Locator-bound exercises is the
-        // product's validation-specific entry declaration (see module docs):
-        // the operator names the entry surface this validation exercises.
-        // Command-derived entries are the other S3 path. Both require a call
-        // witness to the realizing symbol — the locator alone is not enough
-        // without that reachability check in `call_witness`.
-        if locators.is_empty() {
-            out.push(EntryEvidence {
-                source: "validation_grounding",
-                file: file.name,
-                entry_symbol: None,
-                s3_eligible: false,
-            });
-        } else {
-            out.extend(locators.into_iter().map(|symbol| EntryEvidence {
-                source: "validation_grounding",
-                file: file.name.clone(),
-                entry_symbol: Some(symbol),
-                s3_eligible: true,
-            }));
+
+        for exercise in &operation_exercises {
+            if crate::locator::is_anchor_locator(&exercise.locator) {
+                out.push(EntryEvidence {
+                    source: "journey_operation_exercise",
+                    file: file.name.clone(),
+                    entry_symbol: None,
+                    s3_eligible: false,
+                    operation_id: Some(exercise.operation_id.clone()),
+                    exercise_id: Some(exercise.exercise_id.clone()),
+                    observed_by: Some(exercise.observed_by.clone()),
+                });
+                continue;
+            }
+            let symbols = crate::locator::symbols(&exercise.locator);
+            let assertion_passed = passed_assertions
+                .contains(&(exercise.operation_id.clone(), exercise.observed_by.clone()));
+            if symbols.is_empty() {
+                out.push(EntryEvidence {
+                    source: "journey_operation_exercise",
+                    file: file.name.clone(),
+                    entry_symbol: None,
+                    s3_eligible: false,
+                    operation_id: Some(exercise.operation_id.clone()),
+                    exercise_id: Some(exercise.exercise_id.clone()),
+                    observed_by: Some(exercise.observed_by.clone()),
+                });
+            } else {
+                out.extend(symbols.into_iter().map(|symbol| EntryEvidence {
+                    source: "journey_operation_exercise",
+                    file: file.name.clone(),
+                    entry_symbol: Some(symbol),
+                    s3_eligible: assertion_passed,
+                    operation_id: Some(exercise.operation_id.clone()),
+                    exercise_id: Some(exercise.exercise_id.clone()),
+                    observed_by: Some(exercise.observed_by.clone()),
+                }));
+            }
+        }
+
+        let public_locator = surface_locator.or_else(|| {
+            operation_exercises
+                .is_empty()
+                .then(|| locator.clone())
+                .flatten()
+        });
+        if let Some(public_locator) = public_locator {
+            if crate::locator::is_anchor_locator(&public_locator) {
+                out.push(EntryEvidence::plain(
+                    "anchor_navigation",
+                    file.name.clone(),
+                    None,
+                    false,
+                ));
+            } else {
+                let locators = crate::locator::symbols(&public_locator);
+                if locators.is_empty() {
+                    out.push(EntryEvidence::plain(
+                        "validation_grounding",
+                        file.name.clone(),
+                        None,
+                        false,
+                    ));
+                } else {
+                    out.extend(locators.into_iter().map(|symbol| {
+                        EntryEvidence::plain(
+                            "validation_grounding",
+                            file.name.clone(),
+                            Some(symbol),
+                            true,
+                        )
+                    }));
+                }
+            }
+        } else if operation_exercises.is_empty() {
+            // Bare file claim: diagnostic only.
+            out.push(EntryEvidence::plain(
+                "validation_grounding",
+                file.name,
+                None,
+                false,
+            ));
+        }
+    }
+    Ok(out)
+}
+
+/// Observed assertion ids from the latest compiled Journey run evidence.
+fn passed_journey_assertions(
+    store: &Store,
+    validation_id: &str,
+) -> Result<std::collections::BTreeSet<(String, String)>> {
+    let mut out = std::collections::BTreeSet::new();
+    for edge in store.edges_with(Some(EdgeKind::Validates), Some(validation_id), None)? {
+        let Some(view) = store.fact(
+            &crate::store::Subject::Edge(edge.id.clone()),
+            crate::model::Claim::Verdict,
+        )?
+        else {
+            continue;
+        };
+        for row in &view.evidence {
+            let crate::evidence::Evidence::Run(run) = &row.payload else {
+                continue;
+            };
+            if run.exit_code != 0 {
+                continue;
+            }
+            let Ok(value) = serde_json::from_str::<serde_json::Value>(&run.stdout_excerpt) else {
+                continue;
+            };
+            let Some(passed) = value.get("passed_assertions").and_then(|v| v.as_array()) else {
+                continue;
+            };
+            for item in passed {
+                let Some(operation_id) = item.get("operation_id").and_then(|v| v.as_str()) else {
+                    continue;
+                };
+                let Some(assertion_id) = item.get("assertion_id").and_then(|v| v.as_str()) else {
+                    continue;
+                };
+                out.insert((operation_id.to_string(), assertion_id.to_string()));
+            }
         }
     }
     Ok(out)
@@ -457,12 +607,12 @@ fn intent_wide_entries(store: &Store, intent_id: &str) -> Result<Vec<EntryEviden
             continue;
         }
         if let Some(file) = store.get_node(&edge.to_id)? {
-            out.push(EntryEvidence {
-                source: "intent_wide_fallback",
-                file: file.name,
-                entry_symbol: None,
-                s3_eligible: false,
-            });
+            out.push(EntryEvidence::plain(
+                "intent_wide_fallback",
+                file.name,
+                None,
+                false,
+            ));
         }
     }
     Ok(out)
@@ -587,12 +737,12 @@ fn exact_entry(
     symbol: &str,
 ) -> Vec<EntryEvidence> {
     if graph.file_defines(file, symbol) {
-        vec![EntryEvidence {
+        vec![EntryEvidence::plain(
             source,
-            file: file.into(),
-            entry_symbol: Some(symbol.into()),
-            s3_eligible: true,
-        }]
+            file.into(),
+            Some(symbol.into()),
+            true,
+        )]
     } else {
         Vec::new()
     }
@@ -626,12 +776,7 @@ fn entries_in_file(
     }
     narrowed
         .into_iter()
-        .map(|symbol| EntryEvidence {
-            source,
-            file: file.into(),
-            entry_symbol: Some(symbol.into()),
-            s3_eligible: true,
-        })
+        .map(|symbol| EntryEvidence::plain(source, file.into(), Some(symbol.into()), true))
         .collect()
 }
 
@@ -1039,12 +1184,12 @@ fn command_entries_from(
                                 && edge.from_symbol.is_empty()
                         })
                     {
-                        out.push(EntryEvidence {
+                        out.push(EntryEvidence::plain(
                             source,
-                            file: file.into(),
-                            entry_symbol: Some(entry.into()),
-                            s3_eligible: true,
-                        });
+                            file.into(),
+                            Some(entry.into()),
+                            true,
+                        ));
                         break;
                     }
                 }
@@ -1245,6 +1390,45 @@ fn dedup_entries(entries: &mut Vec<EntryEvidence>) {
     entries.dedup();
 }
 
+/// Journey-specific S2 guidance. Never recommends `loom edge exercises` for
+/// compiler-owned proofs.
+fn journey_s2_next(
+    entries: &[EntryEvidence],
+    call_evidence: &Option<CallEvidenceWitness>,
+) -> String {
+    let operation_entries: Vec<_> = entries
+        .iter()
+        .filter(|entry| entry.source == "journey_operation_exercise")
+        .collect();
+    let suffix = " Update the authored surface manifest, then run `loom journey surface-accept`, `loom journey compile`, and `loom journey run`.";
+    if operation_entries.is_empty() {
+        return format!(
+            "compiled Journey is S2: no operation exercise was declared for a downstream entry that reaches the realizing symbol.{suffix}"
+        );
+    }
+    if operation_entries.iter().any(|entry| {
+        entry.entry_symbol.is_none()
+            || entry
+                .entry_symbol
+                .as_deref()
+                .is_some_and(|symbol| symbol.trim().is_empty())
+    }) {
+        return format!(
+            "compiled Journey is S2: an operation exercise CodeFile/locator is stale or unresolved.{suffix}"
+        );
+    }
+    if operation_entries.iter().any(|entry| !entry.s3_eligible) {
+        return format!(
+            "compiled Journey is S2: an operation exercise's observed_by assertion was missing or did not pass on the compiled run.{suffix}"
+        );
+    }
+    // Eligible declared entries existed but no call witness was earned.
+    let _ = call_evidence;
+    format!(
+        "compiled Journey is S2: the declared operation exercise entry does not reach a realizing grounding for the Intent.{suffix}"
+    )
+}
+
 /// Grade one validation. `intent_id` is the behavior it claims to prove.
 pub fn grade(
     store: &Store,
@@ -1329,37 +1513,32 @@ pub fn grade(
         // visibly ineligible. Otherwise an operator sees only "nothing
         // reaches" and cannot tell that the locator was intentionally a
         // navigation-only anchor rather than a missing entry declaration.
-        w.call_evidence = Some(CallEvidenceWitness {
-            source: entry.source.into(),
-            file: entry.file.clone(),
-            entry_symbol: None,
-            grounded_symbol: None,
-            s3_eligible: false,
-        });
+        w.call_evidence = Some(entry.clone().into_call_evidence(None));
     } else if entries.is_empty() {
         let mut fallback = intent_wide_entries(store, intent_id)?;
         dedup_entries(&mut fallback);
         w.call_evidence = match call_witness(store, graph, intent_id, &fallback)? {
             Some(evidence) => Some(evidence),
-            None => fallback.first().map(|entry| CallEvidenceWitness {
-                source: entry.source.into(),
-                file: entry.file.clone(),
-                entry_symbol: entry.entry_symbol.clone(),
-                grounded_symbol: None,
-                s3_eligible: false,
-            }),
+            None => fallback
+                .first()
+                .cloned()
+                .map(|entry| entry.into_call_evidence(None)),
         };
     }
     if w.call_witness.is_none() {
         w.grade = Strength::S2.as_str().into();
-        w.next = match &w.call_evidence {
-            Some(evidence) if evidence.source == "intent_wide_fallback" => format!(
-                "nothing this proof runs reaches the symbol the behavior is grounded in — legacy intent-wide evidence '{}' is visible but cannot earn S3; attach it to this validation with `loom edge exercises` or run it through the journey",
-                evidence.file
-            ),
-            _ => "nothing this proof runs reaches the symbol the behavior is \
-                  grounded in — exercise the real code path"
-                .into(),
+        w.next = if compiled_proves.is_some() {
+            journey_s2_next(&entries, &w.call_evidence)
+        } else {
+            match &w.call_evidence {
+                Some(evidence) if evidence.source == "intent_wide_fallback" => format!(
+                    "nothing this proof runs reaches the symbol the behavior is grounded in — legacy intent-wide evidence '{}' is visible but cannot earn S3; attach it to this validation with `loom edge exercises` or run it through the journey",
+                    evidence.file
+                ),
+                _ => "nothing this proof runs reaches the symbol the behavior is \
+                      grounded in — exercise the real code path"
+                    .into(),
+            }
         };
         return Ok(w);
     }

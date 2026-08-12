@@ -180,6 +180,7 @@ fn operation() -> CliOperation {
             }],
             redact: vec!["/secret".into()],
         },
+        exercises: Vec::new(),
     }
 }
 
@@ -208,6 +209,7 @@ fn setup_operation(id: &str) -> CliOperation {
             }],
             redact: vec![],
         },
+        exercises: Vec::new(),
     }
 }
 

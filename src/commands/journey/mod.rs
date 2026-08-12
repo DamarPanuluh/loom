@@ -1529,7 +1529,13 @@ pub(crate) fn journey_surface(
                     "summary": "One reusable CLI operation",
                     "argv": ["binary", "subcommand"],
                     "arguments": [{"id":"argument-id", "type":"string", "required":true, "flag":"--argument"}],
-                    "output": {"format":"json"}
+                    "output": {"format":"json"},
+                    "exercises": [{
+                        "id": "optional-downstream-entry",
+                        "codefile": "path/to/handler.rs",
+                        "locator": "handler_symbol",
+                        "observed_by": "assertion-id-in-this-operation"
+                    }]
                 }]
             },
             "setup": {
@@ -1562,6 +1568,7 @@ pub(crate) fn journey_surface(
             "A human_decision binding requires graph=local_snapshot, carries no CLI operation or answer, and may leave setup.operations empty.",
             "Operations are reusable structured argv, never shell strings.",
             "The surface exposes exactly one registered CodeFile at a live symbol locator or globally unique attached anchor:<id>.",
+            "Optional operation.exercises declare downstream code entries reached through that public operation; they are not additional surface owners and require observed_by to name an assertion in the same operation.",
             "Source anchors are navigation-only and never prove behavior or create graph relationships.",
             "Every operation emits JSON; do not include HTTP endpoints.",
             "Carry temporary setup from the Journey profile as declarative data only.",
@@ -1732,6 +1739,12 @@ struct CompilePreview {
     covered_files: Vec<String>,
     root: PathBuf,
     identity: crate::identity::ExecutionIdentity,
+}
+
+#[derive(Clone, Default)]
+struct DesiredExerciseTarget {
+    surface_locator: Option<String>,
+    operation_entries: Vec<crate::journey::JourneyOperationExerciseFacet>,
 }
 
 fn compile_source(store: &Store, journey_key: &str, profile: &str) -> Result<CompileSource> {
@@ -1948,11 +1961,68 @@ fn compile_internal(
             .iter()
             .map(|intent| intent.id.clone())
             .collect();
-        let desired_exercises: BTreeSet<String> = source
-            .exposed
+        let mut exercise_targets: BTreeMap<String, DesiredExerciseTarget> = BTreeMap::new();
+        for (codefile, locator) in &source.exposed {
+            let entry = exercise_targets
+                .entry(codefile.id.clone())
+                .or_insert_with(|| DesiredExerciseTarget {
+                    surface_locator: None,
+                    operation_entries: Vec::new(),
+                });
+            entry.surface_locator = locator.clone().filter(|value| !value.trim().is_empty());
+        }
+        let bound_operations: BTreeSet<&str> = source
+            .bindings
             .iter()
-            .map(|(codefile, _)| codefile.id.clone())
+            .filter_map(crate::journey::SurfaceBinding::operation_id)
             .collect();
+        let operations_by_id: BTreeMap<&str, &crate::journey::CliOperation> = source
+            .operations
+            .iter()
+            .map(|operation| (operation.id.as_str(), operation))
+            .collect();
+        for operation_id in &bound_operations {
+            let Some(operation) = operations_by_id.get(operation_id) else {
+                continue;
+            };
+            for exercise in &operation.exercises {
+                let codefile = store.resolve_node(&exercise.codefile, Some(NodeType::CodeFile))?;
+                if !store.root().join(&codefile.name).is_file() {
+                    bail!(
+                        "Journey '{}' operation '{}' exercise '{}' targets missing CodeFile '{}'",
+                        source.journey.name,
+                        operation.id,
+                        exercise.id,
+                        codefile.name
+                    );
+                }
+                let entry = exercise_targets
+                    .entry(codefile.id.clone())
+                    .or_insert_with(|| DesiredExerciseTarget {
+                        surface_locator: None,
+                        operation_entries: Vec::new(),
+                    });
+                entry
+                    .operation_entries
+                    .push(crate::journey::JourneyOperationExerciseFacet {
+                        operation_id: operation.id.clone(),
+                        exercise_id: exercise.id.clone(),
+                        observed_by: exercise.observed_by.clone(),
+                        locator: exercise.locator.clone(),
+                    });
+            }
+        }
+        for target in exercise_targets.values_mut() {
+            target.operation_entries.sort_by(|left, right| {
+                left.operation_id
+                    .cmp(&right.operation_id)
+                    .then_with(|| left.exercise_id.cmp(&right.exercise_id))
+            });
+            target.operation_entries.dedup_by(|left, right| {
+                left.operation_id == right.operation_id && left.exercise_id == right.exercise_id
+            });
+        }
+        let desired_exercises: BTreeSet<String> = exercise_targets.keys().cloned().collect();
         reconcile_topology(
             &store,
             &validation.id,
@@ -1981,23 +2051,42 @@ fn compile_internal(
             desired_exercises,
             body_changed,
         )?;
-        for (codefile, locator) in &source.exposed {
-            let edge = store.ensure_edge(EdgeKind::Exercises, &validation.id, &codefile.id)?;
-            match locator {
-                Some(locator) if !locator.trim().is_empty() => store.set_facet(
+        for (codefile_id, target) in &exercise_targets {
+            let edge = store.ensure_edge(EdgeKind::Exercises, &validation.id, codefile_id)?;
+            let mut locators = BTreeSet::new();
+            if let Some(locator) = &target.surface_locator {
+                locators.insert(locator.clone());
+                store.set_facet(
                     &edge.id,
                     TargetKind::Edge,
-                    "locator",
+                    "surface_locator",
                     locator,
                     TruthClass::Asserted,
-                )?,
-                _ => store.set_facet(
+                )?;
+            } else {
+                store.clear_facet(&edge.id, TargetKind::Edge, "surface_locator")?;
+            }
+            for entry in &target.operation_entries {
+                locators.insert(entry.locator.clone());
+            }
+            let aggregated = locators.into_iter().collect::<Vec<_>>().join(";");
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "locator",
+                &aggregated,
+                TruthClass::Asserted,
+            )?;
+            if target.operation_entries.is_empty() {
+                store.clear_facet(&edge.id, TargetKind::Edge, "journey_operation_exercises")?;
+            } else {
+                store.set_facet(
                     &edge.id,
                     TargetKind::Edge,
-                    "locator",
-                    "",
+                    "journey_operation_exercises",
+                    &serde_json::to_string(&target.operation_entries)?,
                     TruthClass::Asserted,
-                )?,
+                )?;
             }
         }
         tx.commit()?;
@@ -2006,11 +2095,27 @@ fn compile_internal(
             .ok_or_else(|| anyhow!("compiled Validation vanished"))?
     };
     let artifact = crate::journey_runtime::write_proof(&root, &proof)?;
-    let covered_files = source
-        .exposed
+    let mut covered = BTreeSet::new();
+    for (codefile, _) in &source.exposed {
+        covered.insert(codefile.name.clone());
+    }
+    for operation_id in source
+        .bindings
         .iter()
-        .map(|(codefile, _)| codefile.name.clone())
-        .collect();
+        .filter_map(crate::journey::SurfaceBinding::operation_id)
+    {
+        let Some(operation) = source
+            .operations
+            .iter()
+            .find(|candidate| candidate.id == operation_id)
+        else {
+            continue;
+        };
+        for exercise in &operation.exercises {
+            covered.insert(exercise.codefile.clone());
+        }
+    }
+    let covered_files: Vec<String> = covered.into_iter().collect();
     Ok(CompileProduct {
         proof,
         spec: source.spec,
@@ -2035,6 +2140,27 @@ fn compile_preview(
     let root = store.root().to_path_buf();
     let identity = store.execution_identity();
     let source = compile_source(&store, journey_key, profile)?;
+    let mut covered = BTreeSet::new();
+    for (codefile, _) in &source.exposed {
+        covered.insert(codefile.name.clone());
+    }
+    for operation_id in source
+        .bindings
+        .iter()
+        .filter_map(crate::journey::SurfaceBinding::operation_id)
+    {
+        let Some(operation) = source
+            .operations
+            .iter()
+            .find(|candidate| candidate.id == operation_id)
+        else {
+            continue;
+        };
+        for exercise in &operation.exercises {
+            covered.insert(exercise.codefile.clone());
+        }
+    }
+    let covered_files: Vec<String> = covered.into_iter().collect();
     let proof = crate::journey_runtime::compile_surface(
         &source.spec,
         &source.surface_hash,
@@ -2043,11 +2169,6 @@ fn compile_preview(
         source.setup.as_ref(),
         &source.bindings,
     )?;
-    let covered_files = source
-        .exposed
-        .iter()
-        .map(|(codefile, _)| codefile.name.clone())
-        .collect();
     Ok(CompilePreview {
         proof,
         spec: source.spec,
@@ -2382,6 +2503,7 @@ fn blocked_report(
         file_transitions: Vec::new(),
         steps: Vec::new(),
         captures: BTreeMap::new(),
+        passed_assertions: Vec::new(),
     }
 }
 
