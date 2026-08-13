@@ -178,7 +178,7 @@ fn mark_validation_passing(fixture: &Fixture, validation_id: &str, command: &str
                 .criterion("proof")
                 .confidence(1.0)
                 .cited(loom::evidence::cite(fixture.tmp.path(), "proof-ok").unwrap())
-                .observed(run),
+                .observed_command(loom::runner::Observation::Ran(Box::new(run))),
             )
             .unwrap();
     }

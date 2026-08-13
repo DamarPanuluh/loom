@@ -2201,6 +2201,7 @@ fn human_decision_gate_pauses_without_authority_then_resumes_one_shot_in_same_sn
         ExecutionOutcome::Completed {
             report,
             human_decisions,
+            ..
         } => (report, human_decisions),
         other => panic!("expected completion after the answer, got {other:#?}"),
     };

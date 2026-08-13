@@ -505,8 +505,11 @@ fn validation_entries(store: &Store, validation_id: &str) -> Result<Vec<EntryEvi
 /// accepted surface, and only after the compiled Exercises topology/facets
 /// agree with it exactly. Any disagreement, malformed provenance, or a missing
 /// projection fails closed — entries stay diagnostic-only and can never earn
-/// S3, and a compiler-v4 downstream edge can never fall back to the legacy
-/// public-entry interpretation of the aggregate `locator` facet.
+/// S3. A Journey proof is compiler-owned graph structure, never an authored spec
+/// inferred from a path on the Validation. This deliberately duplicates the
+/// readiness signature at the grading boundary so a raw Journey artifact, or a
+/// hand-authored sibling Validation, cannot borrow compiled proof strength.
+/// This also refuses the public-entry interpretation of the aggregate `locator` facet.
 ///
 /// Returns the entries plus a human-readable description of any provenance
 /// disagreement (empty when the topology agreed exactly).
@@ -634,14 +637,11 @@ fn passed_journey_assertions(
             let crate::evidence::Evidence::Run(run) = &row.payload else {
                 continue;
             };
-            // A Journey run always anchors its covered files (the public
-            // entry exists by construction). An empty covered map is the
-            // shape an imported/forged run payload takes when it never
-            // actually hashed anything — refuse to credit its assertions.
-            if run.exit_code != 0
-                || run.producer != crate::model::RunProducer::Journey
-                || run.covered.is_empty()
-            {
+            // Trusted Journey assertion provenance is locally minted by the
+            // compiler-owned settlement, then reloaded from the store. A
+            // deserialized or imported RunRecord can carry assertion names for
+            // audit, but those names never earn S3.
+            if !run.has_trusted_journey_assertions() {
                 continue;
             }
             for observed in run.observed_assertions() {

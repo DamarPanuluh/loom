@@ -1797,17 +1797,11 @@ fn surface_accept_creates_json_operations_and_reuses_one_interface_surface() {
         first_packet["accept_command"],
         "loom journey surface-accept checkout.happy --manifest <manifest.json>"
     );
-    assert_eq!(
-        first_packet["manifest_contract"]["setup"]["graph"],
-        "local_snapshot"
-    );
-    assert_eq!(
-        first_packet["manifest_contract"]["setup"]["git"]["mode"],
-        "isolated_snapshot"
-    );
-    assert_eq!(
-        first_packet["manifest_contract"]["setup"]["git"]["dirty_paths"],
-        json!(["registered/codefile.rs"])
+    assert!(
+        first_packet["manifest_contract"].get("setup").is_none()
+            || first_packet["manifest_contract"]["setup"].is_null(),
+        "minimal surface template must not emit a setup block: {}",
+        first_packet["manifest_contract"]
     );
 
     let surface_definition = json!({

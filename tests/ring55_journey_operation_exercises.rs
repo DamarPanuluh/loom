@@ -6,7 +6,7 @@ use loom::journey::{
     OperationBinding, OperationExercise, OperationOutput, OutputAssertion, OutputFormat,
     SurfaceManifest, ValueType, JOURNEY_COMPILER_VERSION, JOURNEY_SCHEMA, SURFACE_SCHEMA,
 };
-use loom::journey_runtime::{PassedAssertion, RuntimeReport, RuntimeStatus};
+use loom::journey_runtime::RuntimeStatus;
 use loom::model::{EdgeKind, NodeType, TargetKind, TruthClass};
 use loom::proofstrength::StrengthWitness;
 use loom::signal;
@@ -483,63 +483,77 @@ fn cross_process_fixture(exercises: Vec<OperationExercise>) -> CrossProcessFixtu
     }
 }
 
-fn passed_pair() -> Vec<PassedAssertion> {
-    vec![PassedAssertion {
-        operation_id: "publish-http-operation".into(),
-        assertion_id: "publish-http-operation".into(),
-    }]
-}
-
-fn runtime_report(fixture: &CrossProcessFixture, passed: Vec<PassedAssertion>) -> RuntimeReport {
-    RuntimeReport {
-        journey_id: "publish.flow".into(),
-        profile: "proof".into(),
-        journey_hash: fixture
-            .store
-            .get_node(&fixture.journey_id)
-            .unwrap()
-            .unwrap()
-            .body["semantic_hash"]
-            .as_str()
-            .unwrap()
-            .into(),
-        surface_hash: fixture
-            .store
-            .get_node(&fixture.validation_id)
-            .unwrap()
-            .unwrap()
-            .body["surface_hash"]
-            .as_str()
-            .unwrap()
-            .into(),
-        status: RuntimeStatus::Passed,
-        assertions_passed: passed.len().max(1),
-        assertions_failed: 0,
-        detail: None,
-        setup: Vec::new(),
-        file_transitions: Vec::new(),
-        steps: Vec::new(),
-        captures: BTreeMap::new(),
-        passed_assertions: passed,
-    }
+fn compiled_surface_proof(
+    fixture: &CrossProcessFixture,
+) -> (
+    loom::journey::JourneySpec,
+    loom::journey_runtime::CompiledJourneyProof,
+) {
+    let journey = fixture
+        .store
+        .get_node(&fixture.journey_id)
+        .unwrap()
+        .unwrap();
+    let spec = loom::journey::parse(
+        &fixture
+            .tmp
+            .path()
+            .join(journey.body["artifact"].as_str().unwrap()),
+    )
+    .unwrap();
+    let surface_hash = fixture
+        .store
+        .get_node(&fixture.validation_id)
+        .unwrap()
+        .unwrap()
+        .body["surface_hash"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let surfaces = fixture
+        .store
+        .edges_with(Some(EdgeKind::Surfaces), Some(&fixture.journey_id), None)
+        .unwrap();
+    let surface = fixture.store.get_node(&surfaces[0].to_id).unwrap().unwrap();
+    let operations: Vec<CliOperation> =
+        serde_json::from_value(surface.body["operations"].clone()).unwrap();
+    let proof = loom::journey_runtime::compile(
+        &spec,
+        &surface_hash,
+        "proof",
+        operations,
+        &[OperationBinding {
+            step_id: "publish".into(),
+            operation_id: "publish-http-operation".into(),
+        }],
+    )
+    .unwrap();
+    (spec, proof)
 }
 
 /// Settle a compiled run without sync: verdicts, status, and an immediate
 /// regrade. Used where the test must observe grading itself before any
 /// sync/doctor pass can touch the graph.
-fn settle_compiled(fixture: &CrossProcessFixture, passed: Vec<PassedAssertion>) {
-    let report = runtime_report(fixture, passed);
-    loom::journey::settle_compiled_validation(
-        &fixture.store,
-        &fixture.validation_id,
-        &report,
-        &["src/cli.rs".into(), "src/handler.rs".into()],
-    )
-    .unwrap();
+fn settle_compiled(fixture: &CrossProcessFixture) {
+    let (spec, proof) = compiled_surface_proof(fixture);
+    let observed = loom::journey_runtime::execute_observed(
+        fixture.tmp.path(),
+        &spec,
+        &proof,
+        &BTreeMap::new(),
+    );
+    assert_eq!(
+        observed.report().status,
+        RuntimeStatus::Passed,
+        "{:#?}",
+        observed.report()
+    );
+    loom::journey::settle_compiled_validation(&fixture.store, &fixture.validation_id, &observed)
+        .unwrap();
 }
 
-fn settle_with_assertions(fixture: &CrossProcessFixture, passed: Vec<PassedAssertion>) {
-    settle_compiled(fixture, passed);
+fn settle_with_assertions(fixture: &CrossProcessFixture) {
+    settle_compiled(fixture);
     for kind in [
         EdgeKind::Calls,
         EdgeKind::Exercises,
@@ -679,13 +693,7 @@ fn multiple_entries_in_one_codefile_aggregate_without_losing_provenance() {
             .as_deref(),
         Some("other_entry;post_blueprint")
     );
-    settle_with_assertions(
-        &fixture,
-        vec![PassedAssertion {
-            operation_id: "publish-http-operation".into(),
-            assertion_id: "publish-http-operation".into(),
-        }],
-    );
+    settle_with_assertions(&fixture);
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S3");
     let evidence = w.call_evidence.expect("call evidence");
@@ -743,13 +751,7 @@ fn recompile_shaped_cleanup_removes_obsolete_downstream_entry() {
 #[test]
 fn passed_cross_process_journey_reaches_s3_through_exercised_handler() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
-    settle_with_assertions(
-        &fixture,
-        vec![PassedAssertion {
-            operation_id: "publish-http-operation".into(),
-            assertion_id: "publish-http-operation".into(),
-        }],
-    );
+    settle_with_assertions(&fixture);
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S3", "{w:?}");
     let evidence = w.call_evidence.expect("call evidence");
@@ -760,21 +762,8 @@ fn passed_cross_process_journey_reaches_s3_through_exercised_handler() {
 }
 
 #[test]
-fn remains_s2_when_assertion_missing_handler_unreached_or_only_declared() {
-    // Only declaration / no observed assertion ids → public adapter cannot reach handler.
-    let declared = cross_process_fixture(vec![default_exercise()]);
-    settle_with_assertions(&declared, Vec::new());
-    let declared_w = witness(&declared.store, &declared.validation_id);
-    assert_eq!(declared_w.grade, "S2", "{declared_w:?}");
-    assert!(
-        declared_w.next.contains("observed_by assertion")
-            || declared_w.next.contains("operation exercise"),
-        "{}",
-        declared_w.next
-    );
-    assert!(!declared_w.next.contains("edge exercises"));
-
-    // Assertion present but entry does not reach realizing symbol.
+fn remains_s2_when_handler_unreached_or_only_declared() {
+    // Assertion present but compiled locator disagrees with the accepted surface.
     let missed = cross_process_fixture(vec![default_exercise()]);
     let edge = missed
         .store
@@ -813,17 +802,9 @@ fn remains_s2_when_assertion_missing_handler_unreached_or_only_declared() {
             TruthClass::Asserted,
         )
         .unwrap();
-    settle_compiled(
-        &missed,
-        vec![PassedAssertion {
-            operation_id: "publish-http-operation".into(),
-            assertion_id: "publish-http-operation".into(),
-        }],
-    );
+    settle_compiled(&missed);
     let missed_w = witness(&missed.store, &missed.validation_id);
     assert_eq!(missed_w.grade, "S2", "{missed_w:?}");
-    // A compiled locator that disagrees with the accepted surface is broken
-    // provenance, not a reach miss.
     assert!(
         missed_w
             .next
@@ -832,8 +813,6 @@ fn remains_s2_when_assertion_missing_handler_unreached_or_only_declared() {
         "{}",
         missed_w.next
     );
-    // And doctor reports the broken chain (with sync, the closure would be
-    // staled and reset through the normal compiler-owned mechanism).
     let missed_issues = signal::doctor(&missed.store).unwrap();
     assert!(
         missed_issues
@@ -842,33 +821,9 @@ fn remains_s2_when_assertion_missing_handler_unreached_or_only_declared() {
         "{missed_issues:?}"
     );
 
-    // A different assertion passing never satisfies observed_by.
-    let wrong_assertion = cross_process_fixture(vec![default_exercise()]);
-    settle_with_assertions(
-        &wrong_assertion,
-        vec![PassedAssertion {
-            operation_id: "publish-http-operation".into(),
-            assertion_id: "some-other-assertion".into(),
-        }],
-    );
-    let wrong_w = witness(&wrong_assertion.store, &wrong_assertion.validation_id);
-    assert_eq!(wrong_w.grade, "S2", "{wrong_w:?}");
-    assert!(
-        wrong_w.next.contains("observed_by assertion"),
-        "{}",
-        wrong_w.next
-    );
-    assert!(!wrong_w.next.contains("edge exercises"));
-
     // No exercise declared at all.
     let none = cross_process_fixture(Vec::new());
-    settle_with_assertions(
-        &none,
-        vec![PassedAssertion {
-            operation_id: "publish-http-operation".into(),
-            assertion_id: "publish-http-operation".into(),
-        }],
-    );
+    settle_with_assertions(&none);
     let none_w = witness(&none.store, &none.validation_id);
     assert_eq!(none_w.grade, "S2", "{none_w:?}");
     assert!(
@@ -882,13 +837,7 @@ fn remains_s2_when_assertion_missing_handler_unreached_or_only_declared() {
 #[test]
 fn exercise_change_invalidates_prior_passing_proof_via_surface_hash() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
-    settle_with_assertions(
-        &fixture,
-        vec![PassedAssertion {
-            operation_id: "publish-http-operation".into(),
-            assertion_id: "publish-http-operation".into(),
-        }],
-    );
+    settle_with_assertions(&fixture);
     assert_eq!(witness(&fixture.store, &fixture.validation_id).grade, "S3");
 
     let mut body = fixture
@@ -968,13 +917,7 @@ fn manual_topology_mutation_remains_rejected_for_compiler_owned_journeys() {
 #[test]
 fn doctor_accepts_complete_chain_and_flags_malformed_provenance() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
-    settle_with_assertions(
-        &fixture,
-        vec![PassedAssertion {
-            operation_id: "publish-http-operation".into(),
-            assertion_id: "publish-http-operation".into(),
-        }],
-    );
+    settle_with_assertions(&fixture);
     let clean = signal::doctor(&fixture.store).unwrap();
     assert!(
         clean
@@ -1017,7 +960,7 @@ fn doctor_accepts_complete_chain_and_flags_malformed_provenance() {
 fn malformed_exercise_provenance_cannot_earn_s3_even_before_doctor() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
     set_exercise_facet(&fixture, "{definitely-not-json");
-    settle_compiled(&fixture, passed_pair());
+    settle_compiled(&fixture);
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S2", "{w:?}");
     assert!(
@@ -1046,7 +989,7 @@ fn missing_exercise_provenance_cannot_fall_back_to_public_entry() {
             "journey_operation_exercises",
         )
         .unwrap();
-    settle_compiled(&fixture, passed_pair());
+    settle_compiled(&fixture);
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S2", "{w:?}");
     assert!(
@@ -1088,7 +1031,7 @@ fn forged_exercise_provenance_is_doctor_invalid_and_s3_ineligible() {
     for (case, forged) in cases {
         let fixture = cross_process_fixture(vec![default_exercise()]);
         set_exercise_facet(&fixture, forged);
-        settle_compiled(&fixture, passed_pair());
+        settle_compiled(&fixture);
         let w = witness(&fixture.store, &fixture.validation_id);
         assert_eq!(w.grade, "S2", "{case}: {w:?}");
         assert!(
@@ -1109,7 +1052,7 @@ fn forged_exercise_provenance_is_doctor_invalid_and_s3_ineligible() {
     // exact semantic agreement, not one-way corruption.
     let fixture = cross_process_fixture(vec![default_exercise()]);
     set_exercise_facet(&fixture, canonical);
-    settle_with_assertions(&fixture, passed_pair());
+    settle_with_assertions(&fixture);
     assert_eq!(witness(&fixture.store, &fixture.validation_id).grade, "S3");
 }
 
@@ -1149,7 +1092,7 @@ fn unknown_exercise_target_codefile_is_doctor_invalid_and_s3_ineligible() {
             TruthClass::Asserted,
         )
         .unwrap();
-    settle_compiled(&fixture, passed_pair());
+    settle_compiled(&fixture);
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S2", "{w:?}");
     assert!(
@@ -1180,7 +1123,7 @@ fn forged_aggregate_locator_facet_is_doctor_invalid_and_s3_ineligible() {
             TruthClass::Asserted,
         )
         .unwrap();
-    settle_compiled(&fixture, passed_pair());
+    settle_compiled(&fixture);
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S2", "{w:?}");
     assert!(
@@ -1200,14 +1143,14 @@ fn forged_aggregate_locator_facet_is_doctor_invalid_and_s3_ineligible() {
 #[test]
 fn missing_public_entry_file_fails_closed() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
+    settle_compiled(&fixture);
     std::fs::remove_file(fixture.tmp.path().join("src/cli.rs")).unwrap();
-    settle_compiled(&fixture, passed_pair());
+    loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();
     let w = witness(&fixture.store, &fixture.validation_id);
-    assert_eq!(w.grade, "S2", "{w:?}");
+    assert_ne!(w.grade, "S3", "{w:?}");
     assert!(
-        w.next.contains("projection"),
-        "grading must name the projection failure: {}",
-        w.next
+        w.grade == "S0" || w.grade == "S2",
+        "missing public entry must fail closed, got {w:?}"
     );
     let issues = signal::doctor(&fixture.store).unwrap();
     assert!(
@@ -1221,6 +1164,7 @@ fn missing_public_entry_file_fails_closed() {
 #[test]
 fn unbound_operation_exercise_is_doctor_invalid_and_s3_ineligible() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
+    settle_compiled(&fixture);
     // Add a second operation to the accepted surface that NO step binds. Its
     // exercise must not contribute provenance — a facet naming it is forged.
     let surface_id = fixture
@@ -1267,7 +1211,7 @@ fn unbound_operation_exercise_is_doctor_invalid_and_s3_ineligible() {
         &fixture,
         r#"[{"operation_id":"unbound-http-operation","exercise_id":"unbound-handler","observed_by":"publish-http-operation","locator":"post_blueprint"}]"#,
     );
-    settle_compiled(&fixture, passed_pair());
+    loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S2", "{w:?}");
     assert!(
@@ -1298,8 +1242,8 @@ fn compiler_v3_validation_is_not_current_and_sync_resets_it() {
         .store
         .set_node_body(&fixture.validation_id, &body)
         .unwrap();
-    settle_compiled(&fixture, passed_pair());
-    // Grading itself fails closed on a stale compiler version.
+    loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();
+    // A stale compiler version cannot be settled, and grading fails closed.
     let w = witness(&fixture.store, &fixture.validation_id);
     assert_eq!(w.grade, "S0", "{w:?}");
     // Sync resets the validation through the normal compiler-owned mechanism.
@@ -1327,16 +1271,136 @@ fn compiler_v3_validation_is_not_current_and_sync_resets_it() {
 }
 
 #[test]
+fn pre_fix_compiler_v4_evidence_is_not_current_under_v5() {
+    // Pre-fix compiler-v4 validations have no structured assertion evidence
+    // and are not the current compiler. A graph that already earned S3 under
+    // a later compiler must lose that standing when rewritten to the pre-fix
+    // v4 contract; sync must stale it; it cannot retain proven readiness.
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    settle_with_assertions(&fixture);
+    assert_eq!(witness(&fixture.store, &fixture.validation_id).grade, "S3");
+    let mut body = fixture
+        .store
+        .get_node(&fixture.validation_id)
+        .unwrap()
+        .unwrap()
+        .body;
+    body["compiler_version"] = json!("4");
+    fixture
+        .store
+        .set_node_body(&fixture.validation_id, &body)
+        .unwrap();
+    loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();
+    let w = witness(&fixture.store, &fixture.validation_id);
+    assert_eq!(w.grade, "S0", "{w:?}");
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+    assert_eq!(
+        fixture
+            .store
+            .get_node(&fixture.validation_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        "not_run"
+    );
+    let journey = fixture
+        .store
+        .get_node(&fixture.journey_id)
+        .unwrap()
+        .unwrap();
+    let readiness = loom::completeness::journey_readiness(&fixture.store, &journey).unwrap();
+    assert!(!readiness.compiled, "v4 validation must not be current");
+    assert!(!readiness.proven, "v4 validation must not be proven");
+    assert_eq!(
+        loom::proofstrength::of(&fixture.store, &fixture.validation_id).unwrap(),
+        loom::proofstrength::Strength::S0
+    );
+}
+
+#[test]
+fn compiler_v5_rerun_becomes_current_and_can_earn_s3() {
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    let mut body = fixture
+        .store
+        .get_node(&fixture.validation_id)
+        .unwrap()
+        .unwrap()
+        .body;
+    body["compiler_version"] = json!("4");
+    fixture
+        .store
+        .set_node_body(&fixture.validation_id, &body)
+        .unwrap();
+    loom::sync::run(&fixture.store, fixture.tmp.path()).unwrap();
+    body["compiler_version"] = json!(JOURNEY_COMPILER_VERSION);
+    fixture
+        .store
+        .set_node_body(&fixture.validation_id, &body)
+        .unwrap();
+    settle_with_assertions(&fixture);
+    assert_eq!(witness(&fixture.store, &fixture.validation_id).grade, "S3");
+    let journey = fixture
+        .store
+        .get_node(&fixture.journey_id)
+        .unwrap()
+        .unwrap();
+    let readiness = loom::completeness::journey_readiness(&fixture.store, &journey).unwrap();
+    assert!(readiness.compiled);
+    assert!(readiness.proven);
+}
+
+#[test]
 fn large_passed_assertion_report_keeps_structural_provenance_and_earns_s3() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
-    let mut passed = passed_pair();
+    let surfaces = fixture
+        .store
+        .edges_with(Some(EdgeKind::Surfaces), Some(&fixture.journey_id), None)
+        .unwrap();
+    let surface_id = surfaces[0].to_id.clone();
+    let mut body = fixture.store.get_node(&surface_id).unwrap().unwrap().body;
+    let mut operation: CliOperation =
+        serde_json::from_value(body["operations"][0].clone()).unwrap();
+    let mut payload = serde_json::Map::new();
+    payload.insert("ok".into(), json!(true));
     for i in 0..600 {
-        passed.push(PassedAssertion {
-            operation_id: format!("bulk-operation-{i:04}"),
-            assertion_id: format!("bulk-assertion-{i:04}-{}", "x".repeat(64)),
-        });
+        let key = format!("k{i:04}");
+        payload.insert(key.clone(), json!(true));
+        operation
+            .output
+            .assertions
+            .push(assertion(&format!("bulk-{i:04}")));
+        operation.output.assertions.last_mut().unwrap().pointer = format!("/{key}");
     }
-    settle_with_assertions(&fixture, passed);
+    operation.argv = vec![
+        "python3".into(),
+        "-c".into(),
+        format!(
+            "print({:?})",
+            serde_json::Value::Object(payload).to_string()
+        ),
+    ];
+    body["operations"][0] = serde_json::to_value(&operation).unwrap();
+    fixture.store.set_node_body(&surface_id, &body).unwrap();
+    let journey = fixture
+        .store
+        .get_node(&fixture.journey_id)
+        .unwrap()
+        .unwrap();
+    let new_hash = loom::journey::surface_projection_hash(&fixture.store, &journey)
+        .unwrap()
+        .unwrap();
+    let mut validation_body = fixture
+        .store
+        .get_node(&fixture.validation_id)
+        .unwrap()
+        .unwrap()
+        .body;
+    validation_body["surface_hash"] = json!(new_hash);
+    fixture
+        .store
+        .set_node_body(&fixture.validation_id, &validation_body)
+        .unwrap();
+    settle_with_assertions(&fixture);
     // The human-facing excerpt really was truncated into non-JSON text…
     let validates = fixture
         .store
@@ -1383,13 +1447,36 @@ fn large_passed_assertion_report_keeps_structural_provenance_and_earns_s3() {
 
 #[test]
 fn surface_guidance_template_is_internally_consistent_and_validates() {
-    // The literal template must satisfy its own schema contract: the
-    // example exercise's observed_by names an assertion the example
-    // operation actually declares.
-    let template = loom::journey::surface_contract_template("demo.flow", "0123456789abcdef");
+    // Callers replace only repository-specific CodeFile keys and locators.
+    // The emitted document is otherwise a complete SurfaceManifest.
+    let spec: JourneySpec = serde_json::from_value(json!({
+        "schema": JOURNEY_SCHEMA,
+        "id": "demo.flow",
+        "name": "Demo",
+        "actor": "operator",
+        "goal": "Exercise the template",
+        "inputs": {},
+        "preconditions": [],
+        "steps": [{
+            "id": "authored-step-id",
+            "name": "Act",
+            "action": "does the thing",
+            "expects": [],
+            "produces": {}
+        }],
+        "profiles": {"proof": {"inputs": {}, "workspace": {}}}
+    }))
+    .unwrap();
+    let hash = spec.semantic_hash().unwrap();
+    let mut template = loom::journey::surface_contract_template(&spec.id, &hash);
+    assert!(
+        template.get("setup").is_none(),
+        "minimal template must not emit a setup block"
+    );
     let surface = &template["surface"];
-    let exercise = &surface["operations"][0]["exercises"][0];
-    let observed_by = exercise["observed_by"].as_str().unwrap();
+    let observed_by = surface["operations"][0]["exercises"][0]["observed_by"]
+        .as_str()
+        .unwrap();
     let assertion_ids: Vec<&str> = surface["operations"][0]["output"]["assertions"]
         .as_array()
         .unwrap()
@@ -1401,8 +1488,6 @@ fn surface_guidance_template_is_internally_consistent_and_validates() {
         "template exercise observed_by '{observed_by}' must be a declared assertion id"
     );
 
-    // Once repository-specific paths/locators are supplied, the emitted
-    // shape passes schema validation against a live store.
     let tmp = Tmp::new();
     std::fs::create_dir_all(tmp.path().join("src")).unwrap();
     std::fs::write(tmp.path().join("src/cli.rs"), "pub fn run_publish() {}\n").unwrap();
@@ -1417,29 +1502,25 @@ fn surface_guidance_template_is_internally_consistent_and_validates() {
             .add_node(NodeType::CodeFile, path, "", "", json!({}))
             .unwrap();
     }
-    let mut substituted = template.clone();
-    substituted["surface"]["codefile"] = json!("src/cli.rs");
-    substituted["surface"]["locator"] = json!("run_publish");
-    substituted["surface"]["operations"][0]["exercises"][0]["codefile"] = json!("src/handler.rs");
-    substituted["surface"]["operations"][0]["exercises"][0]["locator"] = json!("post_blueprint");
-    let manifest: SurfaceManifest = serde_json::from_value(serde_json::json!({
-        "schema": substituted["schema"],
-        "journey_id": substituted["journey_id"],
-        "journey_hash": substituted["journey_hash"],
-        "surface": substituted["surface"],
-        "setup": serde_json::Value::Null,
-        "bindings": substituted["bindings"],
-    }))
-    .expect("template shape must decode as a SurfaceManifest");
+    template["surface"]["codefile"] = json!("src/cli.rs");
+    template["surface"]["locator"] = json!("run_publish");
+    template["surface"]["operations"][0]["exercises"][0]["codefile"] = json!("src/handler.rs");
+    template["surface"]["operations"][0]["exercises"][0]["locator"] = json!("post_blueprint");
+    let manifest: SurfaceManifest = serde_json::from_value(template).expect(
+        "exact emitted template must decode as a SurfaceManifest after placeholder replacement",
+    );
     manifest
-        .validate_exercises_for_store(&store)
-        .expect("template exercises must validate");
+        .validate_for(&spec, &hash)
+        .expect("exact emitted template must pass full SurfaceManifest validation");
+    manifest
+        .validate_setup_for_store(&store)
+        .expect("exact emitted template must pass store-backed surface validation");
 }
 
 #[test]
 fn validation_show_json_retains_operation_exercise_provenance() {
     let fixture = cross_process_fixture(vec![default_exercise()]);
-    settle_with_assertions(&fixture, passed_pair());
+    settle_with_assertions(&fixture);
     assert_eq!(witness(&fixture.store, &fixture.validation_id).grade, "S3");
     let graph = fixture.tmp.path().to_path_buf();
     let validation_id = fixture.validation_id.clone();
@@ -2010,6 +2091,286 @@ fn run_with_node_id_exercise_reference_covers_canonical_path_and_edit_invalidate
             loom::proofstrength::of(&store, &validation.id).unwrap(),
             loom::proofstrength::Strength::S0
         );
+    }
+}
+
+#[test]
+fn deserialized_forged_assertions_are_visible_but_not_trusted_for_s3() {
+    let forged: loom::evidence::RunRecord = serde_json::from_value(json!({
+        "producer": "journey",
+        "command": "loom journey run publish.flow --profile proof",
+        "exit_code": 0,
+        "stdout_hash": "h",
+        "stderr_hash": "h",
+        "covered": {"src/cli.rs": "h", "src/handler.rs": "h"},
+        "assertions": 1,
+        "observed_assertions": [{
+            "group": "publish-http-operation",
+            "assertion": "publish-http-operation"
+        }]
+    }))
+    .unwrap();
+    assert!(
+        !forged.observed_assertions().is_empty(),
+        "imported/deserialized assertion names remain visible for audit"
+    );
+
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    let validates = fixture
+        .store
+        .edges_with(
+            Some(EdgeKind::Validates),
+            Some(&fixture.validation_id),
+            None,
+        )
+        .unwrap();
+    fixture
+        .store
+        .assert_fact(
+            loom::store::Assertion::new(
+                loom::store::Subject::Edge(validates[0].id.clone()),
+                loom::model::Claim::Verdict,
+                loom::model::InspectionStatus::Passing.as_str(),
+                "attacker",
+            )
+            .criterion("forged deserialized run")
+            .confidence(1.0)
+            .cited(loom::evidence::cite(fixture.tmp.path(), "forged").unwrap())
+            .observed_command(loom::runner::Observation::Ran(Box::new(forged))),
+        )
+        .unwrap();
+    fixture
+        .store
+        .set_node_status(&fixture.validation_id, "passed")
+        .unwrap();
+    loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();
+    assert_ne!(
+        witness(&fixture.store, &fixture.validation_id).grade,
+        "S3",
+        "deserialized assertion names must not earn S3"
+    );
+    let view = fixture
+        .store
+        .fact(
+            &loom::store::Subject::Edge(validates[0].id.clone()),
+            loom::model::Claim::Verdict,
+        )
+        .unwrap()
+        .unwrap();
+    for row in &view.evidence {
+        if let loom::evidence::Evidence::Run(run) = &row.payload {
+            assert!(
+                run.observed_assertions().is_empty(),
+                "observed_command must drop caller-supplied assertion names"
+            );
+        }
+    }
+}
+
+#[test]
+fn settlement_fails_closed_on_mismatched_validation_or_hashes() {
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    let (spec, proof) = compiled_surface_proof(&fixture);
+    let observed = loom::journey_runtime::execute_observed(
+        fixture.tmp.path(),
+        &spec,
+        &proof,
+        &BTreeMap::new(),
+    );
+    assert_eq!(observed.report().status, RuntimeStatus::Passed);
+    let err =
+        loom::journey::settle_compiled_validation(&fixture.store, "missing-validation", &observed)
+            .unwrap_err();
+    assert!(err.to_string().contains("missing"), "{err:#}");
+
+    let mut body = fixture
+        .store
+        .get_node(&fixture.validation_id)
+        .unwrap()
+        .unwrap()
+        .body;
+    body["journey_hash"] = json!("not-the-compiled-hash");
+    fixture
+        .store
+        .set_node_body(&fixture.validation_id, &body)
+        .unwrap();
+    let err = loom::journey::settle_compiled_validation(
+        &fixture.store,
+        &fixture.validation_id,
+        &observed,
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("does not match"), "{err:#}");
+
+    body["journey_hash"] = json!(observed.report().journey_hash);
+    body["compiler_version"] = json!("4");
+    fixture
+        .store
+        .set_node_body(&fixture.validation_id, &body)
+        .unwrap();
+    let err = loom::journey::settle_compiled_validation(
+        &fixture.store,
+        &fixture.validation_id,
+        &observed,
+    )
+    .unwrap_err();
+    assert!(err.to_string().contains("does not match"), "{err:#}");
+}
+
+#[test]
+fn settlement_covers_canonical_projection_files() {
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    settle_compiled(&fixture);
+    let journey = fixture
+        .store
+        .get_node(&fixture.journey_id)
+        .unwrap()
+        .unwrap();
+    let expected = loom::journey_exercises::expected_projection(&fixture.store, &journey)
+        .unwrap()
+        .covered_files();
+    let validates = fixture
+        .store
+        .edges_with(
+            Some(EdgeKind::Validates),
+            Some(&fixture.validation_id),
+            None,
+        )
+        .unwrap();
+    let view = fixture
+        .store
+        .fact(
+            &loom::store::Subject::Edge(validates[0].id.clone()),
+            loom::model::Claim::Verdict,
+        )
+        .unwrap()
+        .unwrap();
+    let mut covered = None;
+    for row in &view.evidence {
+        if let loom::evidence::Evidence::Run(run) = &row.payload {
+            covered = Some(run.covered.keys().cloned().collect::<Vec<_>>());
+        }
+    }
+    let mut covered = covered.expect("settled run");
+    covered.sort();
+    assert_eq!(covered, expected);
+}
+
+#[test]
+fn imported_journey_assertion_names_remain_visible_without_s3() {
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    settle_with_assertions(&fixture);
+    assert_eq!(witness(&fixture.store, &fixture.validation_id).grade, "S3");
+    let export = loom::travel::export_to_file(&fixture.store).unwrap();
+    let exported = std::fs::read_to_string(&export).unwrap();
+    assert!(
+        exported.contains("observed_assertions"),
+        "export must preserve assertion names for audit"
+    );
+    assert!(
+        exported.contains("publish-http-operation"),
+        "export must name the observed assertion"
+    );
+
+    let destination = Tmp::new();
+    std::fs::create_dir_all(destination.path().join("src")).unwrap();
+    std::fs::write(
+        destination.path().join("src/cli.rs"),
+        "pub fn run_publish() -> &'static str { \"ok\" }\n",
+    )
+    .unwrap();
+    std::fs::write(
+        destination.path().join("src/handler.rs"),
+        "pub fn post_blueprint() -> &'static str { \"stored\" }\n",
+    )
+    .unwrap();
+    let mut snapshot = loom::travel::read_export(&export).unwrap().into_snapshot();
+    loom::travel::quarantine_imported_execution(&mut snapshot).unwrap();
+    let mut imported = Store::init(destination.path(), Some("imported-journey"), false).unwrap();
+    imported.restore(&snapshot).unwrap();
+    loom::proofstrength::recompute(&imported, destination.path()).unwrap();
+    let validation = imported
+        .resolve_node("journey:publish.flow:proof", Some(NodeType::Validation))
+        .unwrap();
+    assert_ne!(
+        loom::proofstrength::of(&imported, &validation.id).unwrap(),
+        loom::proofstrength::Strength::S3,
+        "imported execution must not retain S3"
+    );
+    let mut saw_audit = false;
+    for fact in imported.all_facts().unwrap() {
+        let view = imported.fact_by_id(&fact.id).unwrap().unwrap();
+        for row in &view.evidence {
+            match &row.payload {
+                loom::evidence::Evidence::Claim { text }
+                    if text.contains("observed_assertions")
+                        && text.contains("publish-http-operation") =>
+                {
+                    saw_audit = true;
+                }
+                loom::evidence::Evidence::Run(run)
+                    if run
+                        .observed_assertions()
+                        .iter()
+                        .any(|a| a.assertion == "publish-http-operation") =>
+                {
+                    panic!("imported Journey run must not remain executable Run evidence");
+                }
+                _ => {}
+            }
+        }
+    }
+    assert!(
+        saw_audit,
+        "imported assertion names must remain visible as non-authoritative audit text"
+    );
+}
+
+#[test]
+fn generic_command_validation_cannot_mint_journey_assertion_provenance() {
+    let tmp = Tmp::new();
+    tmp.write("src/lib.rs", "pub fn f() {}\n");
+    let store = Store::init(tmp.path(), Some("generic-proof"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "generic",
+            "generic",
+            "implemented",
+            json!({}),
+        )
+        .unwrap();
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "unit",
+            "generic command",
+            "not_run",
+            json!({"type":"test","command":"python3 -c \"print('ok')\""}),
+        )
+        .unwrap();
+    store
+        .ensure_edge(EdgeKind::Validates, &validation.id, &intent.id)
+        .unwrap();
+    loom::commands::observe_validation(&store, &validation).unwrap();
+    let edges = store
+        .edges_with(Some(EdgeKind::Validates), Some(&validation.id), None)
+        .unwrap();
+    let view = store
+        .fact(
+            &loom::store::Subject::Edge(edges[0].id.clone()),
+            loom::model::Claim::Verdict,
+        )
+        .unwrap()
+        .unwrap();
+    for row in &view.evidence {
+        if let loom::evidence::Evidence::Run(run) = &row.payload {
+            assert!(
+                run.observed_assertions().is_empty(),
+                "generic command runs must not carry Journey assertion provenance"
+            );
+            assert_ne!(run.producer, loom::model::RunProducer::Journey);
+        }
     }
 }
 

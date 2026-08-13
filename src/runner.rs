@@ -132,6 +132,7 @@ pub fn record(
         covered: covered_hashes(root, covered),
         assertions,
         observed_assertions: Vec::new(),
+        assertion_trust: crate::evidence::AssertionTrust::Untrusted,
         duration_ms,
         ran_at: crate::journal::now_iso(),
         loom_version: env!("CARGO_PKG_VERSION").to_string(),

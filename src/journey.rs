@@ -18,7 +18,7 @@ pub const SURFACE_SCHEMA: &str = "loom.journey.surface/v1";
 pub const INTERFACE_SURFACE_SCHEMA: &str = "loom.interface-surface/v1";
 pub const COMPILED_PROOF_SCHEMA: &str = "loom.journey.proof/v1";
 pub const BASELINE_SCHEMA: &str = "loom.journey.baseline/v1";
-pub const JOURNEY_COMPILER_VERSION: &str = "4";
+pub const JOURNEY_COMPILER_VERSION: &str = "5";
 pub const JOURNEY_LINT_REPORT_SCHEMA: &str = "loom.journey-lint/v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1069,12 +1069,13 @@ fn relationship_path_exists(
 
 /// The reusable surface-contract template emitted by `loom journey surface`.
 ///
-/// Every id, path, and locator inside is a deliberate placeholder: callers
-/// must substitute repository-specific registered CodeFile keys, live
-/// locators, and operation/assertion ids before acceptance. The template is
-/// internally consistent by construction — in particular, the example
-/// operation exercise's `observed_by` names an assertion that the example
-/// operation actually declares.
+/// Every repository-specific path and locator inside is a deliberate
+/// placeholder: callers must substitute registered CodeFile keys and live
+/// locators before acceptance. Operation, assertion, step, and surface ids in
+/// the template are internally consistent example identifiers — they do not
+/// need to change unless the caller wants different stable ids. The template
+/// is a complete, valid manifest once those repository-specific placeholders
+/// are replaced; it has no setup block.
 pub fn surface_contract_template(journey_id: &str, journey_hash: &str) -> serde_json::Value {
     serde_json::json!({
         "schema": SURFACE_SCHEMA,
@@ -1090,7 +1091,7 @@ pub fn surface_contract_template(journey_id: &str, journey_hash: &str) -> serde_
                 "id": "stable-operation-id",
                 "summary": "One reusable CLI operation",
                 "argv": ["binary", "subcommand"],
-                "arguments": [{"id":"argument-id", "type":"string", "required":true, "flag":"--argument"}],
+                "arguments": [],
                 "output": {
                     "format": "json",
                     "assertions": [{
@@ -1107,21 +1108,6 @@ pub fn surface_contract_template(journey_id: &str, journey_hash: &str) -> serde_
                     "observed_by": "assertion-id-in-this-operation"
                 }]
             }]
-        },
-        "setup": {
-            "graph": "local_snapshot",
-            "git": {
-                "mode": "isolated_snapshot",
-                "dirty_paths": ["registered/codefile.rs"]
-            },
-            "before_steps": {
-                "authored-step-id": [{
-                    "path": "registered/codefile.rs",
-                    "expected_hash": "0123456789abcdef",
-                    "content": "exact replacement content"
-                }]
-            },
-            "operations": ["stable-setup-operation-id"]
         },
         "bindings": [{"step_id":"authored-step-id", "operation_id":"stable-operation-id"}]
     })
@@ -2521,45 +2507,91 @@ impl SurfaceManifest {
     }
 }
 
-/// Settle a compiled Journey Validation from the observation made by the
-/// direct-argv runtime. Kept beside the Journey proof vocabulary so every proof
-/// status write remains on the repository's proof-stability chokepoint.
+/// Settle a compiled Journey Validation from a sealed runtime observation.
+///
+/// The observation can only be minted by the compiler-owned Journey executor.
+/// Covered files are recomputed from the current accepted-surface projection;
+/// caller-selected coverage is not an input. A mismatched validation, proof,
+/// compiler version, operation, or assertion fails closed.
 pub fn settle_compiled_validation(
     store: &crate::store::Store,
     validation_id: &str,
-    report: &crate::journey_runtime::RuntimeReport,
-    covered_files: &[String],
+    observed: &crate::journey_runtime::JourneyObservation,
 ) -> Result<()> {
-    use crate::model::{Claim, EdgeKind, InspectionStatus, RunProducer};
+    use crate::model::{Claim, EdgeKind, InspectionStatus, NodeType, RunProducer};
     use crate::store::{Assertion, Subject};
 
-    // The observation must be bound to the exact compiled validation it
-    // settles: a report carrying any other journey/surface identity cannot
-    // mint this validation's run evidence.
+    let report = observed.report();
+    let proof = observed.proof();
     let validation = store
         .get_node(validation_id)?
         .ok_or_else(|| anyhow!("validation '{validation_id}' is missing"))?;
-    if validation
-        .body
-        .get("type")
-        .and_then(serde_json::Value::as_str)
-        != Some("journey")
+    if validation.node_type != NodeType::Validation
+        || validation
+            .body
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            != Some("journey")
+        || validation
+            .body
+            .get("profile")
+            .and_then(serde_json::Value::as_str)
+            != Some(proof.profile.as_str())
+        || validation
+            .body
+            .get("compiler_version")
+            .and_then(serde_json::Value::as_str)
+            != Some(JOURNEY_COMPILER_VERSION)
+        || proof.compiler_version != JOURNEY_COMPILER_VERSION
         || validation
             .body
             .get("journey_hash")
             .and_then(serde_json::Value::as_str)
-            != Some(report.journey_hash.as_str())
+            != Some(proof.journey_hash.as_str())
         || validation
             .body
             .get("surface_hash")
             .and_then(serde_json::Value::as_str)
-            != Some(report.surface_hash.as_str())
+            != Some(proof.surface_hash.as_str())
+        || report.journey_id != proof.journey_id
+        || report.profile != proof.profile
+        || report.journey_hash != proof.journey_hash
+        || report.surface_hash != proof.surface_hash
+        || (report.status != crate::journey_runtime::RuntimeStatus::Blocked
+            && !observed.matches_compiled_proof())
     {
         bail!(
-            "compiled Journey report does not match validation '{}' hashes",
+            "compiled Journey observation does not match validation '{}' compiled proof",
             validation.name
         );
     }
+
+    let proves = store.edges_with(Some(EdgeKind::Proves), Some(validation_id), None)?;
+    let [proves] = proves.as_slice() else {
+        bail!(
+            "compiled Journey validation '{}' must prove exactly one Journey",
+            validation.name
+        );
+    };
+    let journey = store
+        .get_node(&proves.to_id)?
+        .ok_or_else(|| anyhow!("compiled Journey target is missing"))?;
+    if journey.node_type != NodeType::Journey
+        || journey
+            .body
+            .get("semantic_hash")
+            .and_then(serde_json::Value::as_str)
+            != Some(proof.journey_hash.as_str())
+        || proof.journey_id != journey.name
+    {
+        bail!(
+            "compiled Journey observation does not match the Journey proved by '{}'",
+            validation.name
+        );
+    }
+
+    let projection = crate::journey_exercises::expected_projection(store, &journey)?;
+    let covered_files = projection.covered_files();
 
     let (node_status, edge_status) = match report.status {
         crate::journey_runtime::RuntimeStatus::Passed => ("passed", InspectionStatus::Passing),
@@ -2576,7 +2608,9 @@ pub fn settle_compiled_validation(
             report.journey_id, report.profile, node_status, report.assertions_passed
         ),
     };
-    let run = if report.status == crate::journey_runtime::RuntimeStatus::Blocked {
+    let run = if report.status == crate::journey_runtime::RuntimeStatus::Blocked
+        || !observed.matches_compiled_proof()
+    {
         None
     } else {
         let stdout = crate::journey_runtime::report_observation_json(report)?;
@@ -2587,7 +2621,7 @@ pub fn settle_compiled_validation(
                 "loom journey run {} --profile {}",
                 report.journey_id, report.profile
             ),
-            covered_files,
+            &covered_files,
             report.assertions_passed,
             if report.status == crate::journey_runtime::RuntimeStatus::Passed {
                 0
@@ -2598,9 +2632,6 @@ pub fn settle_compiled_validation(
             report.detail.as_deref().unwrap_or("").as_bytes(),
             0,
         );
-        // The typed assertions this exact run observed are structured machine
-        // evidence on the run record — never recovered from the (truncatable)
-        // human-facing stdout excerpt.
         run.observed_assertions = report
             .passed_assertions
             .iter()
@@ -2609,6 +2640,7 @@ pub fn settle_compiled_validation(
                 assertion: passed.assertion_id.clone(),
             })
             .collect();
+        run.assertion_trust = crate::evidence::AssertionTrust::LocallyMinted;
         Some(run)
     };
 

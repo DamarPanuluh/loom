@@ -1,6 +1,6 @@
 # Journey authoring and surface lint
 
-Status: canonical for the Loom 0.31.0 Journey authoring/lint contract. This
+Status: canonical for the Loom 0.31.1 Journey authoring/lint contract. This
 document is intentionally limited to authored Journey surfaces and lint.
 Broader release and resume guidance belongs to Phase 5.
 
@@ -20,7 +20,9 @@ downstream handlers on the bound operation as optional `exercises` entries
 (`id`, `codefile`, `locator`, `observed_by`). Those are not additional surface
 owners; `journey compile` turns them into compiler-owned proof topology, and S3
 still requires the referenced assertion to pass plus call-graph reach to a
-realizing symbol.
+realizing symbol. Assertion passage is machine evidence minted only by a local
+`journey run` of compiler version 5; imported or deserialized run records cannot
+earn that standing. Compiler-v4 proofs must be recompiled and rerun.
 
 ## Authoring workflow
 

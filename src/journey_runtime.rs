@@ -200,9 +200,114 @@ pub struct RuntimeReport {
 pub enum ExecutionOutcome {
     Completed {
         report: RuntimeReport,
+        /// Sealed capability minted only by this runtime. External crates can
+        /// read it from a completed execution and pass it to settlement, but
+        /// cannot construct one from a caller-authored report.
+        observation: Box<JourneyObservation>,
         human_decisions: Vec<Value>,
     },
     Pending(crate::journey_gate::PendingHuman),
+}
+
+/// Proof that the compiler-owned Journey runtime observed a completed run.
+///
+/// Private fields: only this module can mint one, and only after executing the
+/// compiled proof. Deserialize and struct literals from outside this crate
+/// cannot express it.
+#[derive(Debug, Clone)]
+pub struct JourneyObservation {
+    report: RuntimeReport,
+    proof: CompiledJourneyProof,
+}
+
+impl JourneyObservation {
+    /// Presentation of the observed run. Never a settlement input by itself.
+    pub fn report(&self) -> &RuntimeReport {
+        &self.report
+    }
+
+    pub(crate) fn proof(&self) -> &CompiledJourneyProof {
+        &self.proof
+    }
+
+    /// True only when this observation still matches the compiled proof that
+    /// produced it. Settlement refuses to mint trusted assertion provenance
+    /// unless this holds.
+    pub(crate) fn matches_compiled_proof(&self) -> bool {
+        observation_matches_proof(&self.proof, &self.report)
+    }
+
+    fn from_executed(proof: &CompiledJourneyProof, mut report: RuntimeReport) -> Self {
+        if !observation_matches_proof(proof, &report) {
+            report.status = RuntimeStatus::Blocked;
+            report.passed_assertions.clear();
+            report.assertions_passed = 0;
+            report.detail = Some(
+                "runtime result did not match the compiled Journey proof it claims to settle"
+                    .into(),
+            );
+        }
+        Self {
+            report,
+            proof: proof.clone(),
+        }
+    }
+}
+
+fn observation_matches_proof(proof: &CompiledJourneyProof, report: &RuntimeReport) -> bool {
+    if proof.compiler_version != JOURNEY_COMPILER_VERSION
+        || report.journey_id != proof.journey_id
+        || report.profile != proof.profile
+        || report.journey_hash != proof.journey_hash
+        || report.surface_hash != proof.surface_hash
+    {
+        return false;
+    }
+    let allowed = compiled_assertion_ids(proof);
+    report
+        .passed_assertions
+        .iter()
+        .all(|passed| allowed.contains(&(passed.operation_id.clone(), passed.assertion_id.clone())))
+}
+
+fn compiled_assertion_ids(proof: &CompiledJourneyProof) -> BTreeSet<(String, String)> {
+    let mut out = BTreeSet::new();
+    if let Some(setup) = &proof.setup {
+        for operation in &setup.operations {
+            for assertion in &operation.assertions {
+                out.insert((operation.operation_id.clone(), assertion.id.clone()));
+            }
+        }
+    }
+    for step in &proof.steps {
+        for assertion in &step.assertions {
+            out.insert((step.operation_id.clone(), assertion.id.clone()));
+        }
+    }
+    out
+}
+
+fn complete_outcome(
+    proof: &CompiledJourneyProof,
+    report: RuntimeReport,
+    human_decisions: Vec<Value>,
+) -> ExecutionOutcome {
+    let observation = JourneyObservation::from_executed(proof, report.clone());
+    ExecutionOutcome::Completed {
+        report: observation.report.clone(),
+        observation: Box::new(observation),
+        human_decisions,
+    }
+}
+
+fn blocked_outcome(proof: &CompiledJourneyProof, detail: impl Into<String>) -> ExecutionOutcome {
+    complete_outcome(proof, blocked_runtime_report(proof, detail), Vec::new())
+}
+
+impl ExecutionOutcome {
+    pub(crate) fn blocked(proof: &CompiledJourneyProof, detail: impl Into<String>) -> Self {
+        blocked_outcome(proof, detail)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1089,17 +1194,37 @@ pub fn execute(
     proof: &CompiledJourneyProof,
     overrides: &BTreeMap<String, Value>,
 ) -> RuntimeReport {
+    execute_observed(root, spec, proof, overrides)
+        .report()
+        .clone()
+}
+
+/// Execute a compiled Journey and return the sealed observation settlement
+/// requires. The only way to obtain [`JourneyObservation`] is to actually run
+/// this compiler-owned runtime (or the interactive/resume path).
+pub fn execute_observed(
+    root: &Path,
+    spec: &JourneySpec,
+    proof: &CompiledJourneyProof,
+    overrides: &BTreeMap<String, Value>,
+) -> JourneyObservation {
     if proof.steps.iter().any(|step| step.human_decision.is_some()) {
-        return blocked_runtime_report(
+        return JourneyObservation::from_executed(
             proof,
-            "compiled Journey requires host-mediated execution; use the interactive runtime",
+            blocked_runtime_report(
+                proof,
+                "compiled Journey requires host-mediated execution; use the interactive runtime",
+            ),
         );
     }
     match execute_interactive(root, spec, proof, overrides) {
-        ExecutionOutcome::Completed { report, .. } => report,
-        ExecutionOutcome::Pending(_) => blocked_runtime_report(
+        ExecutionOutcome::Completed { observation, .. } => *observation,
+        ExecutionOutcome::Pending(_) => JourneyObservation::from_executed(
             proof,
-            "compiled Journey unexpectedly reached a human decision",
+            blocked_runtime_report(
+                proof,
+                "compiled Journey unexpectedly reached a human decision",
+            ),
         ),
     }
 }
@@ -1118,10 +1243,7 @@ pub fn execute_interactive(
     let outcome = root.and_then(|root| execute_fresh(&root, spec, proof, overrides));
     match outcome {
         Ok(outcome) => outcome,
-        Err(error) => ExecutionOutcome::Completed {
-            report: blocked_runtime_report(proof, error.to_string()),
-            human_decisions: Vec::new(),
-        },
+        Err(error) => blocked_outcome(proof, error.to_string()),
     }
 }
 
@@ -1380,8 +1502,9 @@ fn execute_fresh(
             ) {
                 Ok(observed) => observed,
                 Err(error) => {
-                    return Ok(ExecutionOutcome::Completed {
-                        report: report_with(
+                    return Ok(complete_outcome(
+                        proof,
+                        report_with(
                             proof,
                             RuntimeStatus::Blocked,
                             (assertions_passed, 0),
@@ -1397,8 +1520,8 @@ fn execute_fresh(
                                 ),
                             },
                         ),
-                        human_decisions: Vec::new(),
-                    })
+                        Vec::new(),
+                    ))
                 }
             };
             let mut setup_passed = 0usize;
@@ -1423,8 +1546,9 @@ fn execute_fresh(
                 assertions_failed: setup_failed,
             });
             if setup_failed > 0 {
-                return Ok(ExecutionOutcome::Completed {
-                    report: report_with(
+                return Ok(complete_outcome(
+                    proof,
+                    report_with(
                         proof,
                         RuntimeStatus::Blocked,
                         (assertions_passed, 0),
@@ -1436,8 +1560,8 @@ fn execute_fresh(
                             captures: redact_capture_map(captures, &redacted_captures, &secrets),
                         },
                     ),
-                    human_decisions: Vec::new(),
-                });
+                    Vec::new(),
+                ));
             }
         }
     }
@@ -1656,8 +1780,9 @@ fn completed_outcome(
     active: ActiveRun,
 ) -> ExecutionOutcome {
     let captures = redact_capture_map(active.captures, &active.redacted_captures, &active.secrets);
-    ExecutionOutcome::Completed {
-        report: RuntimeReport {
+    complete_outcome(
+        proof,
+        RuntimeReport {
             journey_id: proof.journey_id.clone(),
             profile: proof.profile.clone(),
             journey_hash: proof.journey_hash.clone(),
@@ -1672,8 +1797,8 @@ fn completed_outcome(
             captures,
             passed_assertions: active.passed_assertions,
         },
-        human_decisions: active.human_decisions,
-    }
+        active.human_decisions,
+    )
 }
 
 const CONTINUATION_RUNTIME_SCHEMA: &str = "loom.journey-runtime-continuation/v1";

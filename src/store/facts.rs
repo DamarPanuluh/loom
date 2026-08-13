@@ -228,16 +228,26 @@ impl<'a> Assertion<'a> {
         self
     }
 
-    /// Attach an observation loom made. Crate-internal in intent — see the
-    /// module header — and consumed producer-gated: Journey assertion
-    /// provenance is trusted only from `RunProducer::Journey` runs minted by
-    /// the compiler-owned settlement, never from generic command runs or
-    /// imported presentation text.
-    // Wired up as each anchoring floor is raised to `verified` — the proof lane
-    // first, then the locator and pre-screen probes.
-    #[allow(dead_code)]
-    pub fn observed(mut self, run: RunRecord) -> Self {
+    /// Attach an observation loom made. Crate-private: only in-process run
+    /// owners (the Journey settlement and the generic proof runner) can bind a
+    /// [`RunRecord`] to a fact. External crates cannot express trusted Journey
+    /// assertion provenance through this method.
+    pub(crate) fn observed(mut self, run: RunRecord) -> Self {
         self.run = Some(Box::new(run));
+        self
+    }
+
+    /// Attach a runner [`crate::runner::Observation`]. Public so tests and
+    /// callers can record that loom ran a command, but the observation cannot
+    /// carry compiler-owned Journey assertion provenance: any structured
+    /// assertion names are dropped and the record stays untrusted.
+    pub fn observed_command(mut self, observation: crate::runner::Observation) -> Self {
+        if let crate::runner::Observation::Ran(run) = observation {
+            let mut run = *run;
+            run.observed_assertions.clear();
+            run.assertion_trust = crate::evidence::AssertionTrust::Untrusted;
+            self.run = Some(Box::new(run));
+        }
         self
     }
 
@@ -920,13 +930,18 @@ impl Store {
             Ok(EvidenceRow {
                 id: r.get("id")?,
                 fact_id: r.get("fact_id")?,
-                payload: serde_json::from_str(&payload).map_err(|e| {
-                    rusqlite::Error::FromSqlConversionFailure(
-                        0,
-                        rusqlite::types::Type::Text,
-                        Box::new(e),
-                    )
-                })?,
+                payload: {
+                    let mut payload: crate::evidence::Evidence = serde_json::from_str(&payload)
+                        .map_err(|e| {
+                            rusqlite::Error::FromSqlConversionFailure(
+                                0,
+                                rusqlite::types::Type::Text,
+                                Box::new(e),
+                            )
+                        })?;
+                    payload.trust_local_store();
+                    payload
+                },
                 recorded_at: r.get("recorded_at")?,
                 holds: holds != 0,
                 expiry_reason: StaleCause::from_str(&reason).ok(),
@@ -1822,9 +1837,17 @@ pub(super) fn insert_imported(
                     crate::model::RunProducer::Command | crate::model::RunProducer::Journey
                 ) =>
             {
-                crate::evidence::Evidence::Claim {
-                    text: format!("imported run (unverified): {}", run.command),
+                let mut text = format!("imported run (unverified): {}", run.command);
+                if !run.observed_assertions().is_empty() {
+                    let names: Vec<String> = run
+                        .observed_assertions()
+                        .iter()
+                        .map(|observed| format!("{}/{}", observed.group, observed.assertion))
+                        .collect();
+                    text.push_str("; observed_assertions: ");
+                    text.push_str(&names.join(", "));
                 }
+                crate::evidence::Evidence::Claim { text }
             }
             other => other.clone(),
         };

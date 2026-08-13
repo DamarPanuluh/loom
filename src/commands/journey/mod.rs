@@ -1529,7 +1529,7 @@ pub(crate) fn journey_surface(
             "Operations are reusable structured argv, never shell strings.",
             "The surface exposes exactly one registered CodeFile at a live symbol locator or globally unique attached anchor:<id>.",
             "Optional operation.exercises declare downstream code entries reached through that public operation; they are not additional surface owners and require observed_by to name an assertion in the same operation.",
-            "Every id, CodeFile key, locator, and path in the template is a placeholder — substitute registered repository values before acceptance.",
+            "Replace only repository-specific CodeFile keys and locators in the template before acceptance. Operation, assertion, step, and surface ids are internally consistent example identifiers.",
             "Source anchors are navigation-only and never prove behavior or create graph relationships.",
             "Every operation emits JSON; do not include HTTP endpoints.",
             "Carry temporary setup from the Journey profile as declarative data only.",
@@ -2152,10 +2152,9 @@ pub(crate) fn journey_run(
             &preview.proof,
             &BTreeMap::new(),
         ),
-        Err(error) => crate::journey_runtime::ExecutionOutcome::Completed {
-            report: blocked_report(&preview.proof, error.to_string()),
-            human_decisions: Vec::new(),
-        },
+        Err(error) => {
+            crate::journey_runtime::ExecutionOutcome::blocked(&preview.proof, error.to_string())
+        }
     };
     finish_interactive_run(graph, preview, outcome, json_output)
 }
@@ -2177,12 +2176,15 @@ fn finish_interactive_run(
         ),
         crate::journey_runtime::ExecutionOutcome::Completed {
             report,
+            observation,
             human_decisions,
         } => {
             let product =
                 compile_internal(graph, &preview.proof.journey_id, &preview.proof.profile)?;
             if crate::journey_runtime::canonical_bytes(&product.proof)?
                 != crate::journey_runtime::canonical_bytes(&preview.proof)?
+                || crate::journey_runtime::canonical_bytes(observation.proof())?
+                    != crate::journey_runtime::canonical_bytes(&preview.proof)?
                 || product.covered_files != preview.covered_files
             {
                 bail!("Journey compiled projection changed during interactive execution");
@@ -2191,8 +2193,7 @@ fn finish_interactive_run(
             crate::journey::settle_compiled_validation(
                 &store,
                 &product.validation_id,
-                &report,
-                &product.covered_files,
+                &observation,
             )?;
             for decision in human_decisions {
                 store.append_journal("journey_human_decision", &product.validation_id, decision)?;

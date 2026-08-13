@@ -8,6 +8,12 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.31.1] - 2026-08-13
+- harden compiler-owned Journey assertion evidence so only a local compiler-owned run can earn S3; schema v12 graphs require no rebuild
+  - Trusted assertion provenance is minted only from a sealed Journey observation after the compiler-owned runtime actually executes. Public Deserialize, `Assertion::observed`, caller-built `RuntimeReport`s, generic command validation, and imported graphs cannot create S3-eligible Journey assertion evidence.
+  - Journey compiler version is now **5**. Compiler-v4 proofs are not current: `loom sync` resets them, and they cannot retain S3 or proven readiness. Recompile and rerun every Journey proof after upgrading.
+  - The generated `journey surface` template is a complete valid manifest once repository-specific CodeFile keys and locators are replaced; it no longer emits a dangling setup block.
+
 ## [0.31.0] - 2026-08-12
 - add compiler-owned Journey operation exercises for cross-process S3 proof entries; schema v12 graphs require no rebuild
   - Optional `CliOperation.exercises` (`id`, `codefile`, `locator`, `observed_by`) declare downstream boundary entries without changing surface ownership.

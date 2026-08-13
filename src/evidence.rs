@@ -103,6 +103,21 @@ fn is_zero(v: &usize) -> bool {
 /// content stood. Emitted once per re-anchor by the re-verification pass.
 pub const REANCHOR_EVENT: &str = "evidence_reanchor";
 
+/// Whether structured Journey assertion names on a [`RunRecord`] may count as
+/// compiler-owned machine evidence.
+///
+/// Public Deserialize, import JSON, and caller-built records are always
+/// [`Untrusted`]: field privacy does not constrain Serde, so a JSON payload
+/// can populate `observed_assertions` without ever running the Journey.
+/// Only the compiler-owned settlement path, and the local store reload of a
+/// row that path persisted, mark [`LocallyMinted`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum AssertionTrust {
+    #[default]
+    Untrusted,
+    LocallyMinted,
+}
+
 /// Something loom ran and observed. Minted ONLY by [`crate::runner`]; there is
 /// no path from caller input to this type.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -130,15 +145,16 @@ pub struct RunRecord {
     /// behavior.
     #[serde(default)]
     pub assertions: usize,
-    /// Which typed assertions the run's owner observed holding. Structured
-    /// machine evidence written only by in-process run owners (the Journey
-    /// runtime); never parsed from human-facing excerpts, so it survives
-    /// excerpt truncation and cannot be forged by printed output. The field
-    /// is crate-private for writes: only loom's own run-settlement paths can
-    /// attach it, so caller-authored or imported run payloads cannot invent
-    /// assertion provenance. Read it through [`RunRecord::observed_assertions`].
+    /// Typed assertion names carried on the run for audit and, when
+    /// [`assertion_trust`] is [`AssertionTrust::LocallyMinted`], for S3.
+    /// Deserialize always leaves trust at [`AssertionTrust::Untrusted`], so a
+    /// JSON payload cannot mint compiler-owned provenance merely by populating
+    /// this field. Read it through [`RunRecord::observed_assertions`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) observed_assertions: Vec<ObservedAssertion>,
+    /// Never serialized. Public Deserialize therefore cannot claim local mint.
+    #[serde(skip)]
+    pub(crate) assertion_trust: AssertionTrust,
     /// Excluded from the evidence identity digest — a re-run that observes the
     /// same thing must be a byte-identical no-op.
     #[serde(default)]
@@ -160,11 +176,23 @@ pub struct ObservedAssertion {
 }
 
 impl RunRecord {
-    /// The typed assertions this run's owner observed holding. A read-only
-    /// view of crate-minted machine evidence: external callers cannot set it,
-    /// so it cannot be authored through the public API.
+    /// The typed assertions this run's owner observed holding. Names may be
+    /// present on deserialized or imported records for audit; S3 credits them
+    /// only when [`assertion_trust`] is [`AssertionTrust::LocallyMinted`].
     pub fn observed_assertions(&self) -> &[ObservedAssertion] {
         &self.observed_assertions
+    }
+
+    pub(crate) fn trust_local_store(&mut self) {
+        self.assertion_trust = AssertionTrust::LocallyMinted;
+    }
+
+    pub(crate) fn has_trusted_journey_assertions(&self) -> bool {
+        self.assertion_trust == AssertionTrust::LocallyMinted
+            && self.producer == crate::model::RunProducer::Journey
+            && self.exit_code == 0
+            && !self.covered.is_empty()
+            && !self.observed_assertions.is_empty()
     }
 }
 
@@ -179,6 +207,12 @@ pub enum Evidence {
 }
 
 impl Evidence {
+    pub(crate) fn trust_local_store(&mut self) {
+        if let Evidence::Run(run) = self {
+            run.trust_local_store();
+        }
+    }
+
     pub fn kind(&self) -> EvidenceKind {
         match self {
             Evidence::Run(_) => EvidenceKind::Run,
@@ -996,6 +1030,47 @@ mod tests {
             find_elsewhere(&scoped, &one),
             None,
             "a file-scoped claim was about THAT file"
+        );
+    }
+
+    #[test]
+    fn deserialized_run_record_cannot_claim_locally_minted_assertions() {
+        let forged: RunRecord = serde_json::from_value(serde_json::json!({
+            "producer": "journey",
+            "command": "loom journey run flow --profile proof",
+            "exit_code": 0,
+            "stdout_hash": "h",
+            "stderr_hash": "h",
+            "covered": {"src/cli.rs": "h"},
+            "assertions": 1,
+            "observed_assertions": [{"group": "act-op", "assertion": "act-ok"}]
+        }))
+        .unwrap();
+        assert_eq!(forged.observed_assertions().len(), 1);
+        assert_eq!(forged.assertion_trust, AssertionTrust::Untrusted);
+        assert!(!forged.has_trusted_journey_assertions());
+    }
+
+    #[test]
+    fn pre_fix_compiler_v4_run_record_cannot_be_trusted_assertion_evidence() {
+        // Pre-fix compiler-v4 settlements recorded a Journey run with coverage
+        // and a human-facing stdout report, but no structured assertion names.
+        let mut pre_fix: RunRecord = serde_json::from_value(serde_json::json!({
+            "producer": "journey",
+            "command": "loom journey run flow --profile proof",
+            "exit_code": 0,
+            "stdout_hash": "h",
+            "stderr_hash": "h",
+            "stdout_excerpt": "{\"passed_assertions\":[{\"operation_id\":\"act-op\",\"assertion_id\":\"act-ok\"}]}",
+            "covered": {"src/cli.rs": "h"},
+            "assertions": 1
+        }))
+        .unwrap();
+        pre_fix.trust_local_store();
+        assert!(pre_fix.observed_assertions().is_empty());
+        assert!(
+            !pre_fix.has_trusted_journey_assertions(),
+            "stdout excerpts must not become trusted assertion provenance"
         );
     }
 }

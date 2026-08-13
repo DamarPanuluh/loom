@@ -35,6 +35,12 @@ fn compiled_fixture() -> CompiledFixture {
     );
     tmp.write("proof-observation.txt", "compiled proof observation\n");
 
+    let spec: loom::journey::JourneySpec = serde_norway::from_str(
+        &std::fs::read_to_string(tmp.path().join("journeys/flow.yaml")).unwrap(),
+    )
+    .unwrap();
+    let journey_hash = spec.semantic_hash().unwrap();
+
     let store = Store::init(tmp.path(), Some("compiled Journey"), false).unwrap();
     let journey = store
         .add_node(
@@ -49,7 +55,7 @@ fn compiled_fixture() -> CompiledFixture {
                 "actor":"user",
                 "goal":"a user completes the flow",
                 "artifact":"journeys/flow.yaml",
-                "semantic_hash":"journey-hash-v1",
+                "semantic_hash": journey_hash,
                 "input_ids":[],
                 "preconditions":[],
                 "step_ids":["act"],
@@ -106,7 +112,7 @@ fn compiled_fixture() -> CompiledFixture {
             &derives.id,
             TargetKind::Edge,
             "journey_hash",
-            "journey-hash-v1",
+            &journey_hash,
             TruthClass::Asserted,
         )
         .unwrap();
@@ -132,7 +138,9 @@ fn compiled_fixture() -> CompiledFixture {
                 "title":"Flow CLI",
                 "kind":"cli",
                 "identity":"flow",
-                "operations":[{"id":"act-op","summary":"act","argv":["flow","act"],"arguments":[],"output":{"format":"json","assertions":[{"id":"act-ok","pointer":"/ok","type":"boolean","equals":true}]},"exercises":[{"id":"proof-entry","codefile":"tests/compiled_proof.rs","locator":"compiled_proof","observed_by":"act-ok"}]}]
+                "codefile":"src/flow_cli.rs",
+                "locator":"flow_cli",
+                "operations":[{"id":"act-op","summary":"act","argv":["python3","-c","import json; print(json.dumps({'ok': True}))"],"arguments":[],"output":{"format":"json","assertions":[{"id":"act-ok","pointer":"/ok","type":"boolean","equals":true}]},"exercises":[{"id":"proof-entry","codefile":"tests/compiled_proof.rs","locator":"compiled_proof","observed_by":"act-ok"}]}]
             }),
         )
         .unwrap();
@@ -149,7 +157,7 @@ fn compiled_fixture() -> CompiledFixture {
             &surfaces.id,
             TargetKind::Edge,
             "journey_hash",
-            "journey-hash-v1",
+            &journey_hash,
             TruthClass::Asserted,
         )
         .unwrap();
@@ -212,7 +220,7 @@ fn compiled_fixture() -> CompiledFixture {
                 "type":"journey",
                 "command":"cargo test --test compiled_proof",
                 "profile":"proof",
-                "journey_hash":"journey-hash-v1",
+                "journey_hash": journey_hash,
                 "surface_hash":surface_hash,
                 "compiler_version": loom::journey::JOURNEY_COMPILER_VERSION
             }),
@@ -242,7 +250,7 @@ fn compiled_fixture() -> CompiledFixture {
             TruthClass::Asserted,
         )
         .unwrap();
-    // Compiler-v4 Exercises topology: one public surface edge and one
+    // Compiler-owned Exercises topology: one public surface edge and one
     // downstream exercise edge with exact provenance facets.
     let surface_exercises = store
         .add_edge(
@@ -303,38 +311,26 @@ fn compiled_fixture() -> CompiledFixture {
         )
         .unwrap();
 
-    // Settle through the real compiler-owned settlement path: it mints the
-    // Journey run evidence (including the structured observed assertion) and
-    // regrades — exactly what `loom journey run` does.
-    let report = loom::journey_runtime::RuntimeReport {
-        journey_id: "flow".into(),
-        profile: "proof".into(),
-        journey_hash: "journey-hash-v1".into(),
-        surface_hash: surface_hash.clone(),
-        status: loom::journey_runtime::RuntimeStatus::Passed,
-        assertions_passed: 1,
-        assertions_failed: 0,
-        detail: None,
-        setup: Vec::new(),
-        file_transitions: Vec::new(),
-        steps: Vec::new(),
-        captures: std::collections::BTreeMap::new(),
-        passed_assertions: vec![loom::journey_runtime::PassedAssertion {
-            operation_id: "act-op".into(),
-            assertion_id: "act-ok".into(),
-        }],
-    };
-    loom::journey::settle_compiled_validation(
-        &store,
-        &validation.id,
-        &report,
-        &[
-            "src/behavior.rs".into(),
-            "src/flow_cli.rs".into(),
-            "tests/compiled_proof.rs".into(),
-        ],
-    )
-    .unwrap();
+    // Settle through the real compiler-owned execution path: compile the
+    // accepted surface, run it, and mint structured assertion evidence.
+    let operations: Vec<loom::journey::CliOperation> =
+        serde_json::from_value(surface.body["operations"].clone()).unwrap();
+    let bindings = [loom::journey::OperationBinding {
+        step_id: "act".into(),
+        operation_id: "act-op".into(),
+    }];
+    let proof =
+        loom::journey_runtime::compile(&spec, &surface_hash, "proof", operations, &bindings)
+            .unwrap();
+    let observed =
+        loom::journey_runtime::execute_observed(tmp.path(), &spec, &proof, &Default::default());
+    assert_eq!(
+        observed.report().status,
+        loom::journey_runtime::RuntimeStatus::Passed,
+        "{:#?}",
+        observed.report()
+    );
+    loom::journey::settle_compiled_validation(&store, &validation.id, &observed).unwrap();
     // The closure edges carry inspected verdicts, exactly as sync leaves them
     // on a live compiled Journey. `stale_edge` only re-opens inspected edges,
     // so the drift tests below can assert the whole closure invalidates.
@@ -386,7 +382,7 @@ fn only_the_hash_bound_compiler_closure_earns_journey_s3() {
     );
 
     // Removing the compiler-owned provenance facet must demote to S2 — a
-    // bare Exercises edge cannot earn reach for a compiler-v4 Journey proof.
+    // bare Exercises edge cannot earn reach for a compiler-v5 Journey proof.
     fixture
         .store
         .clear_facet(

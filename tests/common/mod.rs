@@ -428,15 +428,12 @@ fn s3_journey_proof_with_ratification(
         }],
     )
     .unwrap();
-    let report = loom::journey_runtime::execute(root, &spec, &proof, &BTreeMap::new());
-    assert_eq!(report.status, loom::journey_runtime::RuntimeStatus::Passed);
-    loom::journey::settle_compiled_validation(
-        store,
-        &validation.id,
-        &report,
-        &[behavior_path.clone(), cli_path.clone()],
-    )
-    .unwrap();
+    let observed = loom::journey_runtime::execute_observed(root, &spec, &proof, &BTreeMap::new());
+    assert_eq!(
+        observed.report().status,
+        loom::journey_runtime::RuntimeStatus::Passed
+    );
+    loom::journey::settle_compiled_validation(store, &validation.id, &observed).unwrap();
     for (edge, criterion, evidence) in [
         (
             &derives,

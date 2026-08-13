@@ -203,15 +203,10 @@ pub fn read_export(path: &Path) -> Result<Export> {
 pub fn quarantine_imported_execution(snap: &mut Snapshot) -> Result<usize> {
     let mut quarantined = 0;
     let mut quarantined_surfaces = std::collections::BTreeSet::new();
-    // Journey assertion provenance is machine evidence minted only by a LOCAL
-    // compiled-Journey settlement. An imported run's assertion set is
-    // untrusted by construction — strip it, and it is re-earned only when the
-    // operator runs the Journey locally.
-    for row in snap.evidence.iter_mut() {
-        if let crate::evidence::Evidence::Run(run) = &mut row.payload {
-            run.observed_assertions.clear();
-        }
-    }
+    // Journey assertion names may remain visible for audit. They are not
+    // authority: Deserialize leaves assertion_trust Untrusted, restore
+    // downgrades Command/Journey runs to Claim, and S3 requires a locally
+    // minted settlement after a local rerun.
     for node in &mut snap.nodes {
         if node.node_type == NodeType::InterfaceSurface
             && node
@@ -420,7 +415,9 @@ mod tests {
     }
 
     #[test]
-    fn import_strips_journey_assertion_provenance_from_run_evidence() {
+    fn import_keeps_journey_assertion_names_without_granting_authority() {
+        // Names stay visible; authority does not. Restore still downgrades the
+        // Command/Journey run to a Claim, so S3 cannot be imported.
         let mut snapshot = Snapshot {
             facts: Vec::new(),
             evidence: vec![crate::evidence::EvidenceRow {
@@ -441,6 +438,7 @@ mod tests {
                         group: "act-op".into(),
                         assertion: "act-ok".into(),
                     }],
+                    assertion_trust: crate::evidence::AssertionTrust::Untrusted,
                     duration_ms: 0,
                     ran_at: String::new(),
                     loom_version: String::new(),
@@ -464,9 +462,14 @@ mod tests {
         assert_eq!(quarantine_imported_execution(&mut snapshot).unwrap(), 0);
         match &snapshot.evidence[0].payload {
             crate::evidence::Evidence::Run(run) => {
+                assert_eq!(
+                    run.observed_assertions().len(),
+                    1,
+                    "imported assertion names remain visible for audit"
+                );
                 assert!(
-                    run.observed_assertions().is_empty(),
-                    "imported assertion provenance must be stripped"
+                    !run.has_trusted_journey_assertions(),
+                    "imported assertion names must not be locally minted authority"
                 );
             }
             other => panic!("expected Run evidence, got {other:?}"),
