@@ -314,7 +314,7 @@ pub enum Command {
         #[command(subcommand)]
         cmd: Option<DriveCmd>,
     },
-    /// Install or remove local git hooks that keep the structural plane fresh.
+    /// Install or remove local git hooks for structural sync and opt-in local CI.
     Hook {
         #[command(subcommand)]
         cmd: HookCmd,

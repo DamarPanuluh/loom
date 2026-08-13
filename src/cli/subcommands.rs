@@ -1223,8 +1223,12 @@ pub enum DriveCmd {
 
 #[derive(Subcommand, Debug)]
 pub enum HookCmd {
-    /// Install idempotent post-commit and post-merge sync hooks.
-    Install,
+    /// Install idempotent structural sync hooks and optional local CI.
+    Install {
+        /// Install a blocking pre-push hook that executes this repository-relative script.
+        #[arg(long, value_name = "PATH")]
+        pre_push: Option<PathBuf>,
+    },
     /// Remove only hooks previously installed by Loom.
     Remove,
 }

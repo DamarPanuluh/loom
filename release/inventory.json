@@ -391,6 +391,10 @@
       "mode": "executable"
     },
     {
+      "path": "scripts/local-ci.sh",
+      "mode": "executable"
+    },
+    {
       "path": "scripts/release.sh",
       "mode": "executable"
     },
@@ -1068,6 +1072,10 @@
     },
     {
       "path": "tests/ring58_surface_manifest_validate.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring58_trust_surfaces.rs",
       "mode": "regular"
     },
     {

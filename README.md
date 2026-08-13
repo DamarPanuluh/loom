@@ -399,6 +399,22 @@ leaves the commit local.
 
 If you wire this into a user-created pre-commit hook, keep the hook defensive: prefer `loom export --check`, and feature-detect any optional command before invoking it (older loom binaries may not have newer surfaces such as `loom wiki` or `loom graph`).
 
+For an explicit blocking local CI gate before each push, point Loom at a
+repository-owned executable script:
+
+```bash
+loom hook install --pre-push scripts/local-ci.sh
+```
+
+The default `loom hook install` remains nonblocking and installs the
+post-commit/post-merge structural sync hooks. `--pre-push` instead installs
+only the opt-in local CI hook, so existing hooks remain untouched. Loom
+confines the gate to an executable file inside the repository, refuses to
+clobber a foreign pre-push hook, and blocks the push when the script fails. In
+this repository, `scripts/local-ci.sh` runs the same dogfood gate used by the
+manual GitHub Actions fallback; automatic push and pull-request Actions are
+disabled.
+
 ## Documentation map
 
 Start with:

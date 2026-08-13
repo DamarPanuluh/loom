@@ -1,8 +1,11 @@
-name: CI
+name: Manual CI fallback
 
 on:
-  push:
-  pull_request:
+  # Local CI is installed with:
+  # loom hook install --pre-push scripts/local-ci.sh
+  # Keep this only as an explicit fallback; it never consumes hosted minutes
+  # for pushes or pull requests.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,4 +20,4 @@ jobs:
           rustup toolchain install stable --profile minimal --no-self-update
           rustup default stable
       - name: Verify code and the living intent graph
-        run: scripts/dogfood.sh --check
+        run: scripts/local-ci.sh

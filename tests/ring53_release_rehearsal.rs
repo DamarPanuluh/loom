@@ -21,9 +21,9 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "08d9e7e70e9c0ec6";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 264;
-const RELEASE_INVENTORY_FILE_COUNT: usize = 264;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "646e2756532efcc2";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 266;
+const RELEASE_INVENTORY_FILE_COUNT: usize = 266;
 const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
 
 #[test]
