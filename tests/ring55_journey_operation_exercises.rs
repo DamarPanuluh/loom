@@ -1468,10 +1468,18 @@ fn surface_guidance_template_is_internally_consistent_and_validates() {
     }))
     .unwrap();
     let hash = spec.semantic_hash().unwrap();
-    let mut template = loom::journey::surface_contract_template(&spec.id, &hash);
+    let mut template = loom::journey::surface_contract_template(&spec).unwrap();
     assert!(
         template.get("setup").is_none(),
         "minimal template must not emit a setup block"
+    );
+    assert_eq!(
+        template["surface"]["operations"][0]["id"],
+        "authored-step-id-operation"
+    );
+    assert_eq!(
+        template["bindings"][0],
+        json!({"step_id":"authored-step-id","operation_id":"authored-step-id-operation"})
     );
     let surface = &template["surface"];
     let observed_by = surface["operations"][0]["exercises"][0]["observed_by"]
@@ -1502,10 +1510,7 @@ fn surface_guidance_template_is_internally_consistent_and_validates() {
             .add_node(NodeType::CodeFile, path, "", "", json!({}))
             .unwrap();
     }
-    template["surface"]["codefile"] = json!("src/cli.rs");
-    template["surface"]["locator"] = json!("run_publish");
-    template["surface"]["operations"][0]["exercises"][0]["codefile"] = json!("src/handler.rs");
-    template["surface"]["operations"][0]["exercises"][0]["locator"] = json!("post_blueprint");
+    replace_surface_template_placeholders(&mut template);
     let manifest: SurfaceManifest = serde_json::from_value(template).expect(
         "exact emitted template must decode as a SurfaceManifest after placeholder replacement",
     );
@@ -1515,6 +1520,107 @@ fn surface_guidance_template_is_internally_consistent_and_validates() {
     manifest
         .validate_setup_for_store(&store)
         .expect("exact emitted template must pass store-backed surface validation");
+}
+
+#[test]
+fn surface_guidance_template_covers_every_authored_step() {
+    let spec: JourneySpec = serde_json::from_value(json!({
+        "schema": JOURNEY_SCHEMA,
+        "id": "demo.flow",
+        "name": "Demo",
+        "actor": "operator",
+        "goal": "Exercise the multi-step template",
+        "inputs": {},
+        "preconditions": [],
+        "steps": [
+            {
+                "id": "first",
+                "name": "First",
+                "action": "does the first thing",
+                "expects": [],
+                "produces": {}
+            },
+            {
+                "id": "second",
+                "name": "Second",
+                "action": "does the second thing",
+                "expects": [],
+                "produces": {}
+            }
+        ],
+        "profiles": {"proof": {"inputs": {}, "workspace": {}}}
+    }))
+    .unwrap();
+    let hash = spec.semantic_hash().unwrap();
+    let mut template = loom::journey::surface_contract_template(&spec).unwrap();
+    assert!(
+        template.get("setup").is_none(),
+        "minimal template must not emit a setup block"
+    );
+    assert_eq!(
+        template["surface"]["operations"]
+            .as_array()
+            .map(Vec::len)
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        template["surface"]["operations"][0]["id"],
+        "first-operation"
+    );
+    assert_eq!(
+        template["surface"]["operations"][1]["id"],
+        "second-operation"
+    );
+    assert_eq!(
+        template["bindings"],
+        json!([
+            {"step_id":"first","operation_id":"first-operation"},
+            {"step_id":"second","operation_id":"second-operation"}
+        ])
+    );
+
+    let tmp = Tmp::new();
+    std::fs::create_dir_all(tmp.path().join("src")).unwrap();
+    std::fs::write(tmp.path().join("src/cli.rs"), "pub fn run_publish() {}\n").unwrap();
+    std::fs::write(
+        tmp.path().join("src/handler.rs"),
+        "pub fn post_blueprint() {}\n",
+    )
+    .unwrap();
+    let store = Store::init(tmp.path(), Some("template-multi-step"), false).unwrap();
+    for path in ["src/cli.rs", "src/handler.rs"] {
+        store
+            .add_node(NodeType::CodeFile, path, "", "", json!({}))
+            .unwrap();
+    }
+    replace_surface_template_placeholders(&mut template);
+    let manifest: SurfaceManifest = serde_json::from_value(template).expect(
+        "multi-step template must decode as a SurfaceManifest after placeholder replacement",
+    );
+    manifest
+        .validate_for(&spec, &hash)
+        .expect("multi-step template must pass full SurfaceManifest validation after only CodeFile replacements");
+    manifest
+        .validate_setup_for_store(&store)
+        .expect("multi-step template must pass store-backed surface validation");
+}
+
+fn replace_surface_template_placeholders(template: &mut serde_json::Value) {
+    template["surface"]["codefile"] = json!("src/cli.rs");
+    template["surface"]["locator"] = json!("run_publish");
+    let Some(operations) = template["surface"]["operations"].as_array_mut() else {
+        return;
+    };
+    for operation in operations {
+        let Some(exercises) = operation["exercises"].as_array_mut() else {
+            continue;
+        };
+        for exercise in exercises {
+            exercise["codefile"] = json!("src/handler.rs");
+            exercise["locator"] = json!("post_blueprint");
+        }
+    }
 }
 
 #[test]
@@ -2215,6 +2321,61 @@ fn settlement_fails_closed_on_mismatched_validation_or_hashes() {
     )
     .unwrap_err();
     assert!(err.to_string().contains("does not match"), "{err:#}");
+}
+
+#[test]
+fn caller_authored_compiled_proof_cannot_settle_trusted_assertions() {
+    // Supported public route: deserialize a compiled proof, keep identity
+    // hashes, change argv, execute_observed, then settle. Settlement must
+    // refuse because the proof is not the canonical accepted-surface compile.
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    let (spec, proof) = compiled_surface_proof(&fixture);
+    let mut tampered: loom::journey_runtime::CompiledJourneyProof =
+        serde_json::from_value(serde_json::to_value(&proof).unwrap()).unwrap();
+    tampered.steps[0].argv = vec![
+        "python3".into(),
+        "-c".into(),
+        "import json; print(json.dumps({'ok': True, 'forged': True}))".into(),
+    ];
+    assert_ne!(
+        loom::journey_runtime::canonical_bytes(&proof).unwrap(),
+        loom::journey_runtime::canonical_bytes(&tampered).unwrap(),
+        "tampered argv must change canonical proof bytes"
+    );
+    assert_eq!(tampered.journey_id, proof.journey_id);
+    assert_eq!(tampered.journey_hash, proof.journey_hash);
+    assert_eq!(tampered.surface_hash, proof.surface_hash);
+    assert_eq!(tampered.compiler_version, proof.compiler_version);
+    assert_eq!(tampered.profile, proof.profile);
+
+    let observed = loom::journey_runtime::execute_observed(
+        fixture.tmp.path(),
+        &spec,
+        &tampered,
+        &BTreeMap::new(),
+    );
+    assert_eq!(
+        observed.report().status,
+        RuntimeStatus::Passed,
+        "tampered proof may still execute; settlement is the trust gate: {:#?}",
+        observed.report()
+    );
+    let err = loom::journey::settle_compiled_validation(
+        &fixture.store,
+        &fixture.validation_id,
+        &observed,
+    )
+    .unwrap_err();
+    assert!(
+        err.to_string().contains("canonical accepted-surface proof"),
+        "{err:#}"
+    );
+    loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();
+    assert_ne!(
+        witness(&fixture.store, &fixture.validation_id).grade,
+        "S3",
+        "caller-authored compiled proof must not earn S3"
+    );
 }
 
 #[test]

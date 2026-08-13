@@ -1,6 +1,6 @@
 [package]
 name = "loom"
-version = "0.31.1"
+version = "0.31.2"
 edition = "2021"
 description = "A falsifiable graph of what a codebase should do, where it lives, and how it is proven."
 

@@ -1069,17 +1069,50 @@ fn relationship_path_exists(
 
 /// The reusable surface-contract template emitted by `loom journey surface`.
 ///
-/// Every repository-specific path and locator inside is a deliberate
-/// placeholder: callers must substitute registered CodeFile keys and live
-/// locators before acceptance. Operation, assertion, step, and surface ids in
-/// the template are internally consistent example identifiers — they do not
-/// need to change unless the caller wants different stable ids. The template
-/// is a complete, valid manifest once those repository-specific placeholders
-/// are replaced; it has no setup block.
-pub fn surface_contract_template(journey_id: &str, journey_hash: &str) -> serde_json::Value {
-    serde_json::json!({
+/// Operations and bindings are generated from the authored Journey steps, so
+/// the document is a complete `SurfaceManifest` for that Journey once
+/// repository-specific CodeFile keys and locators are replaced. It has no
+/// setup block. Operation, assertion, exercise, and surface ids are derived
+/// from the authored step ids and do not need to change unless the caller
+/// wants different stable ids.
+pub fn surface_contract_template(spec: &JourneySpec) -> Result<serde_json::Value> {
+    spec.validate()?;
+    let journey_hash = spec.semantic_hash()?;
+    let mut operations = Vec::new();
+    let mut bindings = Vec::new();
+    for step in &spec.steps {
+        let operation_id = format!("{}-operation", step.id);
+        let assertion_id = format!("{}-ok", step.id);
+        let exercise_id = format!("{}-downstream-entry", step.id);
+        operations.push(json!({
+            "id": operation_id,
+            "summary": format!("CLI operation for step '{}'", step.name),
+            "argv": ["binary", "subcommand"],
+            "arguments": [],
+            "output": {
+                "format": "json",
+                "assertions": [{
+                    "id": assertion_id,
+                    "pointer": "/ok",
+                    "type": "boolean",
+                    "equals": true
+                }]
+            },
+            "exercises": [{
+                "id": exercise_id,
+                "codefile": "path/to/handler.rs",
+                "locator": "handler_symbol",
+                "observed_by": assertion_id
+            }]
+        }));
+        bindings.push(json!({
+            "step_id": step.id,
+            "operation_id": operation_id
+        }));
+    }
+    Ok(json!({
         "schema": SURFACE_SCHEMA,
-        "journey_id": journey_id,
+        "journey_id": spec.id,
         "journey_hash": journey_hash,
         "surface": {
             "id": "stable-cli-surface-id",
@@ -1087,30 +1120,10 @@ pub fn surface_contract_template(journey_id: &str, journey_hash: &str) -> serde_
             "identity": "binary subcommand",
             "codefile": "required existing CodeFile key",
             "locator": "required live CLI entrypoint symbol or strict anchor:<id>",
-            "operations": [{
-                "id": "stable-operation-id",
-                "summary": "One reusable CLI operation",
-                "argv": ["binary", "subcommand"],
-                "arguments": [],
-                "output": {
-                    "format": "json",
-                    "assertions": [{
-                        "id": "assertion-id-in-this-operation",
-                        "pointer": "/ok",
-                        "type": "boolean",
-                        "equals": true
-                    }]
-                },
-                "exercises": [{
-                    "id": "optional-downstream-entry",
-                    "codefile": "path/to/handler.rs",
-                    "locator": "handler_symbol",
-                    "observed_by": "assertion-id-in-this-operation"
-                }]
-            }]
+            "operations": operations
         },
-        "bindings": [{"step_id":"authored-step-id", "operation_id":"stable-operation-id"}]
-    })
+        "bindings": bindings
+    }))
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -2507,12 +2520,122 @@ impl SurfaceManifest {
     }
 }
 
+/// Compile the canonical proof of `journey`'s current accepted surface.
+/// Settlement uses this to refuse observations of caller-authored proofs that
+/// merely copied identity hashes.
+fn compile_accepted_proof(
+    store: &crate::store::Store,
+    journey: &crate::model::Node,
+    profile: &str,
+) -> Result<crate::journey_runtime::CompiledJourneyProof> {
+    use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};
+
+    let artifact = journey
+        .body
+        .get("artifact")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow!("Journey '{}' has no artifact", journey.name))?;
+    let spec = parse(&store.root().join(artifact))?;
+    if spec.id != journey.name {
+        bail!(
+            "Journey artifact '{}' now declares stable id '{}', not '{}'",
+            artifact,
+            spec.id,
+            journey.name
+        );
+    }
+    let semantic_hash = spec.semantic_hash()?;
+    let registered_hash = journey
+        .body
+        .get("semantic_hash")
+        .and_then(Value::as_str)
+        .ok_or_else(|| anyhow!("Journey '{}' has no semantic_hash", journey.name))?;
+    if registered_hash != semantic_hash {
+        bail!(
+            "Journey '{}' registration no longer matches its authored artifact",
+            journey.name
+        );
+    }
+    if !spec.profiles.contains_key(profile) {
+        bail!("Journey '{}' has no profile '{profile}'", journey.name);
+    }
+
+    let mut current_surfaces = Vec::new();
+    for edge in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {
+        if !matches!(
+            edge.status,
+            InspectionStatus::Uninspected | InspectionStatus::Passing
+        ) || store
+            .get_facet(&edge.id, TargetKind::Edge, "journey_hash")?
+            .as_deref()
+            != Some(semantic_hash.as_str())
+        {
+            continue;
+        }
+        let surface = store
+            .get_node(&edge.to_id)?
+            .ok_or_else(|| anyhow!("accepted surface target '{}' is missing", edge.to_id))?;
+        let bindings = match store.get_facet(&edge.id, TargetKind::Edge, "operation_bindings")? {
+            Some(raw) => serde_json::from_str::<Vec<SurfaceBinding>>(&raw)
+                .with_context(|| format!("edge '{}' has invalid operation_bindings", edge.id))?,
+            None => bail!(
+                "Journey '{}' surface has no operation bindings",
+                journey.name
+            ),
+        };
+        let setup = store
+            .get_facet(&edge.id, TargetKind::Edge, "setup")?
+            .map(|raw| {
+                serde_json::from_str::<SurfaceSetup>(&raw)
+                    .with_context(|| format!("edge '{}' has invalid setup", edge.id))
+            })
+            .transpose()?;
+        current_surfaces.push((surface, setup, bindings));
+    }
+    let [(surface, setup, bindings)] = current_surfaces.as_slice() else {
+        bail!(
+            "Journey '{}' requires exactly one current hash-bound CLI surface (found {})",
+            journey.name,
+            current_surfaces.len()
+        );
+    };
+    if surface.status == "quarantined"
+        || surface.node_type != NodeType::InterfaceSurface
+        || surface.body.get("schema").and_then(Value::as_str) != Some(INTERFACE_SURFACE_SCHEMA)
+        || surface.body.get("kind").and_then(Value::as_str) != Some("cli")
+    {
+        bail!(
+            "Journey '{}' accepted surface is not a current reusable CLI",
+            journey.name
+        );
+    }
+    let operations: Vec<CliOperation> = serde_json::from_value(
+        surface
+            .body
+            .get("operations")
+            .cloned()
+            .ok_or_else(|| anyhow!("InterfaceSurface '{}' has no operations", surface.name))?,
+    )
+    .with_context(|| format!("decoding InterfaceSurface '{}' operations", surface.name))?;
+    let surface_hash = surface_projection_hash(store, journey)?
+        .ok_or_else(|| anyhow!("Journey '{}' has no surface projection hash", journey.name))?;
+    crate::journey_runtime::compile_surface(
+        &spec,
+        &surface_hash,
+        profile,
+        operations,
+        setup.as_ref(),
+        bindings,
+    )
+}
+
 /// Settle a compiled Journey Validation from a sealed runtime observation.
 ///
-/// The observation can only be minted by the compiler-owned Journey executor.
-/// Covered files are recomputed from the current accepted-surface projection;
-/// caller-selected coverage is not an input. A mismatched validation, proof,
-/// compiler version, operation, or assertion fails closed.
+/// The observation can only be minted by the compiler-owned Journey executor,
+/// and only for the canonical proof compiled from the current accepted surface.
+/// Covered files are recomputed from that projection; caller-selected coverage
+/// and caller-authored compiled proofs are not inputs. A mismatched
+/// validation, proof, compiler version, operation, or assertion fails closed.
 pub fn settle_compiled_validation(
     store: &crate::store::Store,
     validation_id: &str,
@@ -2586,6 +2709,16 @@ pub fn settle_compiled_validation(
     {
         bail!(
             "compiled Journey observation does not match the Journey proved by '{}'",
+            validation.name
+        );
+    }
+
+    let canonical = compile_accepted_proof(store, &journey, &proof.profile)?;
+    if crate::journey_runtime::canonical_bytes(proof)?
+        != crate::journey_runtime::canonical_bytes(&canonical)?
+    {
+        bail!(
+            "compiled Journey observation is not the canonical accepted-surface proof for '{}'",
             validation.name
         );
     }

@@ -8,6 +8,11 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.31.2] - 2026-08-13
+- close remaining Journey S3 trust-boundary gap for caller-authored compiled proofs; schema v12 graphs require no rebuild
+  - Settlement recompiles the current accepted surface and requires exact canonical proof-byte equality before trusting a sealed observation. `execute_observed` may still run a deserialized proof for diagnosis; that observation cannot settle or earn S3.
+  - The generated `journey surface` template now emits operations and bindings from the authored Journey steps. Callers still replace only repository-specific CodeFile keys and locators.
+
 ## [0.31.1] - 2026-08-13
 - harden compiler-owned Journey assertion evidence so only a local compiler-owned run can earn S3; schema v12 graphs require no rebuild
   - Trusted assertion provenance is minted only from a sealed Journey observation after the compiler-owned runtime actually executes. Public Deserialize, `Assertion::observed`, caller-built `RuntimeReport`s, generic command validation, and imported graphs cannot create S3-eligible Journey assertion evidence.

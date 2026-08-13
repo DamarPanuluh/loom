@@ -1514,7 +1514,7 @@ pub(crate) fn journey_surface(
         "spec": spec.canonical_value()?,
         "accepted_derivations": derivations,
         "existing_surfaces": surfaces,
-        "manifest_contract": crate::journey::surface_contract_template(&spec.id, &semantic_hash),
+        "manifest_contract": crate::journey::surface_contract_template(&spec)?,
         "human_decision_binding_contract": {
             "step_id": "authored-human-step-id",
             "human_decision": {
@@ -1529,7 +1529,7 @@ pub(crate) fn journey_surface(
             "Operations are reusable structured argv, never shell strings.",
             "The surface exposes exactly one registered CodeFile at a live symbol locator or globally unique attached anchor:<id>.",
             "Optional operation.exercises declare downstream code entries reached through that public operation; they are not additional surface owners and require observed_by to name an assertion in the same operation.",
-            "Replace only repository-specific CodeFile keys and locators in the template before acceptance. Operation, assertion, step, and surface ids are internally consistent example identifiers.",
+            "Replace only repository-specific CodeFile keys and locators in the template before acceptance. Operations and bindings are generated from the authored Journey steps.",
             "Source anchors are navigation-only and never prove behavior or create graph relationships.",
             "Every operation emits JSON; do not include HTTP endpoints.",
             "Carry temporary setup from the Journey profile as declarative data only.",

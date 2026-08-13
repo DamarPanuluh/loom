@@ -1,6 +1,6 @@
 # Journey authoring and surface lint
 
-Status: canonical for the Loom 0.31.1 Journey authoring/lint contract. This
+Status: canonical for the Loom 0.31.2 Journey authoring/lint contract. This
 document is intentionally limited to authored Journey surfaces and lint.
 Broader release and resume guidance belongs to Phase 5.
 
@@ -21,14 +21,18 @@ downstream handlers on the bound operation as optional `exercises` entries
 owners; `journey compile` turns them into compiler-owned proof topology, and S3
 still requires the referenced assertion to pass plus call-graph reach to a
 realizing symbol. Assertion passage is machine evidence minted only by a local
-`journey run` of compiler version 5; imported or deserialized run records cannot
-earn that standing. Compiler-v4 proofs must be recompiled and rerun.
+`journey run` of compiler version 5 whose compiled proof is byte-identical to
+the current accepted surface; imported, deserialized, or caller-authored
+compiled proofs cannot earn that standing. Compiler-v4 proofs must be
+recompiled and rerun.
 
 ## Authoring workflow
 
 1. Author and register the `loom.journey/v1` artifact.
 2. Use `loom journey surface <journey> --json` to inspect the current surface
-   contract, then author the adjacent surface manifest at
+   contract. The emitted `manifest_contract` already contains one operation and
+   binding per authored step; replace only repository-specific CodeFile keys
+   and locators, then author the adjacent surface manifest at
    `<journey-directory>/surfaces/<journey-id>.surface.json`.
 3. Lint one manifest while iterating:
 
