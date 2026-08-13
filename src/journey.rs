@@ -3249,7 +3249,10 @@ fn verify_executed_boundary(
         .collect();
     got.sort_unstable();
     if declared != got {
-        bail!("executed operation boundary does not match the compiled proof; refusing settlement");
+        bail!(
+            "executed operation boundary does not match the compiled proof \
+             (declared {declared:?}, recorded {got:?}); refusing settlement"
+        );
     }
 
     let mut by_operation: BTreeMap<&str, &ExecutableBoundary> = BTreeMap::new();

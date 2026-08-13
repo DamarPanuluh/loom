@@ -1473,6 +1473,24 @@ fn execute_fresh(
         Some(files) => Some(capture_execution_anchors(root, files)?),
         None => None,
     };
+    match execute_fresh_with_anchors(root, spec, proof, overrides, &mut anchors) {
+        Ok(outcome) => Ok(outcome),
+        Err(error) => Ok(complete_outcome(
+            proof,
+            blocked_runtime_report(proof, format!("{error:#}")),
+            Vec::new(),
+            anchors,
+        )),
+    }
+}
+
+fn execute_fresh_with_anchors(
+    root: &Path,
+    spec: &JourneySpec,
+    proof: &CompiledJourneyProof,
+    overrides: &BTreeMap<String, Value>,
+    anchors: &mut Option<ExecutionAnchors>,
+) -> Result<ExecutionOutcome> {
     if let Some(setup) = &proof.setup {
         // Validate the live trust boundary before clone_local_snapshot can
         // dereference an alias into an apparently regular cloned file.
@@ -1656,7 +1674,7 @@ fn execute_fresh(
                             },
                         ),
                         Vec::new(),
-                        anchors,
+                        std::mem::take(anchors),
                     ))
                 }
             };
@@ -1697,7 +1715,7 @@ fn execute_fresh(
                         },
                     ),
                     Vec::new(),
-                    anchors,
+                    std::mem::take(anchors),
                 ));
             }
         }
@@ -1720,7 +1738,7 @@ fn execute_fresh(
         assertions_passed,
         passed_assertions: Vec::new(),
         human_decisions: Vec::new(),
-        anchors,
+        anchors: std::mem::take(anchors),
     };
     run_steps(root, spec, proof, temp, isolated, 0, active)
 }
@@ -2778,10 +2796,39 @@ fn run_json_operation(
             );
         }
     }
+    if observed.timed_out {
+        bail!("{label} exceeded the execution timeout");
+    }
+    let exit_code = i64::from(observed.status.code().unwrap_or(-1));
+    if !observed.status.success() {
+        #[cfg(unix)]
+        let signal = {
+            use std::os::unix::process::ExitStatusExt;
+            observed.status.signal()
+        };
+        #[cfg(not(unix))]
+        let signal = None;
+        bail!(
+            "{}",
+            failed_operation_detail(
+                label,
+                exit_code,
+                signal,
+                &observed.stdout,
+                &observed.stderr,
+                secrets
+            )
+        );
+    }
+    let stdout = std::str::from_utf8(&observed.stdout)
+        .with_context(|| format!("{label} stdout is not UTF-8 JSON"))?;
+    let output = serde_json::from_str(stdout)
+        .with_context(|| format!("{label} stdout is not one JSON value"))?;
     if let Some(record) = boundary {
-        // Pin what actually executed: the declared argv0 token, the resolved
-        // executable, and its content fingerprint read BEFORE the spawn.
-        // Settlement re-derives and compares.
+        // Pin only operations that produced an observed result. Recording
+        // before the exit/JSON checks left a dangling boundary when the child
+        // failed, so settlement compared compiled steps against a longer
+        // recorded list and hid the real error.
         record.push(match &resolved {
             Some(resolved) => ExecutableBoundary {
                 operation_id: operation_id.to_string(),
@@ -2795,32 +2842,13 @@ fn run_json_operation(
             }
         });
     }
-    if observed.timed_out {
-        bail!("{label} exceeded the execution timeout");
-    }
-    let exit_code = i64::from(observed.status.code().unwrap_or(-1));
-    if !observed.status.success() {
-        bail!(
-            "{}",
-            failed_operation_detail(
-                label,
-                exit_code,
-                &observed.stdout,
-                &observed.stderr,
-                secrets
-            )
-        );
-    }
-    let stdout = std::str::from_utf8(&observed.stdout)
-        .with_context(|| format!("{label} stdout is not UTF-8 JSON"))?;
-    let output = serde_json::from_str(stdout)
-        .with_context(|| format!("{label} stdout is not one JSON value"))?;
     Ok((display_argv, exit_code, output))
 }
 
 fn failed_operation_detail(
     label: &str,
     exit_code: i64,
+    signal: Option<i32>,
     stdout: &[u8],
     stderr: &[u8],
     secrets: &[String],
@@ -2834,8 +2862,12 @@ fn failed_operation_detail(
         Err(_) => redact_text(&String::from_utf8_lossy(stdout), secrets),
     };
     let stderr = redact_text(&String::from_utf8_lossy(stderr), secrets);
+    let status = match signal {
+        Some(signal) => format!("{exit_code}, signal {signal}"),
+        None => exit_code.to_string(),
+    };
     format!(
-        "{label} exited {exit_code}\nstdout:\n{}\nstderr:\n{}",
+        "{label} exited {status}\nstdout:\n{}\nstderr:\n{}",
         bounded_runtime_diagnostic(&stdout),
         bounded_runtime_diagnostic(&stderr),
     )
