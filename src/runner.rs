@@ -120,6 +120,33 @@ pub fn record(
     stderr: &[u8],
     duration_ms: u64,
 ) -> RunRecord {
+    let mut run = record_with_covered(
+        producer,
+        command,
+        covered_hashes(root, covered),
+        assertions,
+        exit_code,
+        stdout,
+        stderr,
+    );
+    run.duration_ms = duration_ms;
+    run
+}
+
+/// Record a run whose covered hashes were captured at execution time by a
+/// caller that must not let them be resampled. Only the Store-owned guarded
+/// Journey settlement passes pre-captured hashes; everything else re-hashes
+/// through [`record`]. Duration stays 0: a compiler-owned Journey run does not
+/// observe one.
+pub(crate) fn record_with_covered(
+    producer: RunProducer,
+    command: &str,
+    covered: std::collections::BTreeMap<String, String>,
+    assertions: usize,
+    exit_code: i64,
+    stdout: &[u8],
+    stderr: &[u8],
+) -> RunRecord {
     RunRecord {
         producer,
         command: command.to_string(),
@@ -129,11 +156,12 @@ pub fn record(
         stderr_hash: crate::artifact::fingerprint(&String::from_utf8_lossy(stderr)),
         stdout_excerpt: excerpt(stdout),
         stderr_excerpt: excerpt(stderr),
-        covered: covered_hashes(root, covered),
+        covered,
         assertions,
         observed_assertions: Vec::new(),
         assertion_trust: crate::evidence::AssertionTrust::Untrusted,
-        duration_ms,
+        locally_minted: false,
+        duration_ms: 0,
         ran_at: crate::journal::now_iso(),
         loom_version: env!("CARGO_PKG_VERSION").to_string(),
     }

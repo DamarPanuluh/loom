@@ -426,7 +426,7 @@ pub fn expected_projection(store: &Store, journey: &Node) -> Result<ExpectedExer
 }
 
 /// The projection for a compiler-owned Journey validation, or `None` when the
-/// validation is not a current compiler-v5 Journey proof at all. Errors when
+/// validation is not a current compiler-v6 Journey proof at all. Errors when
 /// the accepted surface itself cannot yield a projection — callers fail closed
 /// on that too.
 pub fn expected_projection_for_validation(

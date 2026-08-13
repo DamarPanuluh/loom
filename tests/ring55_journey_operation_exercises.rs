@@ -535,21 +535,13 @@ fn compiled_surface_proof(
 /// regrade. Used where the test must observe grading itself before any
 /// sync/doctor pass can touch the graph.
 fn settle_compiled(fixture: &CrossProcessFixture) {
-    let (spec, proof) = compiled_surface_proof(fixture);
-    let observed = loom::journey_runtime::execute_observed(
-        fixture.tmp.path(),
-        &spec,
-        &proof,
+    let report = loom::journey::run_and_settle_compiled_validation(
+        &fixture.store,
+        &fixture.validation_id,
         &BTreeMap::new(),
-    );
-    assert_eq!(
-        observed.report().status,
-        RuntimeStatus::Passed,
-        "{:#?}",
-        observed.report()
-    );
-    loom::journey::settle_compiled_validation(&fixture.store, &fixture.validation_id, &observed)
-        .unwrap();
+    )
+    .unwrap();
+    assert_eq!(report.status, RuntimeStatus::Passed, "{report:#?}");
 }
 
 fn settle_with_assertions(fixture: &CrossProcessFixture) {
@@ -1447,8 +1439,9 @@ fn large_passed_assertion_report_keeps_structural_provenance_and_earns_s3() {
 
 #[test]
 fn surface_guidance_template_is_internally_consistent_and_validates() {
-    // Callers replace only repository-specific CodeFile keys and locators.
-    // The emitted document is otherwise a complete SurfaceManifest.
+    // Callers replace only repository-specific CodeFile keys and locators
+    // (and align the scaffold pointers with the real tool's stdout). The
+    // emitted document is otherwise a complete SurfaceManifest.
     let spec: JourneySpec = serde_json::from_value(json!({
         "schema": JOURNEY_SCHEMA,
         "id": "demo.flow",
@@ -1462,7 +1455,9 @@ fn surface_guidance_template_is_internally_consistent_and_validates() {
             "name": "Act",
             "action": "does the thing",
             "expects": [],
-            "produces": {}
+            "produces": {
+                "order-id": {"type": "string", "description": "Created order id"}
+            }
         }],
         "profiles": {"proof": {"inputs": {}, "workspace": {}}}
     }))
@@ -1482,19 +1477,31 @@ fn surface_guidance_template_is_internally_consistent_and_validates() {
         json!({"step_id":"authored-step-id","operation_id":"authored-step-id-operation"})
     );
     let surface = &template["surface"];
-    let observed_by = surface["operations"][0]["exercises"][0]["observed_by"]
-        .as_str()
-        .unwrap();
+    // Typed captures: one per authored `produces` entry, with the authored
+    // type and a scaffold pointer.
+    let captures = surface["operations"][0]["output"]["captures"]
+        .as_array()
+        .expect("template must emit typed captures for every produces entry");
+    assert_eq!(captures.len(), 1);
+    assert_eq!(captures[0]["id"], "order-id");
+    assert_eq!(captures[0]["type"], "string");
+    assert_eq!(captures[0]["pointer"], "/order-id");
+    // No fabricated exercises: exercises are downstream-process provenance
+    // the authored model cannot infer.
+    assert!(
+        surface["operations"][0].get("exercises").is_none()
+            || surface["operations"][0]["exercises"]
+                .as_array()
+                .is_some_and(|entries| entries.is_empty()),
+        "template must not fabricate operation exercises"
+    );
     let assertion_ids: Vec<&str> = surface["operations"][0]["output"]["assertions"]
         .as_array()
         .unwrap()
         .iter()
         .map(|a| a["id"].as_str().unwrap())
         .collect();
-    assert!(
-        assertion_ids.contains(&observed_by),
-        "template exercise observed_by '{observed_by}' must be a declared assertion id"
-    );
+    assert_eq!(assertion_ids, vec!["authored-step-id-ok"]);
 
     let tmp = Tmp::new();
     std::fs::create_dir_all(tmp.path().join("src")).unwrap();
@@ -1609,18 +1616,9 @@ fn surface_guidance_template_covers_every_authored_step() {
 fn replace_surface_template_placeholders(template: &mut serde_json::Value) {
     template["surface"]["codefile"] = json!("src/cli.rs");
     template["surface"]["locator"] = json!("run_publish");
-    let Some(operations) = template["surface"]["operations"].as_array_mut() else {
-        return;
-    };
-    for operation in operations {
-        let Some(exercises) = operation["exercises"].as_array_mut() else {
-            continue;
-        };
-        for exercise in exercises {
-            exercise["codefile"] = json!("src/handler.rs");
-            exercise["locator"] = json!("post_blueprint");
-        }
-    }
+    // The template deliberately emits no exercises: they are downstream
+    // process provenance the authored model cannot infer, so there are no
+    // exercise placeholders to replace.
 }
 
 #[test]
@@ -2284,11 +2282,27 @@ fn settlement_fails_closed_on_mismatched_validation_or_hashes() {
         &BTreeMap::new(),
     );
     assert_eq!(observed.report().status, RuntimeStatus::Passed);
+    // The public execution APIs mint ordinary untrusted reports; settlement
+    // refuses them for trusted assertion provenance — for any validation id.
     let err =
         loom::journey::settle_compiled_validation(&fixture.store, "missing-validation", &observed)
             .unwrap_err();
-    assert!(err.to_string().contains("missing"), "{err:#}");
+    assert!(
+        err.to_string().contains("Store-owned guarded runtime"),
+        "{err:#}"
+    );
+    let err = loom::journey::settle_compiled_validation(
+        &fixture.store,
+        &fixture.validation_id,
+        &observed,
+    )
+    .unwrap_err();
+    assert!(
+        err.to_string().contains("Store-owned guarded runtime"),
+        "{err:#}"
+    );
 
+    // The Store-owned entrypoint fails closed on a corrupted validation body.
     let mut body = fixture
         .store
         .get_node(&fixture.validation_id)
@@ -2300,10 +2314,10 @@ fn settlement_fails_closed_on_mismatched_validation_or_hashes() {
         .store
         .set_node_body(&fixture.validation_id, &body)
         .unwrap();
-    let err = loom::journey::settle_compiled_validation(
+    let err = loom::journey::run_and_settle_compiled_validation(
         &fixture.store,
         &fixture.validation_id,
-        &observed,
+        &BTreeMap::new(),
     )
     .unwrap_err();
     assert!(err.to_string().contains("does not match"), "{err:#}");
@@ -2314,20 +2328,21 @@ fn settlement_fails_closed_on_mismatched_validation_or_hashes() {
         .store
         .set_node_body(&fixture.validation_id, &body)
         .unwrap();
-    let err = loom::journey::settle_compiled_validation(
+    let err = loom::journey::run_and_settle_compiled_validation(
         &fixture.store,
         &fixture.validation_id,
-        &observed,
+        &BTreeMap::new(),
     )
     .unwrap_err();
-    assert!(err.to_string().contains("does not match"), "{err:#}");
+    assert!(err.to_string().contains("compiler version"), "{err:#}");
 }
 
 #[test]
 fn caller_authored_compiled_proof_cannot_settle_trusted_assertions() {
     // Supported public route: deserialize a compiled proof, keep identity
     // hashes, change argv, execute_observed, then settle. Settlement must
-    // refuse because the proof is not the canonical accepted-surface compile.
+    // refuse — the public execution APIs mint ordinary untrusted reports, so
+    // no caller-authored proof can ever mint trusted assertion provenance.
     let fixture = cross_process_fixture(vec![default_exercise()]);
     let (spec, proof) = compiled_surface_proof(&fixture);
     let mut tampered: loom::journey_runtime::CompiledJourneyProof =
@@ -2367,7 +2382,7 @@ fn caller_authored_compiled_proof_cannot_settle_trusted_assertions() {
     )
     .unwrap_err();
     assert!(
-        err.to_string().contains("canonical accepted-surface proof"),
+        err.to_string().contains("Store-owned guarded runtime"),
         "{err:#}"
     );
     loom::proofstrength::recompute(&fixture.store, fixture.tmp.path()).unwrap();

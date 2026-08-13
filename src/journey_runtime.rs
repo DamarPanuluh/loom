@@ -202,11 +202,74 @@ pub enum ExecutionOutcome {
         report: RuntimeReport,
         /// Sealed capability minted only by this runtime. External crates can
         /// read it from a completed execution and pass it to settlement, but
-        /// cannot construct one from a caller-authored report.
+        /// cannot construct one from a caller-authored report — and unless it
+        /// was minted through the Store-owned guarded entrypoint (never
+        /// through these public execution APIs), settlement refuses it.
         observation: Box<JourneyObservation>,
         human_decisions: Vec<Value>,
     },
     Pending(crate::journey_gate::PendingHuman),
+}
+
+/// Where an observation stands relative to the trusted-settlement boundary.
+///
+/// The public execution APIs ([`execute`], [`execute_observed`],
+/// [`execute_interactive`], [`resume_interactive`]) mint [`Untrusted`]
+/// observations: ordinary reports, presentable and diagnosable, that
+/// settlement refuses. Only the Store-owned guarded runtime entrypoint
+/// ([`crate::journey::run_and_settle_compiled_validation`] and its
+/// interactive/resume siblings) marks an observation [`Trusted`] — after
+/// re-deriving the canonical proof, projection, executable boundary, and
+/// execution-time covered hashes from the same store, under the same guard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum ObservationTrust {
+    #[default]
+    Untrusted,
+    Trusted,
+}
+
+/// One executed operation's executable boundary: what actually ran.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ExecutableBoundary {
+    pub operation_id: String,
+    /// argv[0] exactly as compiled into the proof (a literal path or a
+    /// runtime template). Settling binds this to the compiled operation.
+    pub declared: String,
+    /// argv[0] exactly as resolved for the spawn.
+    pub argv0: String,
+    /// Absolute canonical path of the resolved executable, when one exists;
+    /// otherwise the raw resolution.
+    pub resolved: String,
+    /// Content fingerprint of the resolved executable at execution time.
+    /// Empty when the file could not be read.
+    pub hash: String,
+}
+
+/// Execution-time anchors captured by the compiler-owned runtime: the covered
+/// hashes in force immediately before execution, the canonical execution root,
+/// and the resolved executable boundary for every spawned operation. Persisted
+/// with the observation and (for interactive runs) inside the continuation
+/// state; settlement never resamples evidence from these.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ExecutionAnchors {
+    pub covered_hashes: BTreeMap<String, String>,
+    pub execution_root: PathBuf,
+    pub executed_boundary: Vec<ExecutableBoundary>,
+}
+
+impl ExecutionAnchors {
+    /// The pre-execution covered hashes still match the files on disk under
+    /// `root`. Used for the immediate post-execution recheck and the
+    /// resume-time recheck, both under the harness guard.
+    pub(crate) fn covered_still_match(&self, root: &Path) -> bool {
+        self.covered_hashes.iter().all(|(file, hash)| {
+            std::fs::read_to_string(root.join(file))
+                .map(|content| &crate::artifact::fingerprint(&content) == hash)
+                .unwrap_or(false)
+        })
+    }
 }
 
 /// Proof that the compiler-owned Journey runtime observed a completed run.
@@ -218,6 +281,8 @@ pub enum ExecutionOutcome {
 pub struct JourneyObservation {
     report: RuntimeReport,
     proof: CompiledJourneyProof,
+    anchors: Option<ExecutionAnchors>,
+    trust: ObservationTrust,
 }
 
 impl JourneyObservation {
@@ -237,7 +302,24 @@ impl JourneyObservation {
         observation_matches_proof(&self.proof, &self.report)
     }
 
-    fn from_executed(proof: &CompiledJourneyProof, mut report: RuntimeReport) -> Self {
+    pub(crate) fn anchors(&self) -> Option<&ExecutionAnchors> {
+        self.anchors.as_ref()
+    }
+
+    /// Only the Store-owned guarded settlement entrypoint may flip this.
+    pub(crate) fn is_trusted(&self) -> bool {
+        self.trust == ObservationTrust::Trusted
+    }
+
+    pub(crate) fn mark_trusted(&mut self) {
+        self.trust = ObservationTrust::Trusted;
+    }
+
+    fn from_executed(
+        proof: &CompiledJourneyProof,
+        mut report: RuntimeReport,
+        anchors: Option<ExecutionAnchors>,
+    ) -> Self {
         if !observation_matches_proof(proof, &report) {
             report.status = RuntimeStatus::Blocked;
             report.passed_assertions.clear();
@@ -250,6 +332,8 @@ impl JourneyObservation {
         Self {
             report,
             proof: proof.clone(),
+            anchors,
+            trust: ObservationTrust::Untrusted,
         }
     }
 }
@@ -291,8 +375,9 @@ fn complete_outcome(
     proof: &CompiledJourneyProof,
     report: RuntimeReport,
     human_decisions: Vec<Value>,
+    anchors: Option<ExecutionAnchors>,
 ) -> ExecutionOutcome {
-    let observation = JourneyObservation::from_executed(proof, report.clone());
+    let observation = JourneyObservation::from_executed(proof, report.clone(), anchors);
     ExecutionOutcome::Completed {
         report: observation.report.clone(),
         observation: Box::new(observation),
@@ -301,19 +386,21 @@ fn complete_outcome(
 }
 
 fn blocked_outcome(proof: &CompiledJourneyProof, detail: impl Into<String>) -> ExecutionOutcome {
-    complete_outcome(proof, blocked_runtime_report(proof, detail), Vec::new())
-}
-
-impl ExecutionOutcome {
-    pub(crate) fn blocked(proof: &CompiledJourneyProof, detail: impl Into<String>) -> Self {
-        blocked_outcome(proof, detail)
-    }
+    complete_outcome(
+        proof,
+        blocked_runtime_report(proof, detail),
+        Vec::new(),
+        None,
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PendingContinuation {
     pub binding: crate::journey_gate::GateBinding,
+    /// Canonical repository root the paused run executed in. The resume
+    /// entrypoint refuses a token presented at any other root.
+    pub live_root: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1199,14 +1286,30 @@ pub fn execute(
         .clone()
 }
 
-/// Execute a compiled Journey and return the sealed observation settlement
-/// requires. The only way to obtain [`JourneyObservation`] is to actually run
-/// this compiler-owned runtime (or the interactive/resume path).
+/// Execute a compiled Journey and return an ordinary, UNTRUSTED observation.
+///
+/// This is a public low-level execution API: the returned observation is a
+/// presentation of what ran and is refused by settlement for trusted assertion
+/// provenance. Only the Store-owned guarded entrypoint
+/// ([`crate::journey::run_and_settle_compiled_validation`] and its
+/// interactive/resume siblings) mints observations settlement accepts.
 pub fn execute_observed(
     root: &Path,
     spec: &JourneySpec,
     proof: &CompiledJourneyProof,
     overrides: &BTreeMap<String, Value>,
+) -> JourneyObservation {
+    execute_observed_with_anchors(root, spec, proof, overrides, None)
+}
+
+/// The Store-owned runtime's execution primitive: execute against `root` and
+/// bind the observation to execution-time anchors over `covered_files`.
+pub(crate) fn execute_observed_with_anchors(
+    root: &Path,
+    spec: &JourneySpec,
+    proof: &CompiledJourneyProof,
+    overrides: &BTreeMap<String, Value>,
+    covered_files: Option<&[String]>,
 ) -> JourneyObservation {
     if proof.steps.iter().any(|step| step.human_decision.is_some()) {
         return JourneyObservation::from_executed(
@@ -1215,9 +1318,10 @@ pub fn execute_observed(
                 proof,
                 "compiled Journey requires host-mediated execution; use the interactive runtime",
             ),
+            None,
         );
     }
-    match execute_interactive(root, spec, proof, overrides) {
+    match execute_interactive_with_anchors(root, spec, proof, overrides, covered_files) {
         ExecutionOutcome::Completed { observation, .. } => *observation,
         ExecutionOutcome::Pending(_) => JourneyObservation::from_executed(
             proof,
@@ -1225,22 +1329,39 @@ pub fn execute_observed(
                 proof,
                 "compiled Journey unexpectedly reached a human decision",
             ),
+            None,
         ),
     }
 }
 
 /// Execute without ever manufacturing a human answer. A gate returns a
 /// structured pending capsule; only a later one-shot resume may continue it.
+///
+/// Public low-level API: observations minted here are ordinary untrusted
+/// reports; settlement refuses them for trusted assertion provenance.
 pub fn execute_interactive(
     root: &Path,
     spec: &JourneySpec,
     proof: &CompiledJourneyProof,
     overrides: &BTreeMap<String, Value>,
 ) -> ExecutionOutcome {
+    execute_interactive_with_anchors(root, spec, proof, overrides, None)
+}
+
+/// The Store-owned interactive execution primitive: binds the observation to
+/// execution-time anchors (captured before the first step, persisted through
+/// any human-gate continuation, rechecked at resume and after the last step).
+pub(crate) fn execute_interactive_with_anchors(
+    root: &Path,
+    spec: &JourneySpec,
+    proof: &CompiledJourneyProof,
+    overrides: &BTreeMap<String, Value>,
+    covered_files: Option<&[String]>,
+) -> ExecutionOutcome {
     let root = root
         .canonicalize()
         .with_context(|| format!("canonicalizing Journey repository root {}", root.display()));
-    let outcome = root.and_then(|root| execute_fresh(&root, spec, proof, overrides));
+    let outcome = root.and_then(|root| execute_fresh(&root, spec, proof, overrides, covered_files));
     match outcome {
         Ok(outcome) => outcome,
         Err(error) => blocked_outcome(proof, error.to_string()),
@@ -1337,11 +1458,21 @@ fn execute_fresh(
     spec: &JourneySpec,
     proof: &CompiledJourneyProof,
     overrides: &BTreeMap<String, Value>,
+    covered_files: Option<&[String]>,
 ) -> Result<ExecutionOutcome> {
     proof.validate()?;
     if proof.journey_id != spec.id || proof.journey_hash != spec.semantic_hash()? {
         bail!("compiled Journey does not match the current authored source");
     }
+    // Capture the execution-time anchors immediately before anything may
+    // execute: the covered hashes in force now, the canonical execution root,
+    // and (as operations spawn) the resolved executable boundary. The caller
+    // holds the harness guard across this whole call; settlement persists
+    // exactly these hashes and never resamples them.
+    let mut anchors = match covered_files {
+        Some(files) => Some(capture_execution_anchors(root, files)?),
+        None => None,
+    };
     if let Some(setup) = &proof.setup {
         // Validate the live trust boundary before clone_local_snapshot can
         // dereference an alias into an apparently regular cloned file.
@@ -1481,6 +1612,9 @@ fn execute_fresh(
     if let Some(setup) = &proof.setup {
         for operation in &setup.operations {
             let label = format!("setup operation '{}'", operation.operation_id);
+            let boundary = anchors
+                .as_mut()
+                .map(|anchors| &mut anchors.executed_boundary);
             let (display_argv, exit_code, mut output) = match run_json_operation(
                 root,
                 temp.path(),
@@ -1499,6 +1633,7 @@ fn execute_fresh(
                 &run_id,
                 &mut secrets,
                 &label,
+                boundary,
             ) {
                 Ok(observed) => observed,
                 Err(error) => {
@@ -1521,6 +1656,7 @@ fn execute_fresh(
                             },
                         ),
                         Vec::new(),
+                        anchors,
                     ))
                 }
             };
@@ -1561,6 +1697,7 @@ fn execute_fresh(
                         },
                     ),
                     Vec::new(),
+                    anchors,
                 ));
             }
         }
@@ -1583,6 +1720,7 @@ fn execute_fresh(
         assertions_passed,
         passed_assertions: Vec::new(),
         human_decisions: Vec::new(),
+        anchors,
     };
     run_steps(root, spec, proof, temp, isolated, 0, active)
 }
@@ -1604,6 +1742,9 @@ struct ActiveRun {
     #[serde(default)]
     passed_assertions: Vec<PassedAssertion>,
     human_decisions: Vec<Value>,
+    /// Execution-time anchors, present only on Store-owned guarded runs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    anchors: Option<ExecutionAnchors>,
 }
 
 fn run_steps(
@@ -1661,6 +1802,10 @@ fn run_steps(
                 active,
             );
         }
+        let boundary = active
+            .anchors
+            .as_mut()
+            .map(|anchors| &mut anchors.executed_boundary);
         let (display_argv, exit_code, mut output) = match run_json_operation(
             root,
             temp.path(),
@@ -1680,6 +1825,7 @@ fn run_steps(
             &active.run_id,
             &mut active.secrets,
             &label,
+            boundary,
         ) {
             Ok(observed) => observed,
             Err(error) => {
@@ -1777,31 +1923,48 @@ fn completed_outcome(
     status: RuntimeStatus,
     assertions_failed: usize,
     detail: Option<String>,
-    active: ActiveRun,
+    mut active: ActiveRun,
 ) -> ExecutionOutcome {
+    // Immediate post-execution recheck, under the same guard the caller holds:
+    // the covered files must still match the pre-execution hashes, or the
+    // run's execution-time evidence is invalidated and the report is blocked.
+    let (status, detail) = match &active.anchors {
+        Some(anchors) if !anchors.covered_still_match(&anchors.execution_root) => (
+            RuntimeStatus::Blocked,
+            Some(
+                "a covered file changed during Journey execution; execution-time evidence \
+                 was invalidated"
+                    .into(),
+            ),
+        ),
+        _ => (status, detail),
+    };
+    let anchors = active.anchors.take();
     let captures = redact_capture_map(active.captures, &active.redacted_captures, &active.secrets);
-    complete_outcome(
-        proof,
-        RuntimeReport {
-            journey_id: proof.journey_id.clone(),
-            profile: proof.profile.clone(),
-            journey_hash: proof.journey_hash.clone(),
-            surface_hash: proof.surface_hash.clone(),
-            status,
-            assertions_passed: active.assertions_passed,
-            assertions_failed,
-            detail,
-            setup: active.setup_reports,
-            file_transitions: active.file_transition_reports,
-            steps: active.reports,
-            captures,
-            passed_assertions: active.passed_assertions,
-        },
-        active.human_decisions,
-    )
+    let mut report = RuntimeReport {
+        journey_id: proof.journey_id.clone(),
+        profile: proof.profile.clone(),
+        journey_hash: proof.journey_hash.clone(),
+        surface_hash: proof.surface_hash.clone(),
+        status,
+        assertions_passed: active.assertions_passed,
+        assertions_failed,
+        detail,
+        setup: active.setup_reports,
+        file_transitions: active.file_transition_reports,
+        steps: active.reports,
+        captures,
+        passed_assertions: active.passed_assertions,
+    };
+    if report.status == RuntimeStatus::Blocked {
+        // A blocked-by-recheck run observed nothing trustworthy.
+        report.passed_assertions.clear();
+        report.assertions_passed = 0;
+    }
+    complete_outcome(proof, report, active.human_decisions, anchors)
 }
 
-const CONTINUATION_RUNTIME_SCHEMA: &str = "loom.journey-runtime-continuation/v1";
+const CONTINUATION_RUNTIME_SCHEMA: &str = "loom.journey-runtime-continuation/v2";
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -2103,6 +2266,7 @@ pub fn pending_continuation(token: &str) -> Result<PendingContinuation> {
     state.validate()?;
     Ok(PendingContinuation {
         binding: state.gate_binding,
+        live_root: state.live_root,
     })
 }
 
@@ -2123,6 +2287,7 @@ pub fn resume_interactive(
     let pending = read_continuation(&pending_paths.runtime_state)?;
     pending.validate()?;
     validate_current_continuation(&root, &pending_paths.workspace, spec, proof, &pending)?;
+    verify_continuation_anchors(&root, &pending)?;
 
     let claimed = store.claim(token, &pending.gate_binding, answer, executor)?;
     let resumed = (|| -> Result<ExecutionOutcome> {
@@ -2130,6 +2295,7 @@ pub fn resume_interactive(
         let mut state = read_continuation(&claimed_paths.runtime_state)?;
         state.validate()?;
         validate_current_continuation(&root, &claimed_paths.workspace, spec, proof, &state)?;
+        verify_continuation_anchors(&root, &state)?;
         if claimed.receipt.binding != state.gate_binding {
             bail!("claimed human decision does not match its runtime continuation");
         }
@@ -2231,6 +2397,21 @@ fn validate_current_continuation(
     }
     if let Some(subject) = &state.current_subject {
         validate_current_subject(workspace, subject)?;
+    }
+    Ok(())
+}
+
+/// Recheck the execution-time covered hashes persisted by the paused run
+/// against the files on disk, before any resumed step may execute. A covered
+/// file changed between the pause and the resume invalidates the evidence the
+/// final observation would claim.
+fn verify_continuation_anchors(root: &Path, state: &ContinuationState) -> Result<()> {
+    if let Some(anchors) = &state.active.anchors {
+        if !anchors.covered_still_match(root) {
+            bail!(
+                "Journey gate resume token is stale: a covered file changed since the run paused"
+            );
+        }
     }
     Ok(())
 }
@@ -2545,10 +2726,12 @@ fn run_json_operation(
     run_id: &str,
     secrets: &mut Vec<String>,
     label: &str,
+    boundary: Option<&mut Vec<ExecutableBoundary>>,
 ) -> Result<(Vec<String>, i64, Value)> {
     let operation_env = operation_environment(env, resolved_host_env, declared_environment)?;
     let (argv, mut display_argv) =
         resolve_argv(base_argv, arguments, inputs, captures, run_id, secrets)?;
+    let argv0 = argv[0].clone();
     let authorized = policy.authorize(operation_id, argv, confinement)?;
     if authorized.injects_graph() {
         display_argv.insert(1, graph_root.display().to_string());
@@ -2563,6 +2746,17 @@ fn run_json_operation(
         Duration::from_secs(timeout_seconds),
     )
     .with_context(|| format!("{label} could not start"))?;
+    if let Some(record) = boundary {
+        // Pin what actually executed: the declared argv0 token, the resolved
+        // executable, and its content fingerprint at execution time.
+        // Settlement re-derives and compares.
+        record.push(resolve_executable_boundary(
+            operation_id,
+            &base_argv[0],
+            &argv0,
+            repository_root,
+        ));
+    }
     if observed.timed_out {
         bail!("{label} exceeded the execution timeout");
     }
@@ -3328,6 +3522,74 @@ fn resolve_executable(root: &Path, executable: &str) -> PathBuf {
         }
     }
     candidate.to_path_buf()
+}
+
+/// Capture the execution-time anchors before anything may execute: the
+/// canonical execution root and the covered-file hashes in force now.
+/// A covered file that cannot be read before execution refuses the run —
+/// settlement evidence must bind real files, not absent ones.
+fn capture_execution_anchors(root: &Path, covered_files: &[String]) -> Result<ExecutionAnchors> {
+    let execution_root = root
+        .canonicalize()
+        .with_context(|| format!("canonicalizing Journey repository root {}", root.display()))?;
+    let mut covered_hashes = BTreeMap::new();
+    for file in covered_files {
+        let content = std::fs::read_to_string(root.join(file)).with_context(|| {
+            format!(
+                "covered CodeFile '{}' is not readable before Journey execution",
+                file
+            )
+        })?;
+        covered_hashes.insert(file.clone(), crate::artifact::fingerprint(&content));
+    }
+    Ok(ExecutionAnchors {
+        covered_hashes,
+        execution_root,
+        executed_boundary: Vec::new(),
+    })
+}
+
+/// Pin the executable boundary of one spawned operation: the resolved
+/// executable path and its content fingerprint at execution time. Bare
+/// names replicate the executor's PATH search so the record names the
+/// actual binary; root-relative paths resolve against the repository root
+/// exactly like the spawn itself.
+fn resolve_executable_boundary(
+    operation_id: &str,
+    declared: &str,
+    argv0: &str,
+    root: &Path,
+) -> ExecutableBoundary {
+    let candidate = resolve_executable(root, argv0);
+    let located: PathBuf = if candidate.is_absolute() || argv0.contains('/') {
+        candidate
+    } else {
+        let mut found = None;
+        if let Some(path) = std::env::var_os("PATH") {
+            for directory in std::env::split_paths(&path) {
+                let probe = directory.join(&candidate);
+                if probe.is_file() {
+                    found = Some(probe);
+                    break;
+                }
+            }
+        }
+        found.unwrap_or(candidate)
+    };
+    let resolved = located
+        .canonicalize()
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| located.to_string_lossy().into_owned());
+    let hash = std::fs::read(&located)
+        .map(|bytes| crate::artifact::fingerprint_bytes(&bytes))
+        .unwrap_or_default();
+    ExecutableBoundary {
+        operation_id: operation_id.to_string(),
+        declared: declared.to_string(),
+        argv0: argv0.to_string(),
+        resolved,
+        hash,
+    }
 }
 
 fn read_stream(mut stream: impl Read + Send + 'static) -> thread::JoinHandle<Vec<u8>> {

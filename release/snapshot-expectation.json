@@ -3,14 +3,14 @@
   "status": "passed",
   "candidate_hash_relation": "source_inventory.inventory_hash",
   "source_inventory": {
-    "schema": "loom.release-source-inventory-attestation/v1",
-    "manifest_hash": "b75032dd23cdbfa1",
+    "entry_count": 264,
+    "file_count": 264,
     "git_influenced_plan": false,
+    "git_verification": "verified",
+    "manifest_hash": "08d9e7e70e9c0ec6",
     "materialized_matches": true,
     "provenance": "source_controlled_manifest_git_verified",
-    "git_verification": "verified",
-    "entry_count": 259,
-    "file_count": 259,
+    "schema": "loom.release-source-inventory-attestation/v1",
     "tombstone_count": 0
   }
 }

@@ -97,7 +97,11 @@ pub struct Store {
     conn: Connection,
     root: PathBuf,
     identity: std::cell::RefCell<crate::identity::ExecutionIdentity>,
-    _lock: File,
+    /// The advisory graph lock. A `RefCell` because the Store-owned guarded
+    /// Journey settlement releases it around execution (compiled operations
+    /// may spawn child `loom` processes) and re-takes it before any write,
+    /// through `&Store` handles held by its callers.
+    _lock: std::cell::RefCell<File>,
 }
 
 const SCHEMA: &str = r#"
@@ -225,7 +229,7 @@ impl Store {
             conn,
             root: root.to_path_buf(),
             identity: std::cell::RefCell::new(identity),
-            _lock: lock,
+            _lock: std::cell::RefCell::new(lock),
         })
     }
 
@@ -259,7 +263,7 @@ impl Store {
             conn,
             root: root.to_path_buf(),
             identity: std::cell::RefCell::new(identity),
-            _lock: lock,
+            _lock: std::cell::RefCell::new(lock),
         })
     }
 
@@ -297,7 +301,7 @@ impl Store {
             conn,
             root: root.to_path_buf(),
             identity: std::cell::RefCell::new(identity),
-            _lock: lock,
+            _lock: std::cell::RefCell::new(lock),
         })
     }
 
@@ -441,6 +445,30 @@ impl Store {
     /// The acting agent.
     pub fn agent(&self) -> Agent {
         self.identity.borrow().authority()
+    }
+
+    /// Release the advisory graph write lock while keeping the connection
+    /// open. Only the Store-owned guarded Journey settlement uses this: a
+    /// compiled Journey's operations may spawn child `loom` processes that
+    /// open the graph, and a held exclusive lock would refuse them. The
+    /// harness lock serializes proof execution; settlement re-derives every
+    /// trust-relevant input and refuses on drift. Re-take with
+    /// [`Store::reacquire_graph_lock`] before any write.
+    pub fn release_graph_lock(&self) {
+        let lock_path = self.root.join(LOOM_DIR).join("lock");
+        if let Ok(placeholder) = File::open(&lock_path) {
+            *self._lock.borrow_mut() = placeholder;
+        }
+    }
+
+    /// Re-take the advisory graph write lock under the identity this Store
+    /// opened with. Fails closed (lock contention) rather than writing
+    /// without the boundary.
+    pub fn reacquire_graph_lock(&self) -> Result<()> {
+        let loom_dir = self.root.join(LOOM_DIR);
+        let identity = self.identity.borrow().clone();
+        *self._lock.borrow_mut() = acquire_lock(&loom_dir, true, &identity)?;
+        Ok(())
     }
 
     /// Runtime provenance at the store seam. Authorization is derived from

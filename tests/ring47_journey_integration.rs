@@ -311,8 +311,9 @@ fn compiled_fixture() -> CompiledFixture {
         )
         .unwrap();
 
-    // Settle through the real compiler-owned execution path: compile the
-    // accepted surface, run it, and mint structured assertion evidence.
+    // Settle through the real compiler-owned execution path: the Store-owned
+    // entrypoint compiles the accepted surface, runs it, and mints structured
+    // assertion evidence.
     let operations: Vec<loom::journey::CliOperation> =
         serde_json::from_value(surface.body["operations"].clone()).unwrap();
     let bindings = [loom::journey::OperationBinding {
@@ -322,15 +323,19 @@ fn compiled_fixture() -> CompiledFixture {
     let proof =
         loom::journey_runtime::compile(&spec, &surface_hash, "proof", operations, &bindings)
             .unwrap();
-    let observed =
-        loom::journey_runtime::execute_observed(tmp.path(), &spec, &proof, &Default::default());
+    loom::journey_runtime::write_proof(tmp.path(), &proof).unwrap();
+    let report = loom::journey::run_and_settle_compiled_validation(
+        &store,
+        &validation.id,
+        &Default::default(),
+    )
+    .unwrap();
     assert_eq!(
-        observed.report().status,
+        report.status,
         loom::journey_runtime::RuntimeStatus::Passed,
         "{:#?}",
-        observed.report()
+        report
     );
-    loom::journey::settle_compiled_validation(&store, &validation.id, &observed).unwrap();
     // The closure edges carry inspected verdicts, exactly as sync leaves them
     // on a live compiled Journey. `stale_edge` only re-opens inspected edges,
     // so the drift tests below can assert the whole closure invalidates.
@@ -382,7 +387,7 @@ fn only_the_hash_bound_compiler_closure_earns_journey_s3() {
     );
 
     // Removing the compiler-owned provenance facet must demote to S2 — a
-    // bare Exercises edge cannot earn reach for a compiler-v5 Journey proof.
+    // bare Exercises edge cannot earn reach for a compiler-v6 Journey proof.
     fixture
         .store
         .clear_facet(

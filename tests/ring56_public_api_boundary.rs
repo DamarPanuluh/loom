@@ -4,6 +4,13 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::Mutex;
+
+/// The four consumer compiles run on separate test threads but share one
+/// CARGO_TARGET_DIR; serialize them so cargo's build-directory lock never
+/// races two `cargo check` invocations against a half-written target tree
+/// (which surfaced as a spurious ENOENT inside release-gate snapshots).
+static CONSUMER_COMPILE: Mutex<()> = Mutex::new(());
 
 fn consumer_dir() -> PathBuf {
     let nanos = std::time::SystemTime::now()
@@ -18,6 +25,9 @@ fn consumer_dir() -> PathBuf {
 }
 
 fn compile_consumer(source: &str) -> (bool, String) {
+    let _serialize = CONSUMER_COMPILE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let root = consumer_dir();
     fs::create_dir_all(root.join("src")).unwrap();
     let loom = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -129,5 +139,26 @@ fn external_crate_cannot_attach_forged_run_through_assertion_observed() {
             || stderr.contains("E0624")
             || stderr.contains("no method named `observed`"),
         "expected observed to be unusable, got:\n{stderr}"
+    );
+}
+
+#[test]
+fn external_crate_cannot_mark_an_observation_trusted() {
+    let (ok, stderr) = compile_consumer(
+        r#"
+        pub fn attack(mut observed: loom::journey_runtime::JourneyObservation) {
+            observed.mark_trusted();
+        }
+        "#,
+    );
+    assert!(
+        !ok,
+        "mark_trusted must not be callable from an external crate:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("private")
+            || stderr.contains("E0624")
+            || stderr.contains("no method named `mark_trusted`"),
+        "expected mark_trusted to be unusable, got:\n{stderr}"
     );
 }

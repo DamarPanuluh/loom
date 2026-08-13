@@ -8,6 +8,21 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.31.4] - 2026-08-13
+- regenerate the committed v12 dogfood export with compiler-v6 Journey validations and restore the release gates
+  - `loom.graph.json` predated the compiler's `surface_locator` exercise facet, so the release gate's doctor pass reported `broken_journey_proof_chain` for every imported Journey proof. The export was rebuilt with the current compiler (init → import → sync → surface-accept → `journey compile` for all 30 Journeys → export), so the imported graph now carries complete Exercise chains and the dogfood/fixpoint gates pass end to end (`dogfood: OK — 30 Journey(s) structurally current`).
+  - The regenerated export carries exactly one `tests/**` ignore rule, and the four `journeys/surfaces/*.surface.json` fixtures were refreshed for the current `src/sync.rs` fingerprint (the previously committed `expected_hash` was stale).
+  - The API-boundary test's four consumer `cargo check` builds now serialize on one mutex, removing a spurious ENOENT race against a shared `CARGO_TARGET_DIR` inside release-gate snapshots.
+
+## [0.31.3] - 2026-08-13
+- close the Journey settlement trust boundary at the root: only the Store-owned guarded runtime mints S3-eligible Journey evidence; compiler v6
+  - Settlement now accepts only observations minted by the Store-owned compile → execute → settle entrypoints (`run_and_settle_compiled_validation`, `run_interactive_and_settle_compiled_validation`, `resume_and_settle_compiled_validation`), which derive the canonical proof, execution root, coverage, and executable boundary from the store itself. The harness guard stays alive across compilation, execution, the post-execution recheck, and settlement. The public execution APIs (`execute`, `execute_observed`, `execute_interactive`, `resume_interactive`) produce ordinary untrusted reports that settlement refuses — an exact canonical proof executed in an attacker-controlled root (fake relative executable or PATH shim) can no longer settle against the trusted store.
+  - Evidence now binds to what actually executed: covered-file hashes are captured immediately before execution, rechecked immediately after it, persisted verbatim into the run record (never resampled at settlement), and settlement refuses on any drift in the root, operation-exercise projection, proof bytes, executable boundary, or covered hashes. A covered file modified between an interactive run and its resume refuses settlement without consuming the token.
+  - Run evidence persisted by settlement carries a `locally_minted` marker; a local store reload re-mints trusted assertion provenance only for marked rows. Imports were already downgraded to prose and stay that way.
+  - Journey compiler version is now **6**. Compiler-v5 proofs are not current: `loom sync` resets them, and they must be recompiled and rerun to earn S3. Outstanding human-gate continuations use runtime schema v2 and must be re-issued.
+  - `journey surface` templates now emit typed `output.captures` for every authored `produces` entry, no longer fabricate `exercises` (downstream-process provenance must be authored), and state clearly that human-gated Journeys require structural editing. Full `SurfaceManifest` validation coverage added (outputs, downstream inputs, optional exercises, multi-step, human decisions).
+  - Release inventory regenerated for the current source tree (264 entries) and the four `journeys/surfaces/*.surface.json` fixtures refreshed the stale `src/sync.rs` expected_hash.
+
 ## [0.31.2] - 2026-08-13
 - close remaining Journey S3 trust-boundary gap for caller-authored compiled proofs; schema v12 graphs require no rebuild
   - Settlement recompiles the current accepted surface and requires exact canonical proof-byte equality before trusting a sealed observation. `execute_observed` may still run a deserialized proof for diagnosis; that observation cannot settle or earn S3.

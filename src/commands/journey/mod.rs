@@ -147,12 +147,16 @@ fn journey_resume(
     json_output: bool,
 ) -> Result<()> {
     let pending = crate::journey_runtime::pending_continuation(token)?;
-    let preview = compile_preview(graph, &pending.binding.journey_id, &pending.binding.profile)?;
-    let executor = preview.identity.actor();
-    let outcome = crate::journey_runtime::resume_interactive(
-        &preview.root,
-        &preview.spec,
-        &preview.proof,
+    let store = open(graph)?;
+    if store.root() != pending.live_root {
+        bail!(
+            "Journey gate resume token belongs to a different graph root ('{}')",
+            pending.live_root.display()
+        );
+    }
+    let executor = store.execution_identity().actor();
+    match crate::journey::resume_and_settle_compiled_validation(
+        &store,
         token,
         crate::journey_gate::ResumeAnswer {
             choice_id: choice.to_string(),
@@ -160,8 +164,19 @@ fn journey_resume(
             free_form: free_form.map(str::to_string),
         },
         &executor,
-    )?;
-    finish_interactive_run(graph, preview, outcome, json_output)
+    )? {
+        crate::journey::InteractiveJourneyRun::Completed(report) => {
+            emit_report(&report, json_output)
+        }
+        crate::journey::InteractiveJourneyRun::Pending(pending) => emit_runtime_value(
+            serde_json::to_value(&pending)?,
+            json_output,
+            &format!(
+                "Journey '{}:{}' is still waiting for a human decision",
+                pending.binding.journey_id, pending.binding.profile
+            ),
+        ),
+    }
 }
 
 pub(crate) fn journey_add(graph: Option<&Path>, spec: PathBuf, json: bool) -> Result<()> {
@@ -1686,19 +1701,10 @@ struct CompileProduct {
     proof: crate::journey_runtime::CompiledJourneyProof,
     spec: crate::journey::JourneySpec,
     validation_id: String,
-    covered_files: Vec<String>,
     root: PathBuf,
     identity: crate::identity::ExecutionIdentity,
     artifact: PathBuf,
     cache_regenerated: bool,
-}
-
-struct CompilePreview {
-    proof: crate::journey_runtime::CompiledJourneyProof,
-    spec: crate::journey::JourneySpec,
-    covered_files: Vec<String>,
-    root: PathBuf,
-    identity: crate::identity::ExecutionIdentity,
 }
 
 #[derive(Clone, Default)]
@@ -2027,56 +2033,14 @@ fn compile_internal(
             .ok_or_else(|| anyhow!("compiled Validation vanished"))?
     };
     let artifact = crate::journey_runtime::write_proof(&root, &proof)?;
-    // Covered-file evidence always uses the resolved canonical CodeFile.name
-    // from the shared projection — never the authored key (a node id or alias
-    // would hash the wrong path and leave the real file able to drift).
-    let covered_files = projection.covered_files();
     Ok(CompileProduct {
         proof,
         spec: source.spec,
         validation_id: validation.id,
-        covered_files,
         root,
         identity,
         artifact,
         cache_regenerated,
-    })
-}
-
-/// Pure compiler projection used before an interactive run. It reads the
-/// accepted surface and builds deterministic proof bytes, but deliberately
-/// creates no Validation, topology, journal entry, or cache artifact.
-fn compile_preview(
-    graph: Option<&Path>,
-    journey_key: &str,
-    profile: &str,
-) -> Result<CompilePreview> {
-    let store = open_read(graph)?;
-    let root = store.root().to_path_buf();
-    let identity = store.execution_identity();
-    let source = compile_source(&store, journey_key, profile)?;
-    let projection = crate::journey_exercises::expected_projection(&store, &source.journey)
-        .with_context(|| {
-            format!(
-                "Journey '{}' has no current operation-exercise projection",
-                source.journey.name
-            )
-        })?;
-    let covered_files = projection.covered_files();
-    let proof = crate::journey_runtime::compile_surface(
-        &source.spec,
-        &source.surface_hash,
-        profile,
-        source.operations,
-        source.setup.as_ref(),
-        &source.bindings,
-    )?;
-    Ok(CompilePreview {
-        proof,
-        spec: source.spec,
-        covered_files,
-        root,
-        identity,
     })
 }
 
@@ -2144,29 +2108,17 @@ pub(crate) fn journey_run(
     profile: &str,
     json_output: bool,
 ) -> Result<()> {
-    let preview = compile_preview(graph, journey_key, profile)?;
-    let outcome = match crate::harness::acquire(&preview.root, "journey run", &preview.identity) {
-        Ok(_harness) => crate::journey_runtime::execute_interactive(
-            &preview.root,
-            &preview.spec,
-            &preview.proof,
-            &BTreeMap::new(),
-        ),
-        Err(error) => {
-            crate::journey_runtime::ExecutionOutcome::blocked(&preview.proof, error.to_string())
+    let product = compile_internal(graph, journey_key, profile)?;
+    let store = crate::store::Store::open_with_identity(&product.root, product.identity)?;
+    match crate::journey::run_interactive_and_settle_compiled_validation(
+        &store,
+        &product.validation_id,
+        &BTreeMap::new(),
+    )? {
+        crate::journey::InteractiveJourneyRun::Completed(report) => {
+            emit_report(&report, json_output)
         }
-    };
-    finish_interactive_run(graph, preview, outcome, json_output)
-}
-
-fn finish_interactive_run(
-    graph: Option<&Path>,
-    preview: CompilePreview,
-    outcome: crate::journey_runtime::ExecutionOutcome,
-    json_output: bool,
-) -> Result<()> {
-    match outcome {
-        crate::journey_runtime::ExecutionOutcome::Pending(pending) => emit_runtime_value(
+        crate::journey::InteractiveJourneyRun::Pending(pending) => emit_runtime_value(
             serde_json::to_value(&pending)?,
             json_output,
             &format!(
@@ -2174,32 +2126,6 @@ fn finish_interactive_run(
                 pending.binding.journey_id, pending.binding.profile
             ),
         ),
-        crate::journey_runtime::ExecutionOutcome::Completed {
-            report,
-            observation,
-            human_decisions,
-        } => {
-            let product =
-                compile_internal(graph, &preview.proof.journey_id, &preview.proof.profile)?;
-            if crate::journey_runtime::canonical_bytes(&product.proof)?
-                != crate::journey_runtime::canonical_bytes(&preview.proof)?
-                || crate::journey_runtime::canonical_bytes(observation.proof())?
-                    != crate::journey_runtime::canonical_bytes(&preview.proof)?
-                || product.covered_files != preview.covered_files
-            {
-                bail!("Journey compiled projection changed during interactive execution");
-            }
-            let store = Store::open_with_identity(&product.root, product.identity)?;
-            crate::journey::settle_compiled_validation(
-                &store,
-                &product.validation_id,
-                &observation,
-            )?;
-            for decision in human_decisions {
-                store.append_journal("journey_human_decision", &product.validation_id, decision)?;
-            }
-            emit_report(&report, json_output)
-        }
     }
 }
 

@@ -18,7 +18,7 @@ pub const SURFACE_SCHEMA: &str = "loom.journey.surface/v1";
 pub const INTERFACE_SURFACE_SCHEMA: &str = "loom.interface-surface/v1";
 pub const COMPILED_PROOF_SCHEMA: &str = "loom.journey.proof/v1";
 pub const BASELINE_SCHEMA: &str = "loom.journey.baseline/v1";
-pub const JOURNEY_COMPILER_VERSION: &str = "5";
+pub const JOURNEY_COMPILER_VERSION: &str = "6";
 pub const JOURNEY_LINT_REPORT_SCHEMA: &str = "loom.journey-lint/v1";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -1070,10 +1070,31 @@ fn relationship_path_exists(
 /// The reusable surface-contract template emitted by `loom journey surface`.
 ///
 /// Operations and bindings are generated from the authored Journey steps, so
-/// the document is a complete `SurfaceManifest` for that Journey once
-/// repository-specific CodeFile keys and locators are replaced. It has no
-/// setup block. Operation, assertion, exercise, and surface ids are derived
-/// from the authored step ids and do not need to change unless the caller
+/// the document is a complete [`SurfaceManifest`] shape for that Journey.
+/// What is generated, and — just as importantly — what is deliberately NOT:
+///
+/// - `output.captures`: one typed capture per `JourneyStep.produces` entry,
+///   with the authored `type` and a `/<output-id>` pointer scaffold. The
+///   pointer must be aligned with the real tool's stdout document — loom
+///   cannot infer it, so the scaffold is structural, not final.
+/// - `output.assertions`: one sample boolean assertion per step, again with a
+///   pointer the author must align with the real output.
+/// - `exercises`: NEVER generated. Operation exercises are provenance of a
+///   real downstream process boundary, and the authored JourneyStep model
+///   does not express one; fabricating an entry would manufacture S3
+///   provenance that no process earned. Add `exercises` entries by hand only
+///   for an operation whose output a downstream process actually consumes.
+/// - Human decisions: the authored JourneyStep model carries no
+///   human-decision marker, so the template cannot know which steps are
+///   host-mediated. A Journey with human-gated steps therefore requires
+///   STRUCTURAL editing of the generated manifest: replace the step's
+///   operation binding with a `HumanDecision` binding (whose observing
+///   operation's stdout carries the prompt object) and add a `setup` block
+///   with the local_snapshot graph. Only CodeFile keys, locators, argv, and
+///   pointers can be replaced as-is; human-gated Journeys cannot.
+///
+/// There is no `setup` block. Operation, assertion, and surface ids are
+/// derived from the authored step ids and need not change unless the caller
 /// wants different stable ids.
 pub fn surface_contract_template(spec: &JourneySpec) -> Result<serde_json::Value> {
     spec.validate()?;
@@ -1083,7 +1104,18 @@ pub fn surface_contract_template(spec: &JourneySpec) -> Result<serde_json::Value
     for step in &spec.steps {
         let operation_id = format!("{}-operation", step.id);
         let assertion_id = format!("{}-ok", step.id);
-        let exercise_id = format!("{}-downstream-entry", step.id);
+        let captures: Vec<serde_json::Value> = step
+            .produces
+            .iter()
+            .map(|(output_id, output)| {
+                json!({
+                    "id": output_id,
+                    "pointer": format!("/{output_id}"),
+                    "type": output.value_type,
+                    "redact": false,
+                })
+            })
+            .collect();
         operations.push(json!({
             "id": operation_id,
             "summary": format!("CLI operation for step '{}'", step.name),
@@ -1091,19 +1123,14 @@ pub fn surface_contract_template(spec: &JourneySpec) -> Result<serde_json::Value
             "arguments": [],
             "output": {
                 "format": "json",
+                "captures": captures,
                 "assertions": [{
                     "id": assertion_id,
                     "pointer": "/ok",
                     "type": "boolean",
                     "equals": true
                 }]
-            },
-            "exercises": [{
-                "id": exercise_id,
-                "codefile": "path/to/handler.rs",
-                "locator": "handler_symbol",
-                "observed_by": assertion_id
-            }]
+            }
         }));
         bindings.push(json!({
             "step_id": step.id,
@@ -2528,6 +2555,19 @@ fn compile_accepted_proof(
     journey: &crate::model::Node,
     profile: &str,
 ) -> Result<crate::journey_runtime::CompiledJourneyProof> {
+    let (_, proof) = compile_accepted_source(store, journey, profile)?;
+    Ok(proof)
+}
+
+/// The canonical accepted-surface compilation for `journey`/`profile`, with
+/// the authored spec it was compiled from. This is the single derivation the
+/// Store-owned settlement entrypoints use for execution, and settlement uses
+/// for re-derivation: caller-supplied specs and proofs are never inputs.
+fn compile_accepted_source(
+    store: &crate::store::Store,
+    journey: &crate::model::Node,
+    profile: &str,
+) -> Result<(JourneySpec, crate::journey_runtime::CompiledJourneyProof)> {
     use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};
 
     let artifact = journey
@@ -2619,23 +2659,35 @@ fn compile_accepted_proof(
     .with_context(|| format!("decoding InterfaceSurface '{}' operations", surface.name))?;
     let surface_hash = surface_projection_hash(store, journey)?
         .ok_or_else(|| anyhow!("Journey '{}' has no surface projection hash", journey.name))?;
-    crate::journey_runtime::compile_surface(
+    let proof = crate::journey_runtime::compile_surface(
         &spec,
         &surface_hash,
         profile,
         operations,
         setup.as_ref(),
         bindings,
-    )
+    )?;
+    Ok((spec, proof))
 }
 
 /// Settle a compiled Journey Validation from a sealed runtime observation.
 ///
 /// The observation can only be minted by the compiler-owned Journey executor,
-/// and only for the canonical proof compiled from the current accepted surface.
-/// Covered files are recomputed from that projection; caller-selected coverage
-/// and caller-authored compiled proofs are not inputs. A mismatched
-/// validation, proof, compiler version, operation, or assertion fails closed.
+/// and only the Store-owned guarded entrypoints
+/// ([`run_and_settle_compiled_validation`], [`run_interactive_and_settle_compiled_validation`],
+/// [`resume_and_settle_compiled_validation`]) mark one trusted for settlement.
+/// The public execution APIs ([`crate::journey_runtime::execute`],
+/// [`crate::journey_runtime::execute_observed`],
+/// [`crate::journey_runtime::execute_interactive`],
+/// [`crate::journey_runtime::resume_interactive`]) mint ordinary untrusted
+/// observations that are refused here.
+///
+/// Every trust-relevant input is re-derived from the store and compared with
+/// what the runtime persisted at execution time: the canonical proof, the
+/// operation-exercise projection, the covered-file hashes (persisted exactly
+/// as captured before execution — never resampled into evidence), the
+/// execution root, and the executable boundary. A mismatch in any of them —
+/// or a caller-selected root, proof, projection, or coverage — fails closed.
 pub fn settle_compiled_validation(
     store: &crate::store::Store,
     validation_id: &str,
@@ -2643,6 +2695,31 @@ pub fn settle_compiled_validation(
 ) -> Result<()> {
     use crate::model::{Claim, EdgeKind, InspectionStatus, NodeType, RunProducer};
     use crate::store::{Assertion, Subject};
+
+    // Trust provenance: only the Store-owned guarded runtime may mint
+    // evidence eligible for trusted assertion provenance.
+    if !observed.is_trusted() {
+        bail!(
+            "compiled Journey observation was not minted by the Store-owned guarded runtime; \
+             the public execution APIs produce ordinary untrusted reports that cannot settle \
+             trusted assertion provenance"
+        );
+    }
+    let anchors = observed
+        .anchors()
+        .ok_or_else(|| anyhow!("compiled Journey observation carries no execution anchors"))?;
+    let canonical_root = store
+        .root()
+        .canonicalize()
+        .with_context(|| format!("canonicalizing graph root {}", store.root().display()))?;
+    if anchors.execution_root != canonical_root {
+        bail!(
+            "compiled Journey observation was executed at a different root \
+             ('{}', not this store's '{}')",
+            anchors.execution_root.display(),
+            canonical_root.display()
+        );
+    }
 
     let report = observed.report();
     let proof = observed.proof();
@@ -2726,6 +2803,33 @@ pub fn settle_compiled_validation(
     let projection = crate::journey_exercises::expected_projection(store, &journey)?;
     let covered_files = projection.covered_files();
 
+    // The persisted covered set must be exactly the store's current
+    // projection: no caller-selected coverage, and no drift since execution.
+    let persisted: BTreeSet<&str> = anchors.covered_hashes.keys().map(String::as_str).collect();
+    let expected: BTreeSet<&str> = covered_files.iter().map(String::as_str).collect();
+    if persisted != expected {
+        bail!(
+            "compiled Journey observation does not match the current operation-exercise \
+             projection (projection changed between execution and settlement)"
+        );
+    }
+    // The covered files must still hash to the execution-time hashes. The
+    // persisted hashes are the evidence; settlement never resamples them.
+    for file in &covered_files {
+        let current = std::fs::read_to_string(store.root().join(file))
+            .map(|content| crate::artifact::fingerprint(&content))
+            .unwrap_or_default();
+        if anchors.covered_hashes.get(file) != Some(&current) {
+            bail!(
+                "covered file '{}' changed between execution and settlement; refusing to settle",
+                file
+            );
+        }
+    }
+    // The executable boundary must still match: every executed operation's
+    // declared token, resolved executable, and content fingerprint.
+    verify_executed_boundary(store.root(), proof, report, &anchors.executed_boundary)?;
+
     let (node_status, edge_status) = match report.status {
         crate::journey_runtime::RuntimeStatus::Passed => ("passed", InspectionStatus::Passing),
         crate::journey_runtime::RuntimeStatus::Failed => ("failed", InspectionStatus::Failing),
@@ -2747,14 +2851,13 @@ pub fn settle_compiled_validation(
         None
     } else {
         let stdout = crate::journey_runtime::report_observation_json(report)?;
-        let mut run = crate::runner::record(
-            store.root(),
+        let mut run = crate::runner::record_with_covered(
             RunProducer::Journey,
             &format!(
                 "loom journey run {} --profile {}",
                 report.journey_id, report.profile
             ),
-            &covered_files,
+            anchors.covered_hashes.clone(),
             report.assertions_passed,
             if report.status == crate::journey_runtime::RuntimeStatus::Passed {
                 0
@@ -2763,7 +2866,6 @@ pub fn settle_compiled_validation(
             },
             &stdout,
             report.detail.as_deref().unwrap_or("").as_bytes(),
-            0,
         );
         run.observed_assertions = report
             .passed_assertions
@@ -2774,6 +2876,7 @@ pub fn settle_compiled_validation(
             })
             .collect();
         run.assertion_trust = crate::evidence::AssertionTrust::LocallyMinted;
+        run.locally_minted = true;
         Some(run)
     };
 
@@ -2836,6 +2939,358 @@ fn regrade_compiled_validation(store: &crate::store::Store, validation_id: &str)
     }
     if let Some(witness) = best {
         crate::proofstrength::store_witness(store, validation_id, &witness)?;
+    }
+    Ok(())
+}
+
+/// The outcome of a Store-owned interactive Journey run: either settled, or
+/// paused at a human gate for a later one-shot resume.
+#[derive(Debug)]
+pub enum InteractiveJourneyRun {
+    Completed(crate::journey_runtime::RuntimeReport),
+    Pending(crate::journey_gate::PendingHuman),
+}
+
+/// Everything the Store-owned settlement derives before execution, from the
+/// store alone: the canonical proof, the authored spec it compiled from, the
+/// operation-exercise projection, and the store's own coordinates.
+struct TrustedCompile {
+    spec: JourneySpec,
+    proof: crate::journey_runtime::CompiledJourneyProof,
+    covered_files: Vec<String>,
+    validation_body: Value,
+}
+
+fn trusted_compile(store: &crate::store::Store, validation_id: &str) -> Result<TrustedCompile> {
+    use crate::model::{EdgeKind, NodeType};
+    let validation = store
+        .get_node(validation_id)?
+        .ok_or_else(|| anyhow!("validation '{validation_id}' is missing"))?;
+    if validation.node_type != NodeType::Validation
+        || validation
+            .body
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            != Some("journey")
+    {
+        bail!("validation '{validation_id}' is not a compiler-owned Journey proof");
+    }
+    let profile = validation
+        .body
+        .get("profile")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| anyhow!("validation '{}' has no Journey profile", validation.name))?;
+    if validation
+        .body
+        .get("compiler_version")
+        .and_then(serde_json::Value::as_str)
+        != Some(JOURNEY_COMPILER_VERSION)
+    {
+        bail!(
+            "validation '{}' was compiled by a different compiler version",
+            validation.name
+        );
+    }
+    let proves = store.edges_with(Some(EdgeKind::Proves), Some(validation_id), None)?;
+    let [proves] = proves.as_slice() else {
+        bail!(
+            "compiled Journey validation '{}' must prove exactly one Journey",
+            validation.name
+        );
+    };
+    let journey = store
+        .get_node(&proves.to_id)?
+        .ok_or_else(|| anyhow!("compiled Journey target is missing"))?;
+    if journey.node_type != NodeType::Journey {
+        bail!(
+            "compiled Journey target of '{}' is not a Journey",
+            validation.name
+        );
+    }
+    let (spec, proof) = compile_accepted_source(store, &journey, profile)?;
+    if proof.journey_id != journey.name
+        || validation
+            .body
+            .get("journey_hash")
+            .and_then(serde_json::Value::as_str)
+            != Some(proof.journey_hash.as_str())
+        || validation
+            .body
+            .get("surface_hash")
+            .and_then(serde_json::Value::as_str)
+            != Some(proof.surface_hash.as_str())
+    {
+        bail!(
+            "validation '{}' does not match the canonical accepted-surface proof",
+            validation.name
+        );
+    }
+    let projection =
+        crate::journey_exercises::expected_projection(store, &journey).with_context(|| {
+            format!(
+                "Journey '{}' has no current operation-exercise projection",
+                journey.name
+            )
+        })?;
+    let covered_files = projection.covered_files();
+    Ok(TrustedCompile {
+        spec,
+        proof,
+        covered_files,
+        validation_body: validation.body.clone(),
+    })
+}
+
+/// Store-owned compile → execute → settle for a machine-only Journey.
+///
+/// The canonical proof, the execution root, the covered-file evidence, and the
+/// executable boundary are all derived from `store`; no caller-selected root,
+/// proof, projection, or coverage is an input. The harness guard stays alive
+/// across compilation, execution, the post-execution recheck, and settlement.
+/// The graph write lock is released only for the execution window (compiled
+/// operations may spawn child `loom` processes) and re-taken before any write;
+/// settlement re-derives every trust-relevant input and refuses on drift.
+pub fn run_and_settle_compiled_validation(
+    store: &crate::store::Store,
+    validation_id: &str,
+    overrides: &BTreeMap<String, Value>,
+) -> Result<crate::journey_runtime::RuntimeReport> {
+    match run_interactive_and_settle_compiled_validation(store, validation_id, overrides)? {
+        InteractiveJourneyRun::Completed(report) => Ok(report),
+        InteractiveJourneyRun::Pending(_) => bail!(
+            "compiled Journey requires host-mediated execution; use the interactive runtime \
+             (`loom journey run` / `loom journey resume`)"
+        ),
+    }
+}
+
+/// Store-owned compile → execute → settle that may pause at a human gate.
+/// Returns [`InteractiveJourneyRun::Pending`] without settling when the
+/// Journey reaches a host-mediated decision; the resume entrypoint continues
+/// it under the same boundary.
+pub fn run_interactive_and_settle_compiled_validation(
+    store: &crate::store::Store,
+    validation_id: &str,
+    overrides: &BTreeMap<String, Value>,
+) -> Result<InteractiveJourneyRun> {
+    let root = store.root().to_path_buf();
+    let identity = store.execution_identity();
+    let compiled = trusted_compile(store, validation_id)?;
+    // Release the graph write lock for the execution window: compiled
+    // operations may spawn child loom processes that open the graph. The
+    // harness guard serializes proof execution; settlement re-derives
+    // everything and refuses on drift.
+    store.release_graph_lock();
+
+    let _guard = crate::harness::acquire(&root, "journey run", &identity)?;
+    let outcome = crate::journey_runtime::execute_interactive_with_anchors(
+        &root,
+        &compiled.spec,
+        &compiled.proof,
+        overrides,
+        Some(&compiled.covered_files),
+    );
+    store.reacquire_graph_lock()?;
+    match outcome {
+        crate::journey_runtime::ExecutionOutcome::Pending(pending) => {
+            Ok(InteractiveJourneyRun::Pending(pending))
+        }
+        crate::journey_runtime::ExecutionOutcome::Completed {
+            report,
+            mut observation,
+            human_decisions,
+        } => {
+            if store
+                .get_node(validation_id)?
+                .map(|node| node.body)
+                .as_ref()
+                != Some(&compiled.validation_body)
+            {
+                bail!(
+                    "validation '{}' changed during Journey execution; refusing settlement",
+                    validation_id
+                );
+            }
+            observation.mark_trusted();
+            settle_compiled_validation(store, validation_id, &observation)?;
+            for decision in human_decisions {
+                store.append_journal("journey_human_decision", validation_id, decision)?;
+            }
+            Ok(InteractiveJourneyRun::Completed(report))
+        }
+    }
+}
+
+/// Store-owned resume of a paused interactive Journey: re-derives the
+/// canonical proof from the store (never from the caller), rechecks the
+/// execution-time anchors persisted by the paused run, executes the remaining
+/// steps, and settles under the same boundary as a fresh run.
+pub fn resume_and_settle_compiled_validation(
+    store: &crate::store::Store,
+    token: &str,
+    answer: crate::journey_gate::ResumeAnswer,
+    executor: &str,
+) -> Result<InteractiveJourneyRun> {
+    let root = store.root().to_path_buf();
+    let identity = store.execution_identity();
+    let pending = crate::journey_runtime::pending_continuation(token)?;
+    let binding = &pending.binding;
+    let validation_id = resolve_journey_validation(store, &binding.journey_id, &binding.profile)?;
+    let compiled = trusted_compile(store, &validation_id)?;
+    store.release_graph_lock();
+
+    let _guard = crate::harness::acquire(&root, "journey resume", &identity)?;
+    let outcome = crate::journey_runtime::resume_interactive(
+        &root,
+        &compiled.spec,
+        &compiled.proof,
+        token,
+        answer,
+        executor,
+    );
+    store.reacquire_graph_lock()?;
+    let outcome = outcome?;
+    match outcome {
+        crate::journey_runtime::ExecutionOutcome::Pending(_) => {
+            bail!("resumed Journey unexpectedly paused at a second human gate")
+        }
+        crate::journey_runtime::ExecutionOutcome::Completed {
+            report,
+            mut observation,
+            human_decisions,
+        } => {
+            if store
+                .get_node(&validation_id)?
+                .map(|node| node.body)
+                .as_ref()
+                != Some(&compiled.validation_body)
+            {
+                bail!(
+                    "validation '{}' changed during Journey resume; refusing settlement",
+                    validation_id
+                );
+            }
+            observation.mark_trusted();
+            settle_compiled_validation(store, &validation_id, &observation)?;
+            for decision in human_decisions {
+                store.append_journal("journey_human_decision", &validation_id, decision)?;
+            }
+            Ok(InteractiveJourneyRun::Completed(report))
+        }
+    }
+}
+
+/// The compiler-owned Validation node for a Journey id/profile pair, by the
+/// same naming convention the compiler writes.
+fn resolve_journey_validation(
+    store: &crate::store::Store,
+    journey_id: &str,
+    profile: &str,
+) -> Result<String> {
+    use crate::model::NodeType;
+    let name = format!("journey:{journey_id}:{profile}");
+    let mut candidates: Vec<String> = store
+        .list_nodes(Some(NodeType::Validation), usize::MAX)?
+        .into_iter()
+        .filter(|node| node.name == name)
+        .map(|node| node.id)
+        .collect();
+    candidates.sort();
+    match candidates.len() {
+        0 => bail!("no compiled Journey validation for '{journey_id}:{profile}'"),
+        1 => Ok(candidates.remove(0)),
+        _ => bail!("compiled Journey validation name '{name}' is ambiguous"),
+    }
+}
+
+/// Re-derive the executable boundary from the store side and refuse if it
+/// differs from what the runtime recorded at execution time: every executed
+/// operation must have declared exactly the compiled argv0 token, literal
+/// relative executables must resolve inside the trusted root, and the
+/// resolved executable content must be unchanged.
+fn verify_executed_boundary(
+    root: &Path,
+    proof: &crate::journey_runtime::CompiledJourneyProof,
+    report: &crate::journey_runtime::RuntimeReport,
+    recorded: &[crate::journey_runtime::ExecutableBoundary],
+) -> Result<()> {
+    use crate::journey_runtime::ExecutableBoundary;
+    let mut declared: Vec<(&str, &str)> = Vec::new();
+    if let Some(setup) = &proof.setup {
+        for executed in &report.setup {
+            if let Some(operation) = setup
+                .operations
+                .iter()
+                .find(|operation| operation.operation_id == executed.operation_id)
+            {
+                declared.push((executed.operation_id.as_str(), operation.argv[0].as_str()));
+            }
+        }
+    }
+    for executed in &report.steps {
+        if executed.operation_id == "human-decision" {
+            continue;
+        }
+        if let Some(step) = proof
+            .steps
+            .iter()
+            .find(|step| step.operation_id == executed.operation_id)
+        {
+            declared.push((executed.operation_id.as_str(), step.argv[0].as_str()));
+        }
+    }
+    declared.sort_unstable();
+    let mut got: Vec<(&str, &str)> = recorded
+        .iter()
+        .map(|entry| (entry.operation_id.as_str(), entry.declared.as_str()))
+        .collect();
+    got.sort_unstable();
+    if declared != got {
+        bail!("executed operation boundary does not match the compiled proof; refusing settlement");
+    }
+
+    let mut by_operation: BTreeMap<&str, &ExecutableBoundary> = BTreeMap::new();
+    for entry in recorded {
+        by_operation.insert(entry.operation_id.as_str(), entry);
+    }
+    for (operation_id, declared_token) in declared {
+        let entry = by_operation
+            .get(operation_id)
+            .ok_or_else(|| anyhow!("executed operation '{operation_id}' has no boundary"))?;
+        let declared_path = Path::new(declared_token);
+        if declared_path.is_absolute() || declared_token.contains('/') {
+            // A literal executable path resolves deterministically against the
+            // trusted root; refuse any execution that resolved elsewhere.
+            let expected = if declared_path.is_absolute() {
+                declared_path.to_path_buf()
+            } else {
+                root.join(declared_path)
+            };
+            let expected = expected.canonicalize().with_context(|| {
+                format!("canonicalizing declared executable '{declared_token}'")
+            })?;
+            if Path::new(&entry.resolved) != expected {
+                bail!(
+                    "operation '{operation_id}' executed '{}', not the declared '{}' inside the \
+                     trusted root",
+                    entry.resolved,
+                    declared_token
+                );
+            }
+        }
+        // Bare names (and `loom`) resolve through the executor's environment
+        // by design; the recorded path and content fingerprint pin what
+        // actually ran, and the hash check below refuses a swapped binary.
+        let current = std::fs::read(&entry.resolved)
+            .map(|bytes| crate::artifact::fingerprint_bytes(&bytes))
+            .unwrap_or_default();
+        if current != entry.hash {
+            bail!(
+                "executable '{}' for operation '{}' changed since execution; refusing settlement",
+                entry.resolved,
+                operation_id
+            );
+        }
     }
     Ok(())
 }

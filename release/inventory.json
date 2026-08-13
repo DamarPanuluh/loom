@@ -619,6 +619,10 @@
       "mode": "regular"
     },
     {
+      "path": "src/journey_exercises.rs",
+      "mode": "regular"
+    },
+    {
       "path": "src/journey_gate.rs",
       "mode": "regular"
     },
@@ -1048,6 +1052,22 @@
     },
     {
       "path": "tests/ring54_source_anchors.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring55_journey_operation_exercises.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring56_public_api_boundary.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring57_journey_trust_boundary.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring58_surface_manifest_validate.rs",
       "mode": "regular"
     },
     {

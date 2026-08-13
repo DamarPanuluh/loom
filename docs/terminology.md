@@ -467,7 +467,7 @@ The role on an `implements` edge. Canonical values are `realizes`, `consumes`, `
 
 ### calls / exercises
 
-`calls` is `Validation -> InterfaceSurface`: a proof invokes the accepted consumer surface. `exercises` is `Validation -> CodeFile`: the proof reaches a specific code entry point. For compiler-owned Journeys, that entry may be the public CLI adapter from `exposes`, or a downstream operation exercise declared on a bound surface operation and compiled into the same topology with provenance (`operation_id`, `exercise_id`, `observed_by`, `locator`). Operation exercises are not additional surface owners. `observed_by` is trusted only after a local compiler-v5 `journey run`; compiler-v4 proofs must be recompiled and rerun.
+`calls` is `Validation -> InterfaceSurface`: a proof invokes the accepted consumer surface. `exercises` is `Validation -> CodeFile`: the proof reaches a specific code entry point. For compiler-owned Journeys, that entry may be the public CLI adapter from `exposes`, or a downstream operation exercise declared on a bound surface operation and compiled into the same topology with provenance (`operation_id`, `exercise_id`, `observed_by`, `locator`). Operation exercises are not additional surface owners. `observed_by` is trusted only after a local compiler-v6 `journey run`; compiler-v4 proofs must be recompiled and rerun.
 
 ### derives
 

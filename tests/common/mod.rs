@@ -428,12 +428,15 @@ fn s3_journey_proof_with_ratification(
         }],
     )
     .unwrap();
-    let observed = loom::journey_runtime::execute_observed(root, &spec, &proof, &BTreeMap::new());
-    assert_eq!(
-        observed.report().status,
-        loom::journey_runtime::RuntimeStatus::Passed
-    );
-    loom::journey::settle_compiled_validation(store, &validation.id, &observed).unwrap();
+    let proof_path = loom::journey_runtime::write_proof(root, &proof).unwrap();
+    assert!(proof_path.is_file());
+    // Trusted settlement: the Store-owned entrypoint derives the canonical
+    // proof, execution root, and covered-file evidence from the store itself
+    // and settles under one guarded pass.
+    let report =
+        loom::journey::run_and_settle_compiled_validation(store, &validation.id, &BTreeMap::new())
+            .unwrap();
+    assert_eq!(report.status, loom::journey_runtime::RuntimeStatus::Passed);
     for (edge, criterion, evidence) in [
         (
             &derives,

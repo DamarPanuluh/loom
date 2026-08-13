@@ -152,6 +152,12 @@ pub struct RunRecord {
     /// this field. Read it through [`RunRecord::observed_assertions`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) observed_assertions: Vec<ObservedAssertion>,
+    /// Persisted marker written ONLY by the Store-owned guarded Journey
+    /// settlement. A local store reload re-mints [`AssertionTrust::LocallyMinted`]
+    /// only when this is set; graph import sanitizes it, so a forged export
+    /// cannot smuggle settlement provenance into another repository.
+    #[serde(default)]
+    pub(crate) locally_minted: bool,
     /// Never serialized. Public Deserialize therefore cannot claim local mint.
     #[serde(skip)]
     pub(crate) assertion_trust: AssertionTrust,
@@ -184,7 +190,12 @@ impl RunRecord {
     }
 
     pub(crate) fn trust_local_store(&mut self) {
-        self.assertion_trust = AssertionTrust::LocallyMinted;
+        // Local reload re-mints provenance only for rows the Store-owned
+        // guarded settlement itself persisted (the serialized marker it
+        // writes). Imported rows keep Untrusted trust forever.
+        if self.locally_minted {
+            self.assertion_trust = AssertionTrust::LocallyMinted;
+        }
     }
 
     pub(crate) fn has_trusted_journey_assertions(&self) -> bool {

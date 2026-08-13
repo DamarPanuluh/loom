@@ -438,6 +438,7 @@ mod tests {
                         group: "act-op".into(),
                         assertion: "act-ok".into(),
                     }],
+                    locally_minted: false,
                     assertion_trust: crate::evidence::AssertionTrust::Untrusted,
                     duration_ms: 0,
                     ran_at: String::new(),

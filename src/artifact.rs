@@ -24,6 +24,18 @@ pub fn fingerprint(content: &str) -> String {
     format!("{h:016x}")
 }
 
+/// Byte-wise variant for non-text artifacts (executables). Same FNV-1a
+/// schedule as [`fingerprint`], so text fingerprints and byte fingerprints
+/// agree on identical content.
+pub fn fingerprint_bytes(content: &[u8]) -> String {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for &b in content {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x0100_0000_01b3);
+    }
+    format!("{h:016x}")
+}
+
 /// A ground-artifact class: the seam through which a domain registers a kind of
 /// artifact. Identity and the change-fingerprint are all the engine consumes;
 /// the class's derived facts arrive through the deriver seam.

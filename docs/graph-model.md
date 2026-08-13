@@ -450,7 +450,7 @@ The write-time check verifies the supplied truth class is in the allowed set for
 | `assesses` | Finding | CodeRule | derived | sync | finding is occurrence of code rule |
 | `exposes` | InterfaceSurface | CodeFile | asserted | builder | declared surface exposed by a codefile |
 | `calls` | Validation | InterfaceSurface | asserted | validator | proof exercises a surface |
-| `exercises` | Validation | CodeFile | asserted | validator / Journey compiler | proof reaches a specific code entry point (public adapter or declared downstream operation exercise). For compiler-owned Journeys, S3 still requires a local compiler-v5 run; imported assertion names are audit-only. |
+| `exercises` | Validation | CodeFile | asserted | validator / Journey compiler | proof reaches a specific code entry point (public adapter or declared downstream operation exercise). For compiler-owned Journeys, S3 still requires a local compiler-v6 run; imported assertion names are audit-only. |
 | `relates` | Intent | Intent | asserted | analyzer | manual relationship, kind TBD |
 | `derives` | Journey | Intent | asserted | builder | accepted technical Intent derives from stable Journey steps |
 | `surfaces` | Journey | InterfaceSurface | asserted | builder | accepted surface exposes every Journey step through real repository code |

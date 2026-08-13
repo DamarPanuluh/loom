@@ -1,6 +1,6 @@
 # Journey authoring and surface lint
 
-Status: canonical for the Loom 0.31.2 Journey authoring/lint contract. This
+Status: canonical for the Loom 0.31.3 Journey authoring/lint contract. This
 document is intentionally limited to authored Journey surfaces and lint.
 Broader release and resume guidance belongs to Phase 5.
 
