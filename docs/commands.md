@@ -16,7 +16,7 @@ Plain-English orientation: what loom is plus the one thing to do next. This is a
 loom status [--json]
 ```
 
-Graph identity, maturity ladder, queue counts, validation summary, code ownership, and the compass. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of open first-class `Question` nodes.
+Graph identity, integrity, maturity ladder, queue counts, validation summary, code ownership, and the compass. Doctor issues make integrity `INVALID`, block every non-audit rung, and route the compass to audit before any other work. Code ownership always reports the full registered denominator split into owned, unowned, excluded, and observed files; exclusions are grouped by recorded reason and never presented as owned coverage. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of open first-class `Question` nodes.
 
 `loom status` prints a true per-queue backlog line, including Journey `derive` and `surface` work alongside `fix`, `validate`, `build`, `coverage`, `quality`, `analyze`, `prove`, `triage`, `review`, and `elaborate`. Counts come from the same partition that `loom next` serves. In JSON mode the output gains a `queues` object with the same counts, including human-only `ratify` work.
 
@@ -391,11 +391,13 @@ loom edge set-role <edge-id> realizes|consumes|configures|verifies --reason "<wh
 loom edge rehome <edge-id> --to "<successor intent>" --reason "<why>" [--json]
 loom edge retarget <edge-id> --to "<successor node>" --reason "<why>" [--json]
 loom edge show <edge-id> [--json]
-loom edge list [--limit N] [--offset N] [--json]
+loom edge list [--intent <intent>] [--codefile <codefile>] [--limit N] [--offset N] [--json]
 loom edge depends-on <intent> <upstream-shadow> [--json]
 ```
 
 `edge implement` defaults to `--role realizes`; only realizing groundings own coverage. Use `consumes` when a file calls behavior across a seam, `configures` when it supplies configuration, and `verifies` when it checks behavior elsewhere. An exact replay is idempotent, and an uninspected same-role grounding may be re-grounded to a corrected locator. If the `(intent, codefile)` pair already exists with a different role—or an inspected edge is given a different locator—creation refuses and names the edge; use `edge set-role`, `edge set-locator`, or remove it explicitly instead of silently rewriting a settled claim. `apply` enforces the same collision boundary atomically. `edge set-role` records a decision note and reopens a settled edge with `stale_cause=role_changed...` when the role changes. `edge rehome` supersedes the old grounding with a `superseded_by` facet, creates or reuses the successor grounding with the old locator and role, and reopens it with `stale_cause=rehomed...`. `edge show` prints edge facets; JSON includes a `facets` object. `edge remove` refuses derived edges. `edge retarget` re-points an asserted edge's target at a successor node IN PLACE — the recorded operation of correcting an edge whose endpoint was wrong — and refuses a target that would duplicate an existing edge. It preserves the edge id, verdict history, notes, facets, timestamps, role, and locator; stales the edge with `retargeted: <old> -> <new>; <reason>`; and resets validation status when retargeting a `validates` edge. `retarget` cannot change endpoint node types; use the right edge family instead.
+
+`edge list` can filter to edges incident to one Intent and/or CodeFile. Human and JSON rows include endpoint names plus grounding `role` and `locator`, so deciding ownership never requires a lossy whole-graph dump followed by separate edge reads.
 
 `edge exercises` records validation-specific proof entry evidence (`Validation -> CodeFile`). It owns no implementation coverage and is not a substitute for `implements`: it says this proof enters through this file/symbol. Use it when command derivation cannot map a custom runner. Only a **locator-bound** entry (`--locator <entry-symbol>`) is S3-eligible; a bare file claim is diagnostic-only and cannot earn a call witness. Editing that CodeFile resets the validation on sync. Intent-level `implements --role verifies` remains useful as an intent-wide verification surface, but it is only a visible legacy fallback for strength and cannot earn S3 for a validation by itself. Compiler-owned Journey validations refuse this command — declare downstream entries on the surface operation's `exercises` array and recompile.
 
@@ -458,7 +460,9 @@ loom ignore remove '<glob>' [--json]
 loom ignore list [--json]
 ```
 
-Coverage exclusions live in the graph with a recorded reason. `loom coverage` honors them, and glob-based codefile discovery (rescan / sync) skips files matched by ignore globs.
+Coverage exclusions live in the graph with a recorded reason. `loom coverage` honors them, and glob-based codefile discovery (rescan / sync) skips files matched by ignore globs. Status and coverage retain the full registered denominator, report excluded counts and percentages separately, and group exclusions by reason. `codefile show` identifies matching ignore rules instead of calling an excluded file a coverage gap.
+
+A coverage work packet is a triage packet, not permission to mint graph truth. It embeds the existing ignore taxonomy and neighboring-file dispositions, requires those precedents to be reviewed first, and permits only reusing an existing owner, applying an established exclusion, unregistering a mistaken file, or recording distinct absent behavior as a finding for triage. New Intents are never created directly from the coverage lane.
 
 ---
 

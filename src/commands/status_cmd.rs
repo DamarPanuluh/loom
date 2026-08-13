@@ -290,8 +290,8 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: b
 pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
     let id = store.identity()?;
     let (ladder, queues) = crate::maturity::ladder_and_depths(store)?;
-    let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
-        code_ownership_summary(store)?;
+    let scope = crate::coverage::coverage_scope_summary(store)?;
+    let doctor_issues = crate::signal::doctor(store)?;
     Ok(serde_json::json!({
         "graph": {
             "name": id.name,
@@ -306,17 +306,25 @@ pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
             "edges": store.list_edges(None, usize::MAX)?.len(),
         },
         "compass": { "phase": ladder.phase, "rung": ladder.rung, "next_command": ladder.next_command },
+        "integrity": {
+            "valid": doctor_issues.is_empty(),
+            "doctor_issues": doctor_issues,
+        },
         "maturity": ladder,
         "graph_state": workitem::graph_state(store)?,
         "queues": queues,
         "validation_summary": crate::maturity::validation_summary(store)?,
         "code_ownership": {
-            "registered": registered_codefiles,
-            "owned": owned_codefiles,
-            "unowned": unowned_codefiles.len(),
-            "unowned_files": unowned_codefiles,
-            "observed": observed_codefiles,
-            "blocking": !unowned_codefiles.is_empty(),
+            "registered": scope.total_registered,
+            "in_scope": scope.in_scope,
+            "owned": scope.owned,
+            "unowned": scope.unowned(),
+            "unowned_files": scope.unowned_files,
+            "observed": scope.observed,
+            "excluded": scope.excluded(),
+            "excluded_files": scope.excluded_files,
+            "exclusions_by_reason": scope.exclusions_by_reason,
+            "blocking": scope.unowned() > 0,
         },
         "detectors": {
             "layering": super::domain_cmd::layer_detector_state(store)?,
@@ -339,8 +347,8 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     let edges = store.list_edges(None, usize::MAX)?.len();
     let (ladder, queues) = crate::maturity::ladder_and_depths(&store)?;
     let pulse = workitem::graph_state(&store)?;
-    let (registered_codefiles, owned_codefiles, unowned_codefiles, observed_codefiles) =
-        code_ownership_summary(&store)?;
+    let scope = crate::coverage::coverage_scope_summary(&store)?;
+    let doctor_issues = crate::signal::doctor(&store)?;
     let layering = super::domain_cmd::layer_detector_state(&store)?;
     println!(
         "graph: {} ({}){}",
@@ -353,20 +361,35 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         }
     );
     println!("  journeys: {journeys}  intents: {intents}  codefiles: {files}  edges: {edges}");
-    let ownership_gate = if unowned_codefiles.is_empty() {
+    if doctor_issues.is_empty() {
+        println!("  graph integrity: valid (doctor clean)");
+    } else {
+        println!(
+            "  graph integrity: INVALID — {} doctor issue(s); all non-audit rungs blocked",
+            doctor_issues.len()
+        );
+    }
+    let ownership_gate = if scope.unowned() == 0 {
         "coverage gate clear"
     } else {
         "blocks covered rung"
     };
+    let excluded_percent = if scope.total_registered == 0 {
+        0.0
+    } else {
+        scope.excluded() as f64 * 100.0 / scope.total_registered as f64
+    };
     println!(
-        "  code ownership: {owned_codefiles}/{registered_codefiles} owned, {} unowned ({ownership_gate}){}",
-        unowned_codefiles.len(),
-        if observed_codefiles > 0 {
-            format!(", {observed_codefiles} observed")
-        } else {
-            String::new()
-        }
+        "  code ownership: {} owned, {} unowned, {} excluded ({excluded_percent:.1}%), {} observed / {} registered ({ownership_gate})",
+        scope.owned,
+        scope.unowned(),
+        scope.excluded(),
+        scope.observed,
+        scope.total_registered,
     );
+    for (reason, count) in &scope.exclusions_by_reason {
+        println!("    excluded: {count} — {reason}");
+    }
     if layering.get("armed").and_then(|v| v.as_bool()) == Some(false)
         && layering
             .get("layer_count")

@@ -554,6 +554,8 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         .collect();
 
     let observed = codefile_observed(&n);
+    let ignore_rules = crate::coverage::matching_ignore_rules(&store, &n.name)?;
+    let ignored = !ignore_rules.is_empty();
     if json {
         let loc = if loc.is_empty() {
             None
@@ -576,6 +578,8 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
             "name": n.name,
             "id": n.id,
             "observed": observed,
+            "ignored": ignored,
+            "ignore_rules": &ignore_rules,
             "language": language,
             "role": role,
             "loc": loc,
@@ -595,8 +599,17 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         "{} [{}]{}",
         n.name,
         crate::model::short(&n.id),
-        if observed { "  (observed)" } else { "" }
+        if ignored {
+            "  (excluded from coverage)"
+        } else if observed {
+            "  (observed)"
+        } else {
+            ""
+        }
     );
+    for rule in &ignore_rules {
+        println!("  excluded by {} — {}", rule.glob, rule.reason);
+    }
     let mut facets = Vec::new();
     if !language.is_empty() {
         facets.push(format!("language={language}"));
@@ -619,7 +632,9 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
         owners.len()
     );
     if realizing == 0 {
-        if observed {
+        if ignored {
+            println!("    (excluded — no coverage obligation)");
+        } else if observed {
             println!("    (observed — monitored upstream; no coverage obligation)");
         } else {
             println!(

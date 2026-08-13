@@ -528,7 +528,7 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
             ungrounded.push(n.name.clone());
         }
     }
-    let (registered_codefiles, owned, unowned, observed) = code_ownership_summary(&store)?;
+    let scope = crate::coverage::coverage_scope_summary(&store)?;
     if json {
         println!(
             "{}",
@@ -544,11 +544,15 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
                     "ungrounded_intents": ungrounded,
                 },
                 "codefiles": {
-                    "registered": registered_codefiles,
-                    "owned": owned,
-                    "unowned": unowned.len(),
-                    "unowned_files": unowned,
-                    "observed": observed,
+                    "registered": scope.total_registered,
+                    "in_scope": scope.in_scope,
+                    "owned": scope.owned,
+                    "unowned": scope.unowned(),
+                    "unowned_files": &scope.unowned_files,
+                    "observed": scope.observed,
+                    "excluded": scope.excluded(),
+                    "excluded_files": &scope.excluded_files,
+                    "exclusions_by_reason": &scope.exclusions_by_reason,
                 }
             }))?
         );
@@ -576,19 +580,26 @@ pub(crate) fn coverage_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
         );
     }
     println!(
-        "  codefiles: {registered_codefiles} registered, {owned} owned, {} unowned{}",
-        unowned.len(),
-        if observed > 0 {
-            format!(", {observed} observed")
+        "  codefiles: {} registered — {} owned, {} unowned, {} excluded ({:.1}%), {} observed",
+        scope.total_registered,
+        scope.owned,
+        scope.unowned(),
+        scope.excluded(),
+        if scope.total_registered == 0 {
+            0.0
         } else {
-            String::new()
-        }
+            scope.excluded() as f64 * 100.0 / scope.total_registered as f64
+        },
+        scope.observed,
     );
-    for u in unowned.iter().take(20) {
+    for (reason, count) in &scope.exclusions_by_reason {
+        println!("    excluded: {count} — {reason}");
+    }
+    for u in scope.unowned_files.iter().take(20) {
         println!("    unowned: {u}");
     }
-    if unowned.len() > 20 {
-        println!("    … +{} more unowned (see --json)", unowned.len() - 20);
+    if scope.unowned() > 20 {
+        println!("    … +{} more unowned (see --json)", scope.unowned() - 20);
     }
     Ok(())
 }

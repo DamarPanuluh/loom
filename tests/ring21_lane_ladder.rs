@@ -21,12 +21,13 @@ use common::*;
 
 fn satisfy_journey_root_prerequisites(store: &Store, surfaced: bool) {
     let artifact = "journeys/lane-fixture.yaml";
+    let artifact_body = "schema: loom.journey/v1\nid: lane-fixture\nname: Exercise the selected lane\nactor: operator\ngoal: Exercise the selected lane\ninputs: {}\npreconditions: []\nsteps:\n  - id: work\n    name: Work\n    action: Perform the behavior under test\n    expects: []\n    produces: {}\nprofiles:\n  proof:\n    inputs: {}\n    workspace: {}\n";
     std::fs::create_dir_all(store.root().join("journeys")).unwrap();
-    std::fs::write(
-        store.root().join(artifact),
-        "schema: loom.journey/v1\nid: lane-fixture\nname: Exercise the selected lane\nactor: operator\ngoal: Exercise the selected lane\ninputs: {}\npreconditions: []\nsteps:\n  - id: work\n    name: Work\n    action: Perform the behavior under test\n    expects: []\n    produces: {}\nprofiles:\n  proof:\n    inputs: {}\n    workspace: {}\n",
-    )
-    .unwrap();
+    std::fs::write(store.root().join(artifact), artifact_body).unwrap();
+    let journey_hash = serde_norway::from_str::<loom::journey::JourneySpec>(artifact_body)
+        .unwrap()
+        .semantic_hash()
+        .unwrap();
     let journey = store
         .add_node(
             NodeType::Journey,
@@ -40,7 +41,7 @@ fn satisfy_journey_root_prerequisites(store: &Store, surfaced: bool) {
                 "actor": "operator",
                 "goal": "exercise the selected lane",
                 "artifact": artifact,
-                "semantic_hash": "lane-fixture-hash",
+                "semantic_hash": journey_hash,
                 "input_ids": [],
                 "preconditions": [],
                 "step_ids": ["work"],
@@ -66,7 +67,7 @@ fn satisfy_journey_root_prerequisites(store: &Store, surfaced: bool) {
                 &derives.id,
                 TargetKind::Edge,
                 "journey_hash",
-                "lane-fixture-hash",
+                &journey_hash,
                 TruthClass::Asserted,
             )
             .unwrap();
@@ -101,6 +102,8 @@ fn satisfy_journey_root_prerequisites(store: &Store, surfaced: bool) {
                 "title": "Lane CLI",
                 "kind": "cli",
                 "identity": "lane",
+                "codefile": "src/o.rs",
+                "locator": "fn place",
                 "operations": [{
                     "id": "work-op",
                     "summary": "perform the work",
@@ -124,7 +127,7 @@ fn satisfy_journey_root_prerequisites(store: &Store, surfaced: bool) {
             &surfaces.id,
             TargetKind::Edge,
             "journey_hash",
-            "lane-fixture-hash",
+            &journey_hash,
             TruthClass::Asserted,
         )
         .unwrap();
@@ -380,6 +383,8 @@ fn every_gate_lane_serves_the_work_it_points_at() {
                 .unwrap();
         }
 
+        let doctor = loom::signal::doctor(&store).unwrap();
+        assert!(doctor.is_empty(), "invalid {expected} fixture: {doctor:?}");
         let l = ladder(&store).unwrap();
         assert_eq!(l.phase, expected, "gate lane for the {expected} case");
         let lane = Lane::parse(&l.phase).unwrap();

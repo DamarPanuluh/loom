@@ -464,6 +464,12 @@ pub enum EdgeCmd {
         limit: usize,
         #[arg(long, default_value_t = 0)]
         offset: usize,
+        /// Keep only edges incident to this intent (id, name, or unique fragment).
+        #[arg(long)]
+        intent: Option<String>,
+        /// Keep only edges incident to this codefile (id, path, or unique fragment).
+        #[arg(long)]
+        codefile: Option<String>,
     },
     /// Reclassify a grounding edge's role (realizes|consumes|configures|verifies).
     /// Keeps the edge + verdict history; a changed role re-opens the claim

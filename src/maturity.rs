@@ -370,6 +370,23 @@ pub fn build_rungs(c: &LadderInputs) -> Vec<Rung> {
         })
         .collect();
 
+    // Integrity is a precondition, not a late quality signal. A malformed
+    // graph cannot honestly advance implementation or proof work merely
+    // because `sound` sits later in the display order. Keep the audit rung
+    // actionable and block every other rung until doctor is clean.
+    if c.doctor_issues > 0 {
+        for rung in &mut rungs {
+            if rung.lane == Lane::Audit {
+                rung.blocked = false;
+                rung.blocked_by = None;
+            } else {
+                rung.blocked = true;
+                rung.blocked_by = Some("graph integrity".into());
+            }
+        }
+        return rungs;
+    }
+
     // Gate = the lowest Unmet rung; NotApplicable is transparent (its machinery
     // doesn't exist yet, so it can't be a prerequisite). Every rung above the
     // gate is unreachable until the gate is met — mark it blocked so the display
@@ -394,7 +411,7 @@ pub fn build_rungs(c: &LadderInputs) -> Vec<Rung> {
 pub fn compass(rungs: &[Rung]) -> (String, String, String, Option<crate::truth::TruthAxis>) {
     match rungs
         .iter()
-        .find(|r| matches!(r.state, RungState::Unmet | RungState::Open))
+        .find(|r| !r.blocked && matches!(r.state, RungState::Unmet | RungState::Open))
     {
         Some(gate) => (
             gate.lane.as_str().to_string(),

@@ -357,7 +357,7 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
     } else {
         (
             format!("registered codefile '{}' has no owning intent", cf.name),
-            coverage_contract(&cf),
+            coverage_contract(store, &cf)?,
         )
     };
     Ok(Some(WorkItem {

@@ -175,7 +175,12 @@ pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
             reason,
         } => edge_retarget(&store, edge_id, to, reason, json),
         EdgeCmd::Show { edge_id } => edge_show(&store, edge_id, json),
-        EdgeCmd::List { limit, offset } => edge_list(&store, limit, offset, json),
+        EdgeCmd::List {
+            limit,
+            offset,
+            intent,
+            codefile,
+        } => edge_list(&store, limit, offset, intent, codefile, json),
         EdgeCmd::DependsOn { intent, upstream } => edge_depends_on(&store, intent, upstream, json),
     }
 }
@@ -843,27 +848,119 @@ fn edge_show(store: &Store, edge_id: String, json: bool) -> Result<()> {
     Ok(())
 }
 
-fn edge_list(store: &Store, limit: usize, offset: usize, json: bool) -> Result<()> {
-    let edges = store.list_edges_page(None, limit, offset)?;
-    let total = store.count_edges(None)?;
+fn edge_list(
+    store: &Store,
+    limit: usize,
+    offset: usize,
+    intent: Option<String>,
+    codefile: Option<String>,
+    json: bool,
+) -> Result<()> {
+    let intent_id = intent
+        .as_deref()
+        .map(|key| {
+            store
+                .resolve_node(key, Some(NodeType::Intent))
+                .map(|node| node.id)
+        })
+        .transpose()?;
+    let codefile_id = codefile
+        .as_deref()
+        .map(|key| {
+            store
+                .resolve_node(key, Some(NodeType::CodeFile))
+                .map(|node| node.id)
+        })
+        .transpose()?;
+    let filtered: Vec<_> = store
+        .list_edges(None, usize::MAX)?
+        .into_iter()
+        .filter(|edge| {
+            intent_id
+                .as_ref()
+                .is_none_or(|id| edge.from_id == *id || edge.to_id == *id)
+                && codefile_id
+                    .as_ref()
+                    .is_none_or(|id| edge.from_id == *id || edge.to_id == *id)
+        })
+        .collect();
+    let total = filtered.len();
+    let edges: Vec<_> = filtered.into_iter().skip(offset).take(limit).collect();
     if json {
+        let mut rows = Vec::with_capacity(edges.len());
+        for edge in &edges {
+            let from = store.get_node(&edge.from_id)?;
+            let to = store.get_node(&edge.to_id)?;
+            let mut row = serde_json::to_value(edge)?;
+            let object = row
+                .as_object_mut()
+                .ok_or_else(|| anyhow!("serialized edge is not an object"))?;
+            object.insert(
+                "from".into(),
+                serde_json::json!({
+                    "id": edge.from_id,
+                    "name": from.as_ref().map(|node| node.name.as_str()),
+                    "type": from.as_ref().map(|node| node.node_type.as_str()),
+                }),
+            );
+            object.insert(
+                "to".into(),
+                serde_json::json!({
+                    "id": edge.to_id,
+                    "name": to.as_ref().map(|node| node.name.as_str()),
+                    "type": to.as_ref().map(|node| node.node_type.as_str()),
+                }),
+            );
+            object.insert(
+                "role".into(),
+                if edge.kind == EdgeKind::Implements {
+                    serde_json::json!(store.grounding_role(&edge.id)?.as_str())
+                } else {
+                    serde_json::Value::Null
+                },
+            );
+            object.insert(
+                "locator".into(),
+                serde_json::to_value(store.get_facet(&edge.id, TargetKind::Edge, "locator")?)?,
+            );
+            rows.push(row);
+        }
         println!(
             "{}",
-            serde_json::to_string_pretty(&super::pagination_envelope(
-                &edges, offset, limit, total
-            ))?
+            serde_json::to_string_pretty(&super::pagination_envelope(&rows, offset, limit, total))?
         );
     } else {
         if edges.is_empty() && offset == 0 {
             println!("no edges");
         }
-        for e in &edges {
+        for edge in &edges {
+            let from = store
+                .get_node(&edge.from_id)?
+                .map(|node| node.name)
+                .unwrap_or_else(|| edge.from_id.clone());
+            let to = store
+                .get_node(&edge.to_id)?
+                .map(|node| node.name)
+                .unwrap_or_else(|| edge.to_id.clone());
+            let role = if edge.kind == EdgeKind::Implements {
+                format!(" [{}]", store.grounding_role(&edge.id)?)
+            } else {
+                String::new()
+            };
+            let locator = store
+                .get_facet(&edge.id, TargetKind::Edge, "locator")?
+                .map(|value| format!(" @ {value}"))
+                .unwrap_or_default();
             println!(
-                "{:<10} {:<18} {} [{}]",
-                e.truth_class,
-                e.kind,
-                e.status,
-                crate::model::short(&e.id)
+                "{:<10} {:<18} {} [{}]  {} → {}{}{}",
+                edge.truth_class,
+                edge.kind,
+                edge.status,
+                crate::model::short(&edge.id),
+                from,
+                to,
+                role,
+                locator,
             );
         }
         if let Some(footer) = super::page_footer(edges.len(), offset, total) {

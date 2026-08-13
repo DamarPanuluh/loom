@@ -302,58 +302,82 @@ pub(super) fn missing_codefile_contract(codefile: &Node) -> PromptContract {
     }
 }
 
-pub(super) fn coverage_contract(codefile: &Node) -> PromptContract {
+pub(super) fn coverage_contract(store: &Store, codefile: &Node) -> Result<PromptContract> {
     let file = q(&codefile.name);
-    PromptContract {
+    let ignore_precedents = crate::coverage::ignore_rules(store)?;
+    let unowned: std::collections::HashSet<String> =
+        crate::coverage::unowned_names(store)?.into_iter().collect();
+    let parent = std::path::Path::new(&codefile.name).parent();
+    let mut neighboring_files = Vec::new();
+    for neighbor in store.codefiles()? {
+        if neighbor.id == codefile.id || std::path::Path::new(&neighbor.name).parent() != parent {
+            continue;
+        }
+        let excluded = !crate::coverage::matching_ignore_rules(store, &neighbor.name)?.is_empty();
+        let disposition = if excluded {
+            "excluded"
+        } else if crate::coverage::codefile_observed(&neighbor) {
+            "observed"
+        } else if unowned.contains(&neighbor.name) {
+            "unowned"
+        } else {
+            "owned"
+        };
+        neighboring_files.push(serde_json::json!({
+            "path": neighbor.name,
+            "disposition": disposition,
+        }));
+    }
+    neighboring_files.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
+    neighboring_files.truncate(20);
+
+    Ok(PromptContract {
         role: "builder".into(),
-        mindset: "A registered file with no owning intent is a coverage gap. Make the judgment \
-                  BEFORE grounding anything: does an intent's behavior LIVE in this file? If yes, \
-                  ground it --role realizes (that is what owns coverage). If the file only CALLS \
-                  behavior that lives elsewhere (an HTTP route, a topic, a config key, an SDK), it \
-                  is a consumer surface: create the owning intent for THIS surface, ground that \
-                  --role realizes, and record --role consumes edges to the intents it merely \
-                  exercises. A consumes edge never owns coverage, so a consumer surface stays \
-                  visibly unowned until its realizing intent exists. Read the file before deciding; \
-                  do not invent an intent, and do not ground a mere caller as realizes, just to \
-                  satisfy the gate."
+        mindset: "Coverage triages a registered file; it does not authorize inventing graph truth. \
+                  BEFORE grounding anything, inspect the existing ignore taxonomy, neighboring-file \
+                  dispositions, and existing intents. Decide in this order: (1) reuse a real existing \
+                  owner when its behavior LIVES in this file; (2) follow an established exclusion \
+                  precedent when the file is outside the tracked surface; (3) unregister a mistaken \
+                  registration; (4) if the file proves a distinct behavior absent from the graph, \
+                  record that discovery for triage and STOP — do not mint the intent in the coverage \
+                  lane. Never ground a mere caller as realizes just to satisfy the gate."
             .into(),
         why_now: format!("codefile '{}' is registered but unowned", codefile.name),
         allowed_actions: vec![
             format!("loom codefile show {file}"),
             "loom intent list".into(),
+            "loom ignore list".into(),
+            "loom codefile list".into(),
             "read the file to see whether a behavior LIVES here or is merely called".into(),
             format!("loom edge implement <intent> {file} --role realizes --locator <symbol>"),
             format!("loom edge implement <consumed-intent> {file} --role consumes --locator <seam>"),
             format!("loom codefile remove {file} (if it should not be tracked)"),
-            "loom ignore add '<glob>' --reason '…' (if outside the tracked surface)".into(),
+            "loom ignore add '<glob>' --reason '<existing category verbatim>' (only when established precedent applies)".into(),
+            format!("loom finding add '<distinct behavior absent from graph>' --source coverage --kind discovered_behavior --evidence '<file:line>' --impact '<why it matters>' --file {file} (then stop for triage)"),
             "loom sync".into(),
         ],
         forbidden_actions: vec![
             "grounding a mere caller as --role realizes just to satisfy coverage".into(),
-            "inventing an intent with no behavioral description".into(),
+            "creating a new intent in the coverage lane".into(),
+            "writing a new free-text ignore category when an existing category applies".into(),
             "loom rule verdict passing (quality lane)".into(),
         ],
         evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
-        required_evidence: "file read; a realizing owner chosen with a locator, OR a new realizing intent for this surface plus consumes edges to what it calls, OR a reason to unregister".into(),
+        required_evidence: "file read; ignore list and neighboring dispositions reviewed; then an existing realizing owner with locator, an established exclusion precedent, a reason to unregister, or an evidence-backed discovered_behavior finding for triage".into(),
         evidence_template: None,
-        examples: Some(serde_json::json!([
-            {
-                "situation": "the behavior LIVES in this file",
-                "do": "loom edge implement \"<that intent>\" <file> --role realizes --locator <symbol>"
-            },
-            {
-                "situation": "the file only CALLS behavior that lives elsewhere (a page hitting a backend route)",
-                "do": "create the owning intent for this surface (level feature; visibility user_visible if a person touches it), ground it --role realizes, then add --role consumes edges to the intents it exercises, naming the seam (route/topic/key) in the locator"
-            }
-        ])),
+        examples: Some(serde_json::json!({
+            "decision_order": ["reuse_existing_owner", "follow_exclusion_precedent", "unregister", "record_discovery_and_stop"],
+            "existing_ignore_precedents": ignore_precedents,
+            "neighboring_file_dispositions": neighboring_files,
+        })),
         pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
-            "loom edge implement <intent> {file} --role realizes --locator <symbol>   (or, if it only calls behavior elsewhere)   loom intent add --name '<surface behavior>' --visibility user_visible … ; loom edge implement '<surface behavior>' {file} --role realizes --locator <symbol> ; loom edge implement '<consumed intent>' {file} --role consumes --locator <seam>   (or)   loom codefile remove {file}"
+            "loom edge implement <existing-intent> {file} --role realizes --locator <symbol>   (or)   loom ignore add '<established-glob>' --reason '<existing category verbatim>'   (or)   loom codefile remove {file}   (or)   loom finding add '<distinct behavior absent from graph>' --source coverage --kind discovered_behavior --evidence '<file:line>' --impact '<why it matters>' --file {file}"
         ),
-        stop_condition: "after grounding (realizes), or creating the realizing surface intent + its consumes edges, or unregistering, + sync, return to loom status".into(),
+        stop_condition: "after grounding an existing owner, applying an established exclusion, or unregistering + sync, return to loom status; after recording distinct absent behavior, stop for triage without creating an intent".into(),
         human_gate: None,
-    }
+    })
 }
 
 /// Analyze / re-verify contract for an asserted edge.
