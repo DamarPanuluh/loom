@@ -22,6 +22,10 @@ use std::path::{Path, PathBuf};
 
 pub use crate::identity::Agent;
 
+/// Marker written only into cloned Journey fixture graphs. Live stores never
+/// carry it; compiler-owned proof surgery is confined to these copies.
+const LOCAL_SNAPSHOT_MARKER: &str = "local_snapshot";
+
 /// Identity of a graph — what other graphs reference in a federation. Travels
 /// in the export.
 #[derive(Debug, Clone, PartialEq)]
@@ -424,10 +428,28 @@ impl Store {
             }
             Ok(())
         })();
-        if result.is_err() {
+        if let Err(error) = result {
             let _ = std::fs::remove_dir_all(&destination_loom);
+            return Err(error);
         }
-        result
+        if let Err(error) = std::fs::write(
+            destination_loom.join(LOCAL_SNAPSHOT_MARKER),
+            b"{\"schema\":\"loom.local-snapshot/v1\"}\n",
+        ) {
+            let _ = std::fs::remove_dir_all(&destination_loom);
+            return Err(error).context("marking the cloned graph as a local snapshot");
+        }
+        Ok(())
+    }
+
+    /// True only for graphs minted by [`Store::clone_local_snapshot`].
+    /// Live operator graphs never carry this marker.
+    pub fn is_local_snapshot(&self) -> bool {
+        let path = self.root.join(LOOM_DIR).join(LOCAL_SNAPSHOT_MARKER);
+        match std::fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata.is_file() && !metadata.file_type().is_symlink(),
+            Err(_) => false,
+        }
     }
 
     /// Walk up from `start` to find the nearest ancestor containing `.loom/`.

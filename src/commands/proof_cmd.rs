@@ -602,11 +602,13 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             if let Some((journey, profile)) =
                 crate::completeness::compiler_owned_journey_validation(&store, &val)?
             {
-                bail!(
-                    "compiler-owned Journey validations cannot be removed generically; recompile with `loom journey compile {} --profile {}`",
-                    journey.id,
-                    profile
-                );
+                if !store.is_local_snapshot() {
+                    bail!(
+                        "compiler-owned Journey validations cannot be removed generically; recompile with `loom journey compile {} --profile {}`",
+                        journey.name,
+                        profile
+                    );
+                }
             }
             store.delete_node(&val.id)?;
             pulse::emit_line(

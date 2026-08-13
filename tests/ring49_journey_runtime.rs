@@ -1349,6 +1349,14 @@ fn local_snapshot_setup_precedes_status_without_strength_or_live_mutation() {
     drop(source);
     let cloned = Store::open_read(clone.path()).unwrap();
     assert_eq!(cloned.snapshot().unwrap(), source_snapshot);
+    assert!(
+        cloned.is_local_snapshot(),
+        "cloned fixture graphs must be marked local snapshots"
+    );
+    assert!(
+        !Store::open_read(root.path()).unwrap().is_local_snapshot(),
+        "the live graph must not inherit the snapshot marker"
+    );
     assert_eq!(
         loom::journal::read(clone.path()).unwrap(),
         loom::journal::read(root.path()).unwrap(),
