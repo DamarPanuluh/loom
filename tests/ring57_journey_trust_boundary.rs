@@ -7,10 +7,15 @@
 //!    attacker-controlled root containing a fake RELATIVE executable, then
 //!    settled against the trusted store — must fail and remain below S3.
 //! 2. The same with a PATH shim for a BARE executable name.
-//! 3. An interactive (human-gated) run paused, a covered CodeFile modified
+//! 3. Store-owned runs against attacker-owned stores where the executable is
+//!    caller-selected rather than Store-approved — a PATH shim for a bare
+//!    name, a relative executable symlinked outside the repository, and a
+//!    self-replacing executable — must refuse and remain below S3.
+//! 4. An interactive (human-gated) run paused, a covered CodeFile modified
 //!    between execution and settlement — resume must refuse and settle
 //!    nothing.
-//! 4. The normal trusted path and the interactive/resume path still pass.
+//! 5. The normal trusted path (approved bare tool and confined relative
+//!    binary) and the interactive/resume path still pass.
 
 use loom::journey::{
     CliOperation, HumanDecisionBinding, HumanDecisionSource, JourneySpec, OperationBinding,
@@ -27,6 +32,31 @@ use std::sync::Mutex;
 /// Serialize env mutations (PATH shim) against any other test mutating the
 /// process environment.
 static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+/// RAII restoration of the process PATH after a shim. Restores even on panic
+/// so a failed assertion can never leak a mutated PATH into sibling tests.
+struct PathShim(Option<std::ffi::OsString>);
+
+impl PathShim {
+    fn prepend(directory: &Path) -> Self {
+        let old_path = std::env::var_os("PATH");
+        let mut entries = vec![directory.to_path_buf()];
+        if let Some(path) = &old_path {
+            entries.extend(std::env::split_paths(path));
+        }
+        std::env::set_var("PATH", std::env::join_paths(entries).unwrap());
+        Self(old_path)
+    }
+}
+
+impl Drop for PathShim {
+    fn drop(&mut self) {
+        match &self.0 {
+            Some(path) => std::env::set_var("PATH", path),
+            None => std::env::remove_var("PATH"),
+        }
+    }
+}
 
 struct Tmp(PathBuf);
 
@@ -493,6 +523,231 @@ fn normal_store_owned_run_settles_and_earns_its_grade() {
         "passed"
     );
     assert!(fixture.root.join("real-ran").is_file());
+}
+
+/// A refused Store-owned run must settle as a blocked observation (or refuse
+/// settlement outright), never execute the attacker's binary, and never earn
+/// S3.
+fn assert_store_owned_refused(
+    report: &loom::journey_runtime::RuntimeReport,
+    fixture: &CanonicalFixture,
+) {
+    assert_eq!(
+        report.status,
+        loom::journey_runtime::RuntimeStatus::Blocked,
+        "{:#?}",
+        report
+    );
+    assert_ne!(fixture.grade(), "S3", "attack must remain below S3");
+    assert_ne!(
+        fixture
+            .store
+            .get_node(&fixture.validation_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        "passed",
+        "a refused attack must not leave a passing validation"
+    );
+}
+
+#[test]
+fn store_owned_path_shim_for_bare_executable_refuses_and_stays_below_s3() {
+    let fixture = canonical_fixture("boundary-shim-bin", "store-owned-shim");
+    // Attacker prepends a passing shim to PATH. The Store-owned runtime must
+    // resolve the bare name through the approved toolchain boundary only, so
+    // the shim is never consulted and never runs.
+    let attacker = Tmp::new("store-owned-shim-dir");
+    let shim_dir = attacker.path().join("shim");
+    std::fs::create_dir_all(&shim_dir).unwrap();
+    let fake_sentinel = attacker.path().join("fake-ran");
+    let fake_body = format!(
+        "#!/usr/bin/env python3\nimport json\nfrom pathlib import Path\nPath({fake_sentinel:?}).write_text('ran')\nprint(json.dumps({{'ok': True}}))\n"
+    );
+    executable_script(&shim_dir.join("boundary-shim-bin"), &fake_body);
+
+    let report = {
+        let _serialize = ENV_LOCK.lock().unwrap();
+        let _shim = PathShim::prepend(&shim_dir);
+        loom::journey::run_and_settle_compiled_validation(
+            &fixture.store,
+            &fixture.validation_id,
+            &BTreeMap::new(),
+        )
+        .unwrap()
+    };
+    assert_store_owned_refused(&report, &fixture);
+    let detail = report.detail.as_deref().unwrap_or("");
+    assert!(detail.contains("executable boundary"), "{detail}");
+    assert!(detail.contains("boundary-shim-bin"), "{detail}");
+    assert!(
+        !fake_sentinel.is_file(),
+        "the PATH shim must never run on the Store-owned path"
+    );
+    assert_eq!(
+        fixture
+            .store
+            .get_node(&fixture.validation_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        "blocked",
+        "the refusal must settle as a blocked observation"
+    );
+}
+
+#[test]
+fn store_owned_relative_symlink_escape_refuses_and_stays_below_s3() {
+    let fixture = canonical_fixture("tools/boundary-bin", "store-owned-symlink");
+    // Replace the confined relative binary with a symlink that escapes the
+    // repository root. The Store-owned runtime must canonicalize before the
+    // spawn and refuse anything that lands outside the trusted root.
+    let outside = Tmp::new("store-owned-symlink-target");
+    let evil_sentinel = outside.path().join("evil-ran");
+    let evil = outside.path().join("evil.py");
+    executable_script(
+        &evil,
+        &format!(
+            "#!/usr/bin/env python3\nimport json\nfrom pathlib import Path\nPath({evil_sentinel:?}).write_text('ran')\nprint(json.dumps({{'ok': True}}))\n"
+        ),
+    );
+    std::fs::remove_file(fixture.root.join("tools/boundary-bin")).unwrap();
+    std::os::unix::fs::symlink(&evil, fixture.root.join("tools/boundary-bin")).unwrap();
+
+    let report = loom::journey::run_and_settle_compiled_validation(
+        &fixture.store,
+        &fixture.validation_id,
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_store_owned_refused(&report, &fixture);
+    let detail = report.detail.as_deref().unwrap_or("");
+    assert!(detail.contains("outside the repository root"), "{detail}");
+    assert!(
+        !evil_sentinel.is_file(),
+        "the symlinked outside executable must never run"
+    );
+    assert_eq!(
+        fixture
+            .store
+            .get_node(&fixture.validation_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        "blocked"
+    );
+}
+
+#[test]
+fn store_owned_self_replacing_executable_refuses_and_stays_below_s3() {
+    let fixture = canonical_fixture("tools/boundary-bin", "store-owned-self-replace");
+    // The executable prints a passing payload and then overwrites its own file
+    // with different bytes before exiting. The Store-owned runtime hashed it
+    // before the spawn and must refuse once the same path no longer matches.
+    let path = fixture.root.join("tools/boundary-bin");
+    executable_script(
+        &path,
+        "#!/usr/bin/env python3\nimport json\nfrom pathlib import Path\n\
+         Path(__file__).write_text(\"#!/usr/bin/env python3\\nprint('replaced')\\n\")\n\
+         print(json.dumps({'ok': True}))\n",
+    );
+
+    let report = loom::journey::run_and_settle_compiled_validation(
+        &fixture.store,
+        &fixture.validation_id,
+        &BTreeMap::new(),
+    )
+    .unwrap();
+    assert_store_owned_refused(&report, &fixture);
+    let detail = report.detail.as_deref().unwrap_or("");
+    assert!(
+        detail.contains("missing, replaced, or modified while it was running"),
+        "{detail}"
+    );
+    assert_eq!(
+        fixture
+            .store
+            .get_node(&fixture.validation_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        "blocked",
+        "a self-replacing executable must settle as a blocked observation"
+    );
+}
+
+/// Rewrite the fixture operation to a bare approved tool (`python3` resolved
+/// through the approved toolchain directories) that prints the passing JSON,
+/// and keep the compiled validation's surface hash in step.
+fn bare_tool_happy_fixture() -> CanonicalFixture {
+    let fixture = canonical_fixture("tools/boundary-bin", "approved-bare");
+    let journey = fixture
+        .store
+        .list_nodes(Some(NodeType::Journey), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .find(|node| node.name == fixture.spec.id)
+        .expect("fixture journey node");
+    let surfaces = fixture
+        .store
+        .edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)
+        .unwrap();
+    let surface_id = surfaces[0].to_id.clone();
+    let mut body = fixture.store.get_node(&surface_id).unwrap().unwrap().body;
+    let mut operation: CliOperation =
+        serde_json::from_value(body["operations"][0].clone()).unwrap();
+    operation.argv = vec![
+        "python3".into(),
+        "-c".into(),
+        "import json; print(json.dumps({'ok': True}))".into(),
+    ];
+    body["operations"][0] = serde_json::to_value(&operation).unwrap();
+    fixture.store.set_node_body(&surface_id, &body).unwrap();
+    let new_hash = loom::journey::surface_projection_hash(&fixture.store, &journey)
+        .unwrap()
+        .unwrap();
+    let mut validation_body = fixture
+        .store
+        .get_node(&fixture.validation_id)
+        .unwrap()
+        .unwrap()
+        .body;
+    validation_body["surface_hash"] = json!(new_hash);
+    fixture
+        .store
+        .set_node_body(&fixture.validation_id, &validation_body)
+        .unwrap();
+    fixture
+}
+
+#[test]
+fn store_owned_approved_bare_tool_and_confined_relative_binary_still_work() {
+    // Confined relative binary: resolves inside the trusted root and settles.
+    let relative = canonical_fixture("tools/boundary-bin", "happy-relative");
+    settle_trusted(&relative);
+    assert_eq!(
+        relative
+            .store
+            .get_node(&relative.validation_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        "passed"
+    );
+    assert!(relative.root.join("real-ran").is_file());
+
+    // Approved bare tool: resolves through the approved toolchain directories
+    // (never the caller PATH) and still runs to a passing settle.
+    let bare = bare_tool_happy_fixture();
+    settle_trusted(&bare);
+    assert_eq!(
+        bare.store
+            .get_node(&bare.validation_id)
+            .unwrap()
+            .unwrap()
+            .status,
+        "passed"
+    );
 }
 
 /// A store fixture whose Journey pauses at a structured human gate: step one

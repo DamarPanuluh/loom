@@ -3205,9 +3205,12 @@ fn resolve_journey_validation(
 
 /// Re-derive the executable boundary from the store side and refuse if it
 /// differs from what the runtime recorded at execution time: every executed
-/// operation must have declared exactly the compiled argv0 token, literal
-/// relative executables must resolve inside the trusted root, and the
-/// resolved executable content must be unchanged.
+/// operation must have declared exactly the compiled argv0 token, and every
+/// recorded executable must still resolve under the same Store-derived
+/// trusted execution policy (relative literals inside the trusted root with
+/// no symlink escape, bare names only through the approved toolchain
+/// boundary) to the exact canonical path and content fingerprint the runtime
+/// hashed before its spawn.
 fn verify_executed_boundary(
     root: &Path,
     proof: &crate::journey_runtime::CompiledJourneyProof,
@@ -3257,38 +3260,24 @@ fn verify_executed_boundary(
         let entry = by_operation
             .get(operation_id)
             .ok_or_else(|| anyhow!("executed operation '{operation_id}' has no boundary"))?;
-        let declared_path = Path::new(declared_token);
-        if declared_path.is_absolute() || declared_token.contains('/') {
-            // A literal executable path resolves deterministically against the
-            // trusted root; refuse any execution that resolved elsewhere.
-            let expected = if declared_path.is_absolute() {
-                declared_path.to_path_buf()
-            } else {
-                root.join(declared_path)
-            };
-            let expected = expected.canonicalize().with_context(|| {
-                format!("canonicalizing declared executable '{declared_token}'")
+        // Re-derive the approved executable exactly as the guarded runtime
+        // did before its spawn, and require both the canonical path and the
+        // pre-execution content fingerprint to match. This refuses symlink
+        // escapes, bare names that only exist on a caller-mutated PATH, and
+        // executables that were missing, replaced, or self-modified between
+        // execution and settlement.
+        let derived = crate::journey_runtime::resolve_trusted_executable(root, declared_token)
+            .with_context(|| {
+                format!("re-deriving the executable boundary for operation '{operation_id}'")
             })?;
-            if Path::new(&entry.resolved) != expected {
-                bail!(
-                    "operation '{operation_id}' executed '{}', not the declared '{}' inside the \
-                     trusted root",
-                    entry.resolved,
-                    declared_token
-                );
-            }
-        }
-        // Bare names (and `loom`) resolve through the executor's environment
-        // by design; the recorded path and content fingerprint pin what
-        // actually ran, and the hash check below refuses a swapped binary.
-        let current = std::fs::read(&entry.resolved)
-            .map(|bytes| crate::artifact::fingerprint_bytes(&bytes))
-            .unwrap_or_default();
-        if current != entry.hash {
+        if Path::new(&entry.resolved) != derived.path || entry.hash != derived.hash {
             bail!(
-                "executable '{}' for operation '{}' changed since execution; refusing settlement",
+                "operation '{operation_id}' executed '{}' (fingerprint {}), not the \
+                 Store-approved '{}' (fingerprint {}); refusing settlement",
                 entry.resolved,
-                operation_id
+                entry.hash,
+                derived.path.display(),
+                derived.hash
             );
         }
     }

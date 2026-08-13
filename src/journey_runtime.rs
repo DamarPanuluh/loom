@@ -2737,6 +2737,22 @@ fn run_json_operation(
         display_argv.insert(1, graph_root.display().to_string());
         display_argv.insert(1, "--graph".into());
     }
+    // Store-owned guarded runs resolve argv0 ONCE under the trusted execution
+    // policy, hash the resolved executable before the spawn, and recheck the
+    // same path and hash after execution while the harness guard is held.
+    // Public API runs (which can never settle) keep the legacy resolver.
+    let guarded = boundary.is_some();
+    let resolved = if guarded {
+        Some(
+            resolve_trusted_executable(repository_root, &argv0).map_err(|error| {
+                anyhow!(
+                "{label} executable boundary: refusing to run an unapproved executable: {error:#}"
+            )
+            })?,
+        )
+    } else {
+        None
+    };
     let observed = run_direct(
         repository_root,
         cwd,
@@ -2744,18 +2760,40 @@ fn run_json_operation(
         &operation_env,
         authorized,
         Duration::from_secs(timeout_seconds),
+        resolved.as_ref(),
     )
     .with_context(|| format!("{label} could not start"))?;
+    if let Some(resolved) = &resolved {
+        // The same path, rechecked while the guard remains held: a missing,
+        // replaced, or self-modifying executable must not be treated as the
+        // Store-approved binary that ran.
+        let current = std::fs::read(&resolved.path)
+            .map(|bytes| crate::artifact::fingerprint_bytes(&bytes))
+            .unwrap_or_default();
+        if current != resolved.hash {
+            bail!(
+                "{label} executable '{}' was missing, replaced, or modified while it was \
+                 running; refusing the result",
+                resolved.path.display()
+            );
+        }
+    }
     if let Some(record) = boundary {
         // Pin what actually executed: the declared argv0 token, the resolved
-        // executable, and its content fingerprint at execution time.
+        // executable, and its content fingerprint read BEFORE the spawn.
         // Settlement re-derives and compares.
-        record.push(resolve_executable_boundary(
-            operation_id,
-            &base_argv[0],
-            &argv0,
-            repository_root,
-        ));
+        record.push(match &resolved {
+            Some(resolved) => ExecutableBoundary {
+                operation_id: operation_id.to_string(),
+                declared: base_argv[0].clone(),
+                argv0: argv0.clone(),
+                resolved: resolved.path.to_string_lossy().into_owned(),
+                hash: resolved.hash.clone(),
+            },
+            None => {
+                resolve_executable_boundary(operation_id, &base_argv[0], &argv0, repository_root)
+            }
+        });
     }
     if observed.timed_out {
         bail!("{label} exceeded the execution timeout");
@@ -3442,9 +3480,17 @@ fn run_direct(
     env: &BTreeMap<String, String>,
     invocation: crate::candidate_surface_policy::AuthorizedInvocation,
     timeout: Duration,
+    resolved: Option<&ResolvedExecutable>,
 ) -> std::io::Result<DirectObservation> {
     let argv = invocation.into_graph_argv(graph_root);
-    let executable = resolve_executable(repository_root, &argv[0]);
+    // On the Store-owned guarded path the executable was resolved once under
+    // the trusted execution policy before this call; spawn that exact path,
+    // never the unresolved token. The unguarded public API replicates the
+    // legacy resolver for diagnostics only.
+    let executable = match resolved {
+        Some(resolved) => resolved.path.clone(),
+        None => resolve_executable(repository_root, &argv[0]),
+    };
     let mut command = Command::new(executable);
     command
         .args(&argv[1..])
@@ -3522,6 +3568,142 @@ fn resolve_executable(root: &Path, executable: &str) -> PathBuf {
         }
     }
     candidate.to_path_buf()
+}
+
+/// One operation's executable as resolved by the Store-derived trusted
+/// execution policy: a canonical absolute path plus the content fingerprint
+/// read immediately before the spawn. Both are pinned in the executed
+/// boundary and re-derived at settlement; the runtime spawns exactly this
+/// path and rechecks the same path's bytes after execution.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ResolvedExecutable {
+    pub path: PathBuf,
+    pub hash: String,
+}
+
+/// Approved toolchain directories a bare executable name may resolve in, in
+/// probe order. This is the explicit approved toolchain/environment boundary:
+/// a bare name is never resolved through the caller-mutated PATH, so a PATH
+/// shim cannot redirect the spawn. Only the directories the toolchain itself
+/// ships in are trusted; anything else must be declared as a confined relative
+/// path under the repository or an explicit absolute identity.
+#[cfg(unix)]
+const APPROVED_TOOLCHAIN_DIRECTORIES: &[&str] = &[
+    "/usr/local/bin",
+    "/usr/bin",
+    "/bin",
+    "/opt/homebrew/bin",
+    "/opt/local/bin",
+];
+
+/// Windows: the Loom toolchain may live beside the running binary, and the
+/// platform shell essentials live under the system root.
+#[cfg(windows)]
+fn approved_toolchain_directories() -> Vec<PathBuf> {
+    let mut directories = Vec::new();
+    if let Some(system_root) = std::env::var_os("SystemRoot") {
+        directories.push(PathBuf::from(system_root).join("System32"));
+    }
+    if let Ok(current) = std::env::current_exe() {
+        if let Some(parent) = current.parent() {
+            directories.push(parent.to_path_buf());
+        }
+    }
+    directories
+}
+
+/// Resolve one declared executable token under the Store-derived trusted
+/// execution policy, hashing its bytes immediately before execution.
+///
+/// - Literal paths: canonicalized once; a RELATIVE literal path must resolve
+///   to a real file beneath the canonical repository root — a symlink escape
+///   is refused even when the link itself sits inside the root. Absolute
+///   literals are the caller's explicit identity and are used as-is.
+/// - Bare names: `loom` binds to the currently running Loom binary (the
+///   allowlisted absolute identity of the toolchain itself); any other bare
+///   name must exist in an approved toolchain directory. Caller-mutated PATH
+///   is never consulted.
+///
+/// Missing, unreadable, or — for bare names — unapproved executables are
+/// refused before anything spawns.
+pub(crate) fn resolve_trusted_executable(
+    root: &Path,
+    declared: &str,
+) -> Result<ResolvedExecutable> {
+    let canonical_root = root
+        .canonicalize()
+        .with_context(|| format!("canonicalizing Journey repository root {}", root.display()))?;
+    let token = Path::new(declared);
+    let candidate: PathBuf = if token.is_absolute() {
+        token.to_path_buf()
+    } else if declared.contains('/') {
+        canonical_root.join(token)
+    } else {
+        resolve_approved_bare(declared)?
+    };
+    let canonical = candidate.canonicalize().with_context(|| {
+        format!(
+            "resolving executable '{declared}': the declared executable does not resolve to a \
+             real file under the trusted execution policy"
+        )
+    })?;
+    if !token.is_absolute() && declared.contains('/') && !canonical.starts_with(&canonical_root) {
+        bail!(
+            "executable '{declared}' resolves through a symlink to '{}' outside the repository \
+             root; refusing to execute it (symlink escapes are not approved)",
+            canonical.display()
+        );
+    }
+    let bytes = std::fs::read(&canonical)
+        .with_context(|| format!("reading resolved executable '{}'", canonical.display()))?;
+    let hash = crate::artifact::fingerprint_bytes(&bytes);
+    Ok(ResolvedExecutable {
+        path: canonical,
+        hash,
+    })
+}
+
+/// Resolve a bare executable name (no path separator) through the approved
+/// toolchain/environment boundary. `loom` binds to the currently running Loom
+/// binary — the allowlisted absolute identity of the toolchain. Any other
+/// bare name must already exist in an approved toolchain directory; the
+/// caller's PATH is never consulted, so a PATH shim cannot redirect the
+/// spawn.
+fn resolve_approved_bare(declared: &str) -> Result<PathBuf> {
+    if declared == "loom" {
+        if let Ok(current) = std::env::current_exe() {
+            if current
+                .file_stem()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| name == "loom")
+            {
+                return Ok(current);
+            }
+        }
+        bail!(
+            "bare executable 'loom' cannot be bound to the approved Loom toolchain identity: the \
+             running process is not a Loom binary"
+        );
+    }
+    #[cfg(unix)]
+    let directories = APPROVED_TOOLCHAIN_DIRECTORIES
+        .iter()
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
+    #[cfg(windows)]
+    let directories = approved_toolchain_directories();
+    for directory in directories {
+        let probe = directory.join(declared);
+        if probe.is_file() {
+            return Ok(probe);
+        }
+    }
+    bail!(
+        "bare executable '{declared}' is not approved: it is absent from the approved toolchain \
+         directories and is not the Loom toolchain binary itself; declare it as a confined \
+         relative path under the repository (e.g. tools/{declared}) or an explicit absolute \
+         identity"
+    )
 }
 
 /// Capture the execution-time anchors before anything may execute: the

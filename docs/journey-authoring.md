@@ -21,10 +21,18 @@ downstream handlers on the bound operation as optional `exercises` entries
 owners; `journey compile` turns them into compiler-owned proof topology, and S3
 still requires the referenced assertion to pass plus call-graph reach to a
 realizing symbol. Assertion passage is machine evidence minted only by a local
-`journey run` of compiler version 5 whose compiled proof is byte-identical to
+`journey run` of compiler version 6 whose compiled proof is byte-identical to
 the current accepted surface; imported, deserialized, or caller-authored
-compiled proofs cannot earn that standing. Compiler-v4 proofs must be
+compiled proofs cannot earn that standing. Compiler-v5 proofs must be
 recompiled and rerun.
+
+When a compiler version bump changes the compiled proof shape, regenerated
+surface manifests are not a drop-in: align each operation's argv (and any
+argv tokens sourced from prior steps or inputs), its assertion and capture
+pointers, its arguments, and the prior-output sources those arguments
+reference. Human-gated Journeys additionally require structural edits — the
+binding that names the gate step and the setup that materializes the gate's
+inputs must be re-issued together, not replayed verbatim.
 
 ## Authoring workflow
 
