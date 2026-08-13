@@ -978,8 +978,8 @@ fn imported_surface_cannot_execute_until_local_surface_accept() {
             json: true,
             command: Some(loom::cli::Command::Journey { cmd: command }),
         })
-        .unwrap_err()
-        .to_string();
+        .unwrap_err();
+        let error = format!("{error:#}");
         assert!(
             error.contains("imported") && error.contains("quarantined"),
             "{error}"

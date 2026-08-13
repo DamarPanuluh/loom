@@ -300,6 +300,7 @@ fn s3_journey_proof_with_ratification(
         environment: Vec::new(),
         read_only: true,
         timeout_seconds: None,
+        expected_exit: 0,
         arguments: Vec::new(),
         output: OperationOutput {
             format: OutputFormat::Json,

@@ -1,6 +1,6 @@
 # Journey authoring and surface lint
 
-Status: canonical for the Loom 0.31.3 Journey authoring/lint contract. This
+Status: canonical for the Loom 0.32.0 Journey authoring/lint contract. This
 document is intentionally limited to authored Journey surfaces and lint.
 Broader release and resume guidance belongs to Phase 5.
 
@@ -33,6 +33,44 @@ pointers, its arguments, and the prior-output sources those arguments
 reference. Human-gated Journeys additionally require structural edits — the
 binding that names the gate step and the setup that materializes the gate's
 inputs must be re-issued together, not replayed verbatim.
+
+## Process exit is liveness, not an assertion
+
+The runtime requires each operation's child process to exit with exactly the
+operation's optional `expected_exit` integer. Omitting it (or setting `0`)
+keeps the default rule: the child must exit 0. A structured-failure CLI — one
+that always writes its single JSON envelope to stdout and then exits non-zero
+to signal the rejection, for example a `gridctl` that exits 11 on a 401, 12
+on a 404, and 2 on usage errors — proves that failure as an observed result
+by declaring the exit code on the operation:
+
+```json
+{
+  "id": "gridctl-auth-rejected",
+  "summary": "Grid rejects an unauthorized request",
+  "argv": ["gridctl", "request", "--token", "expired"],
+  "expected_exit": 11,
+  "output": {
+    "format": "json",
+    "assertions": [
+      {"id": "not-ok", "pointer": "/ok", "equals": false},
+      {"id": "kind", "pointer": "/error/kind", "equals": "authorization"},
+      {"id": "code", "pointer": "/error/code", "equals": "auth_rejected"}
+    ]
+  }
+}
+```
+
+`expected_exit` is process liveness only; it never relaxes the content
+contract. Stdout must still be exactly one UTF-8 JSON value, and content
+checks such as `/ok`, `/error.kind`, and `/error.code` remain JSON assertions
+in `output.assertions` — exit codes never appear on assertions. A killed or
+signaled process, a timeout, a different exit code, or a non-JSON envelope
+still fails the run, and negative values are rejected at parse time. The
+target CLI keeps its real exit-code contract; do not wrap it or flag it into
+exiting 0 for the proof. Compiled proofs omit the field when it is `0`, so
+surfaces that never set it compile byte-identically and existing proofs keep
+deserializing unchanged.
 
 ## Authoring workflow
 

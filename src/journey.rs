@@ -1478,12 +1478,27 @@ pub struct CliOperation {
     /// Optional positive override of the selected proof profile's timeout.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_seconds: Option<u64>,
+    /// Process liveness contract: the exact exit code that counts as the
+    /// operation having run. Omitted or `0` keeps the default rule (the child
+    /// must exit 0). A non-zero value lets a structured-failure CLI — one
+    /// that writes its single JSON envelope to stdout and then exits non-zero
+    /// to signal the rejection — prove that failure as an observed result.
+    /// Content checks such as `/ok`, `/error.kind`, and `/error.code` remain
+    /// JSON assertions in `output.assertions`, never exit codes. Negative
+    /// values are rejected at parse time, and a killed or signaled process
+    /// never satisfies this contract.
+    #[serde(default, skip_serializing_if = "exit_code_is_zero")]
+    pub expected_exit: u32,
     #[serde(default)]
     pub arguments: Vec<OperationArgument>,
     pub output: OperationOutput,
     /// Optional downstream proof entries reached through this public operation.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub exercises: Vec<OperationExercise>,
+}
+
+fn exit_code_is_zero(code: &u32) -> bool {
+    *code == 0
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -1512,6 +1527,9 @@ pub struct OperationOutput {
     pub captures: Vec<OutputCapture>,
     /// Machine-checkable content expectations. Exit status is deliberately not
     /// represented here: a process exiting zero is liveness, not an assertion.
+    /// The expected exit code lives on the operation itself
+    /// ([`CliOperation::expected_exit`]); content checks such as `/ok` and
+    /// `/error.kind` stay JSON assertions.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub assertions: Vec<OutputAssertion>,
     /// JSON pointers whose values must be removed from reports and baselines.
@@ -3218,7 +3236,7 @@ fn verify_executed_boundary(
     recorded: &[crate::journey_runtime::ExecutableBoundary],
 ) -> Result<()> {
     use crate::journey_runtime::ExecutableBoundary;
-    let mut declared: Vec<(&str, &str)> = Vec::new();
+    let mut declared: Vec<(&str, &str, String)> = Vec::new();
     if let Some(setup) = &proof.setup {
         for executed in &report.setup {
             if let Some(operation) = setup
@@ -3226,7 +3244,11 @@ fn verify_executed_boundary(
                 .iter()
                 .find(|operation| operation.operation_id == executed.operation_id)
             {
-                declared.push((executed.operation_id.as_str(), operation.argv[0].as_str()));
+                declared.push((
+                    executed.operation_id.as_str(),
+                    operation.argv[0].as_str(),
+                    format!("setup operation '{}'", executed.operation_id),
+                ));
             }
         }
     }
@@ -3239,19 +3261,82 @@ fn verify_executed_boundary(
             .iter()
             .find(|step| step.operation_id == executed.operation_id)
         {
-            declared.push((executed.operation_id.as_str(), step.argv[0].as_str()));
+            declared.push((
+                executed.operation_id.as_str(),
+                step.argv[0].as_str(),
+                format!(
+                    "step '{}' (operation '{}')",
+                    executed.step_id, executed.operation_id
+                ),
+            ));
         }
     }
-    declared.sort_unstable();
+    declared.sort_unstable_by(|left, right| (left.0, left.1).cmp(&(right.0, right.1)));
+    let declared_pairs: Vec<(&str, &str)> = declared
+        .iter()
+        .map(|(operation_id, argv0, _)| (*operation_id, *argv0))
+        .collect();
     let mut got: Vec<(&str, &str)> = recorded
         .iter()
         .map(|entry| (entry.operation_id.as_str(), entry.declared.as_str()))
         .collect();
     got.sort_unstable();
-    if declared != got {
+    if declared_pairs != got {
+        // Walk both sorted multisets and name every operation that differs,
+        // so the refusal shows which step mismatched and what each side saw.
+        let mut differences = Vec::new();
+        let mut declared_iter = declared.iter().peekable();
+        let mut recorded_iter = got.iter().peekable();
+        loop {
+            match (declared_iter.peek(), recorded_iter.peek()) {
+                (None, None) => break,
+                (Some(entry), None) => {
+                    differences.push(format!(
+                        "{} declares argv0 '{}' but no executed boundary was recorded",
+                        entry.2, entry.1
+                    ));
+                    declared_iter.next();
+                }
+                (None, Some(entry)) => {
+                    differences.push(format!(
+                        "operation '{}' recorded argv0 '{}' but appears in no compiled step",
+                        entry.0, entry.1
+                    ));
+                    recorded_iter.next();
+                }
+                (Some(declared_entry), Some(recorded_entry)) => {
+                    match declared_entry.0.cmp(recorded_entry.0) {
+                        std::cmp::Ordering::Less => {
+                            differences.push(format!(
+                                "{} declares argv0 '{}' but no executed boundary was recorded",
+                                declared_entry.2, declared_entry.1
+                            ));
+                            declared_iter.next();
+                        }
+                        std::cmp::Ordering::Greater => {
+                            differences.push(format!(
+                                "operation '{}' recorded argv0 '{}' but appears in no compiled step",
+                                recorded_entry.0, recorded_entry.1
+                            ));
+                            recorded_iter.next();
+                        }
+                        std::cmp::Ordering::Equal => {
+                            if declared_entry.1 != recorded_entry.1 {
+                                differences.push(format!(
+                                    "{} declares argv0 '{}' but the run recorded '{}'",
+                                    declared_entry.2, declared_entry.1, recorded_entry.1
+                                ));
+                            }
+                            declared_iter.next();
+                            recorded_iter.next();
+                        }
+                    }
+                }
+            }
+        }
         bail!(
-            "executed operation boundary does not match the compiled proof \
-             (declared {declared:?}, recorded {got:?}); refusing settlement"
+            "executed operation boundary does not match the compiled proof ({}); refusing settlement",
+            differences.join("; ")
         );
     }
 
@@ -3259,7 +3344,7 @@ fn verify_executed_boundary(
     for entry in recorded {
         by_operation.insert(entry.operation_id.as_str(), entry);
     }
-    for (operation_id, declared_token) in declared {
+    for (operation_id, declared_token, _label) in declared {
         let entry = by_operation
             .get(operation_id)
             .ok_or_else(|| anyhow!("executed operation '{operation_id}' has no boundary"))?;
@@ -3637,6 +3722,7 @@ mod tests {
             environment: Vec::new(),
             read_only: false,
             timeout_seconds: None,
+            expected_exit: 0,
             arguments: Vec::new(),
             output: OperationOutput {
                 format: OutputFormat::Json,
@@ -3780,5 +3866,86 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn boundary_mismatch_refusal_names_the_step_and_both_argv0_tokens() {
+        use crate::journey_runtime::{
+            CompiledJourneyProof, CompiledProfileShape, CompiledStep, ExecutableBoundary,
+            RuntimeReport, RuntimeStatus, StepReport,
+        };
+
+        let proof = CompiledJourneyProof {
+            schema: "loom.journey.proof/v1".into(),
+            compiler_version: "6".into(),
+            journey_id: "checkout".into(),
+            journey_hash: "journey-hash".into(),
+            surface_hash: "surface-hash".into(),
+            profile: "smoke".into(),
+            profile_shape: CompiledProfileShape {
+                input_ids: Vec::new(),
+                setup_directories: Vec::new(),
+                setup_files: Vec::new(),
+                setup_env: Vec::new(),
+            },
+            setup: None,
+            steps: vec![CompiledStep {
+                step_id: "checkout".into(),
+                operation_id: "gridctl-reject".into(),
+                argv: vec!["gridctl".into()],
+                environment: Vec::new(),
+                read_only: false,
+                timeout_seconds: Some(30),
+                expected_exit: 11,
+                arguments: Vec::new(),
+                captures: Vec::new(),
+                assertions: Vec::new(),
+                redact: Vec::new(),
+                human_decision: None,
+            }],
+        };
+        let report = RuntimeReport {
+            journey_id: "checkout".into(),
+            profile: "smoke".into(),
+            journey_hash: "journey-hash".into(),
+            surface_hash: "surface-hash".into(),
+            status: RuntimeStatus::Passed,
+            assertions_passed: 1,
+            assertions_failed: 0,
+            detail: None,
+            setup: Vec::new(),
+            file_transitions: Vec::new(),
+            steps: vec![StepReport {
+                step_id: "checkout".into(),
+                operation_id: "gridctl-reject".into(),
+                argv: vec!["shim".into()],
+                exit_code: 11,
+                output: json!({"ok": false}),
+                assertions_passed: 1,
+                assertions_failed: 0,
+            }],
+            captures: BTreeMap::new(),
+            passed_assertions: Vec::new(),
+        };
+        let recorded = vec![ExecutableBoundary {
+            operation_id: "gridctl-reject".into(),
+            declared: "shim".into(),
+            argv0: "shim".into(),
+            resolved: "/tmp/shim".into(),
+            hash: "fingerprint".into(),
+        }];
+
+        let error = verify_executed_boundary(Path::new("/"), &proof, &report, &recorded)
+            .expect_err("a recorded argv0 that differs from the compiled step must refuse");
+        let message = format!("{error:#}");
+        assert!(
+            message.contains("step 'checkout' (operation 'gridctl-reject')"),
+            "refusal must name the step: {message}"
+        );
+        assert!(
+            message.contains("declares argv0 'gridctl' but the run recorded 'shim'"),
+            "refusal must show both argv0 tokens: {message}"
+        );
+        assert!(message.contains("refusing settlement"), "{message}");
     }
 }

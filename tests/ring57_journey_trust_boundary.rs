@@ -173,6 +173,7 @@ fn canonical_fixture(executable_argv0: &str, label: &str) -> CanonicalFixture {
         environment: Vec::new(),
         read_only: true,
         timeout_seconds: None,
+        expected_exit: 0,
         arguments: Vec::new(),
         output: loom::journey::OperationOutput {
             format: OutputFormat::Json,

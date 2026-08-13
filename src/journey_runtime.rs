@@ -99,6 +99,10 @@ pub struct CompiledSetupOperation {
     pub read_only: bool,
     #[serde(default = "default_compiled_timeout_seconds")]
     pub timeout_seconds: u64,
+    /// Expected exit code; process liveness, not an assertion. Zero is the
+    /// default rule. Older proofs omit the field and deserialize it as zero.
+    #[serde(default, skip_serializing_if = "exit_code_is_zero")]
+    pub expected_exit: u32,
     pub arguments: Vec<OperationArgument>,
     pub assertions: Vec<OutputAssertion>,
     pub redact: Vec<String>,
@@ -125,6 +129,11 @@ pub struct CompiledStep {
     /// Machine operations have a resolved timeout; human gates deliberately do not.
     #[serde(default = "default_compiled_optional_timeout_seconds")]
     pub timeout_seconds: Option<u64>,
+    /// Expected exit code; process liveness, not an assertion. Zero is the
+    /// default rule. Older proofs omit the field and deserialize it as zero.
+    /// Human gates never execute, so they always carry zero.
+    #[serde(default, skip_serializing_if = "exit_code_is_zero")]
+    pub expected_exit: u32,
     pub arguments: Vec<OperationArgument>,
     pub captures: Vec<OutputCapture>,
     pub assertions: Vec<OutputAssertion>,
@@ -142,6 +151,10 @@ pub struct CompiledHumanDecision {
 
 fn default_compiled_timeout_seconds() -> u64 {
     DEFAULT_JOURNEY_TIMEOUT_SECONDS
+}
+
+fn exit_code_is_zero(code: &u32) -> bool {
+    *code == 0
 }
 
 fn default_compiled_optional_timeout_seconds() -> Option<u64> {
@@ -620,6 +633,7 @@ pub fn compile_surface(
                     environment: canonical_environment(&operation.environment)?,
                     read_only: operation.read_only,
                     timeout_seconds: operation.timeout_seconds.unwrap_or(profile.timeout_seconds),
+                    expected_exit: operation.expected_exit,
                     arguments: operation.arguments.clone(),
                     assertions: operation.output.assertions.clone(),
                     redact: operation.output.redact.clone(),
@@ -687,6 +701,7 @@ pub fn compile_surface(
                     timeout_seconds: Some(
                         operation.timeout_seconds.unwrap_or(profile.timeout_seconds),
                     ),
+                    expected_exit: operation.expected_exit,
                     arguments: operation.arguments.clone(),
                     captures: operation.output.captures.clone(),
                     assertions: operation.output.assertions.clone(),
@@ -703,6 +718,7 @@ pub fn compile_surface(
                     environment: Vec::new(),
                     read_only: true,
                     timeout_seconds: None,
+                    expected_exit: 0,
                     arguments: Vec::new(),
                     captures: Vec::new(),
                     assertions: Vec::new(),
@@ -1401,6 +1417,7 @@ fn runtime_surface_plan(
             environment: operation.environment.clone(),
             read_only: operation.read_only,
             timeout_seconds: Some(operation.timeout_seconds),
+            expected_exit: operation.expected_exit,
             arguments: operation.arguments.clone(),
             output: OperationOutput {
                 format: OutputFormat::Json,
@@ -1423,6 +1440,7 @@ fn runtime_surface_plan(
                 environment: step.environment.clone(),
                 read_only: step.read_only,
                 timeout_seconds: step.timeout_seconds,
+                expected_exit: step.expected_exit,
                 arguments: step.arguments.clone(),
                 output: OperationOutput {
                     format: OutputFormat::Json,
@@ -1646,6 +1664,7 @@ fn execute_fresh_with_anchors(
                 &operation.argv,
                 &operation.arguments,
                 operation.timeout_seconds,
+                operation.expected_exit,
                 &inputs,
                 &captures,
                 &run_id,
@@ -1838,6 +1857,7 @@ fn run_steps(
             &step.arguments,
             step.timeout_seconds
                 .unwrap_or(DEFAULT_JOURNEY_TIMEOUT_SECONDS),
+            step.expected_exit,
             &active.inputs,
             &active.captures,
             &active.run_id,
@@ -2739,6 +2759,7 @@ fn run_json_operation(
     base_argv: &[String],
     arguments: &[OperationArgument],
     timeout_seconds: u64,
+    expected_exit: u32,
     inputs: &BTreeMap<String, Value>,
     captures: &BTreeMap<String, Value>,
     run_id: &str,
@@ -2799,8 +2820,13 @@ fn run_json_operation(
     if observed.timed_out {
         bail!("{label} exceeded the execution timeout");
     }
-    let exit_code = i64::from(observed.status.code().unwrap_or(-1));
-    if !observed.status.success() {
+    // Exit status is liveness, not an assertion: the observed exit must equal
+    // the operation's expected_exit (zero by default), and a killed/signaled
+    // process (no exit code at all) never satisfies it. A matching non-zero
+    // exit proceeds exactly like exit 0: stdout must still be one UTF-8 JSON
+    // value and the compiled captures/assertions still run against it.
+    let observed_code = observed.status.code().map(i64::from);
+    if observed_code != Some(i64::from(expected_exit)) {
         #[cfg(unix)]
         let signal = {
             use std::os::unix::process::ExitStatusExt;
@@ -2812,7 +2838,7 @@ fn run_json_operation(
             "{}",
             failed_operation_detail(
                 label,
-                exit_code,
+                observed_code.unwrap_or(-1),
                 signal,
                 &observed.stdout,
                 &observed.stderr,
@@ -2820,6 +2846,7 @@ fn run_json_operation(
             )
         );
     }
+    let exit_code = i64::from(expected_exit);
     let stdout = std::str::from_utf8(&observed.stdout)
         .with_context(|| format!("{label} stdout is not UTF-8 JSON"))?;
     let output = serde_json::from_str(stdout)

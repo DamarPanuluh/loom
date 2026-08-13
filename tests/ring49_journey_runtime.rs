@@ -162,6 +162,7 @@ fn operation() -> CliOperation {
         environment: Vec::new(),
         read_only: false,
         timeout_seconds: None,
+        expected_exit: 0,
         arguments: vec![],
         output: OperationOutput {
             format: OutputFormat::Json,
@@ -196,6 +197,7 @@ fn setup_operation(id: &str) -> CliOperation {
         environment: Vec::new(),
         read_only: false,
         timeout_seconds: None,
+        expected_exit: 0,
         arguments: vec![],
         output: OperationOutput {
             format: OutputFormat::Json,
@@ -2949,4 +2951,189 @@ fn loom_command_failure(root: &Path, args: &[&str]) {
         args,
         String::from_utf8_lossy(&output.stdout)
     );
+}
+
+fn structured_failure_operation(expected_exit: u32, script: &str) -> CliOperation {
+    CliOperation {
+        id: "gridctl-reject".into(),
+        summary: "Grid rejection envelope".into(),
+        argv: vec!["python3".into(), "-c".into(), script.into()],
+        environment: Vec::new(),
+        read_only: false,
+        timeout_seconds: None,
+        expected_exit,
+        arguments: vec![],
+        output: OperationOutput {
+            format: OutputFormat::Json,
+            captures: vec![],
+            assertions: vec![
+                OutputAssertion {
+                    id: "not-ok".into(),
+                    pointer: "/ok".into(),
+                    value_type: Some(ValueType::Boolean),
+                    equals: Some(json!(false)),
+                    source: None,
+                },
+                OutputAssertion {
+                    id: "error-kind".into(),
+                    pointer: "/error/kind".into(),
+                    value_type: Some(ValueType::String),
+                    equals: Some(json!("authorization")),
+                    source: None,
+                },
+            ],
+            redact: vec![],
+        },
+        exercises: Vec::new(),
+    }
+}
+
+const STRUCTURED_FAILURE_ENVELOPE: &str = concat!(
+    "import json,sys; ",
+    "json.dump({'ok': False, 'error': {'kind': 'authorization', ",
+    "'code': 'auth_rejected', 'retryable': False}}, sys.stdout); ",
+    "sys.exit(11)"
+);
+
+fn compile_structured_failure(operation: CliOperation) -> journey_runtime::CompiledJourneyProof {
+    let mut authored = spec();
+    authored.steps[0].produces.clear();
+    journey_runtime::compile(
+        &authored,
+        "surface-hash",
+        "proof",
+        vec![operation],
+        &[OperationBinding {
+            step_id: "checkout".into(),
+            operation_id: "gridctl-reject".into(),
+        }],
+    )
+    .unwrap()
+}
+
+#[test]
+fn expected_exit_nonzero_proves_structured_failure_envelope() {
+    std::env::set_var("LOOM_RING49_SECRET", "do-not-persist");
+    let root = TempRoot::new("expected-exit-nonzero");
+    let mut authored = spec();
+    authored.steps[0].produces.clear();
+    let proof = compile_structured_failure(structured_failure_operation(
+        11,
+        STRUCTURED_FAILURE_ENVELOPE,
+    ));
+    let report = journey_runtime::execute(root.path(), &authored, &proof, &BTreeMap::new());
+    assert_eq!(report.status, RuntimeStatus::Passed, "{report:#?}");
+    assert_eq!(report.assertions_passed, 2);
+    assert_eq!(report.assertions_failed, 0);
+    assert_eq!(report.steps.len(), 1);
+    assert_eq!(report.steps[0].exit_code, 11);
+    assert_eq!(report.steps[0].output["ok"], json!(false));
+    assert_eq!(report.steps[0].output["error"]["kind"], "authorization");
+}
+
+#[test]
+fn expected_exit_mismatch_still_fails_the_run() {
+    std::env::set_var("LOOM_RING49_SECRET", "do-not-persist");
+    let root = TempRoot::new("expected-exit-mismatch");
+    let mut authored = spec();
+    authored.steps[0].produces.clear();
+    let script = concat!(
+        "import json,sys; ",
+        "json.dump({'ok': False, 'error': {'kind': 'authorization', ",
+        "'code': 'auth_rejected', 'retryable': False}}, sys.stdout); ",
+        "sys.exit(0)"
+    );
+    let proof = compile_structured_failure(structured_failure_operation(11, script));
+    let report = journey_runtime::execute(root.path(), &authored, &proof, &BTreeMap::new());
+    assert_eq!(report.status, RuntimeStatus::Blocked, "{report:#?}");
+    assert!(report.steps.is_empty());
+    let detail = report.detail.unwrap();
+    assert!(detail.contains("exited 0"), "{detail}");
+}
+
+#[test]
+fn expected_exit_match_with_non_json_stdout_blocks_without_boundary() {
+    std::env::set_var("LOOM_RING49_SECRET", "do-not-persist");
+    let root = TempRoot::new("expected-exit-non-json");
+    let mut authored = spec();
+    authored.steps[0].produces.clear();
+    let script = "import sys; sys.stdout.write('not json'); sys.exit(11)";
+    let proof = compile_structured_failure(structured_failure_operation(11, script));
+    let report = journey_runtime::execute(root.path(), &authored, &proof, &BTreeMap::new());
+    assert_eq!(report.status, RuntimeStatus::Blocked, "{report:#?}");
+    assert!(report.steps.is_empty());
+    let detail = report.detail.unwrap();
+    assert!(detail.contains("JSON"), "{detail}");
+}
+
+#[test]
+fn default_exit_zero_rule_is_unchanged_for_successful_children() {
+    std::env::set_var("LOOM_RING49_SECRET", "do-not-persist");
+    let root = TempRoot::new("default-exit-zero");
+    let mut authored = spec();
+    authored.steps[0].produces.clear();
+    let script = concat!(
+        "import json,sys; ",
+        "json.dump({'ok': False, 'error': {'kind': 'authorization', ",
+        "'code': 'auth_rejected', 'retryable': False}}, sys.stdout)"
+    );
+    let proof = compile_structured_failure(structured_failure_operation(0, script));
+    let report = journey_runtime::execute(root.path(), &authored, &proof, &BTreeMap::new());
+    assert_eq!(report.status, RuntimeStatus::Passed, "{report:#?}");
+    assert_eq!(report.assertions_passed, 2);
+    assert_eq!(report.steps[0].exit_code, 0);
+}
+
+#[test]
+fn expected_exit_keeps_compiled_proofs_backward_compatible() {
+    let mut authored = spec();
+    authored.steps[0].produces.clear();
+    let bindings = [OperationBinding {
+        step_id: "checkout".into(),
+        operation_id: "gridctl-reject".into(),
+    }];
+
+    let omitted = structured_failure_operation(0, STRUCTURED_FAILURE_ENVELOPE);
+    let omitted_proof =
+        journey_runtime::compile(&authored, "surface-hash", "proof", vec![omitted], &bindings)
+            .unwrap();
+    let omitted_value = serde_json::to_value(&omitted_proof).unwrap();
+    assert!(
+        omitted_value["steps"][0].get("expected_exit").is_none(),
+        "zero expected_exit must not change compiled proof bytes: {omitted_value}"
+    );
+
+    // A compiled proof written before the field existed still deserializes,
+    // with the absent field defaulting to the exit-0 rule.
+    let legacy: journey_runtime::CompiledJourneyProof =
+        serde_json::from_value(omitted_value).unwrap();
+    assert_eq!(legacy.steps[0].expected_exit, 0);
+
+    let explicit = structured_failure_operation(11, STRUCTURED_FAILURE_ENVELOPE);
+    let explicit_proof = journey_runtime::compile(
+        &authored,
+        "surface-hash",
+        "proof",
+        vec![explicit],
+        &bindings,
+    )
+    .unwrap();
+    let explicit_value = serde_json::to_value(&explicit_proof).unwrap();
+    assert_eq!(explicit_value["steps"][0]["expected_exit"], 11);
+    assert_ne!(
+        journey_runtime::canonical_bytes(&omitted_proof).unwrap(),
+        journey_runtime::canonical_bytes(&explicit_proof).unwrap()
+    );
+}
+
+#[test]
+fn negative_expected_exit_is_rejected_at_parse_time() {
+    let mut value = serde_json::to_value(structured_failure_operation(
+        11,
+        STRUCTURED_FAILURE_ENVELOPE,
+    ))
+    .unwrap();
+    value["expected_exit"] = json!(-1);
+    let parsed: Result<CliOperation, _> = serde_json::from_value(value);
+    assert!(parsed.is_err(), "negative expected_exit must be rejected");
 }

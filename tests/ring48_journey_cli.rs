@@ -564,3 +564,29 @@ fn public_help_contains_new_modes_and_no_retired_journey_families() {
         );
     }
 }
+
+#[test]
+fn journey_run_failure_is_machine_readable_on_stdout_under_json() {
+    let tmp = Tmp::new();
+    Store::init(tmp.path(), Some("ring48-run-failure"), false).unwrap();
+
+    let output = invoke(
+        tmp.path(),
+        &["--json", "journey", "run", "missing", "--profile", "smoke"],
+    );
+    assert!(
+        !output.status.success(),
+        "a run that cannot compile must still exit non-zero"
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let envelope: Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|error| panic!("stdout must be one JSON value: {error}\n{stdout}"));
+    assert_eq!(envelope["status"], "error", "{stdout}");
+    assert_eq!(envelope["stage"], "compile", "{stdout}");
+    assert_eq!(envelope["journey"], "missing", "{stdout}");
+    assert_eq!(envelope["profile"], "smoke", "{stdout}");
+    assert!(
+        !envelope["detail"].as_str().unwrap_or_default().is_empty(),
+        "detail must carry the reason: {stdout}"
+    );
+}

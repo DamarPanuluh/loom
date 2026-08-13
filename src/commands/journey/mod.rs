@@ -2122,17 +2122,19 @@ pub(crate) fn journey_run(
     profile: &str,
     json_output: bool,
 ) -> Result<()> {
-    let product = compile_internal(graph, journey_key, profile)?;
-    let store = crate::store::Store::open_with_identity(&product.root, product.identity)?;
+    let product = compile_internal(graph, journey_key, profile)
+        .map_err(|error| run_failure(json_output, journey_key, profile, "compile", error))?;
+    let store = crate::store::Store::open_with_identity(&product.root, product.identity)
+        .map_err(|error| run_failure(json_output, journey_key, profile, "open", error))?;
     match crate::journey::run_interactive_and_settle_compiled_validation(
         &store,
         &product.validation_id,
         &BTreeMap::new(),
-    )? {
-        crate::journey::InteractiveJourneyRun::Completed(report) => {
+    ) {
+        Ok(crate::journey::InteractiveJourneyRun::Completed(report)) => {
             emit_report(&report, json_output)
         }
-        crate::journey::InteractiveJourneyRun::Pending(pending) => emit_runtime_value(
+        Ok(crate::journey::InteractiveJourneyRun::Pending(pending)) => emit_runtime_value(
             serde_json::to_value(&pending)?,
             json_output,
             &format!(
@@ -2140,7 +2142,41 @@ pub(crate) fn journey_run(
                 pending.binding.journey_id, pending.binding.profile
             ),
         ),
+        Err(error) => Err(run_failure(
+            json_output,
+            journey_key,
+            profile,
+            "settle",
+            error,
+        )),
     }
+}
+
+/// `journey run` failures must stay machine-readable: with `--json`, print one
+/// structured envelope to stdout before exiting non-zero, so consumers parse
+/// the stage and reason instead of scraping stderr.
+fn run_failure(
+    json_output: bool,
+    journey_key: &str,
+    profile: &str,
+    stage: &str,
+    error: anyhow::Error,
+) -> anyhow::Error {
+    if json_output {
+        let envelope = json!({
+            "status": "error",
+            "journey": journey_key,
+            "profile": profile,
+            "stage": stage,
+            "detail": format!("{error:#}"),
+        });
+        if let Ok(rendered) = serde_json::to_string_pretty(&envelope) {
+            println!("{rendered}");
+        }
+    }
+    error.context(format!(
+        "journey run '{journey_key}:{profile}' failed during {stage}"
+    ))
 }
 
 pub(crate) fn journey_diagnose(
