@@ -1243,12 +1243,26 @@ pub(crate) fn journey_derive_accept(
             relationships: &relationships,
         };
         if derivation_acceptance_is_current(&store, &current)? {
-            let accepted: Vec<_> = manifest
+            let accepted_nodes: Vec<&Node> = manifest
                 .intents
                 .iter()
                 .filter_map(|item| preexisting.get(&item.id))
-                .map(node_json)
                 .collect();
+            let accepted_ids: Vec<String> =
+                accepted_nodes.iter().map(|node| node.id.clone()).collect();
+            // Cold import keeps the adopted mapping but drops local journal
+            // envelopes. Re-seal the exact derive-accept witness without
+            // treating that as a new product decision.
+            if !local_derive_accept_envelope_exists(&store, &accepted_ids)? {
+                ratification_batch(
+                    &store,
+                    &accepted_nodes,
+                    &evidence,
+                    &decision,
+                    &semantic_hash,
+                )?;
+            }
+            let accepted: Vec<_> = accepted_nodes.iter().copied().map(node_json).collect();
             return pulse::emit_line(
                 &store,
                 json_output,
@@ -2655,6 +2669,25 @@ fn find_derived_intent(
             journey_id
         ),
     }
+}
+
+fn local_derive_accept_envelope_exists(store: &Store, intent_ids: &[String]) -> Result<bool> {
+    if intent_ids.is_empty() {
+        return Ok(true);
+    }
+    let expected_command = format!("journey-derive-accept:{}", intent_ids.len());
+    let expected_subjects: BTreeSet<&str> = intent_ids.iter().map(String::as_str).collect();
+    for (_, envelope) in crate::batch_auth::load_envelopes(store.root())? {
+        let subjects: BTreeSet<&str> = envelope.subjects.iter().map(String::as_str).collect();
+        if envelope.command_id == expected_command
+            && envelope.claim == crate::batch_auth::BatchClaim::Ratification
+            && envelope.operation == "ratify"
+            && subjects == expected_subjects
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn ratification_batch(

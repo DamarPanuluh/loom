@@ -1517,6 +1517,112 @@ fn one_new_derived_intent_gets_a_prior_singleton_batch_envelope() {
 }
 
 #[test]
+fn idempotent_derive_accept_reseals_when_local_envelope_was_voided() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("reseal-derivation-envelope"));
+    let mut authored = semantic_journey("checkout.singleton", "Singleton checkout");
+    authored["steps"].as_array_mut().unwrap().truncate(1);
+    let path = tmp.path().join("checkout.singleton.json");
+    std::fs::write(&path, serde_json::to_vec_pretty(&authored).unwrap()).unwrap();
+    builder_json(&tmp, &["journey", "add", path.to_str().unwrap(), "--json"]);
+    let packet = builder_json(&tmp, &["journey", "derive", "checkout.singleton", "--json"]);
+    let manifest = tmp.path().join("singleton-derivation.json");
+    std::fs::write(
+        &manifest,
+        serde_json::to_vec_pretty(&json!({
+            "schema":"loom.journey-derivation/v1",
+            "journey_id":"checkout.singleton",
+            "journey_hash":packet["semantic_hash"],
+            "proposal_id":"singleton-technical-projection",
+            "proposal_rationale":"The authored step has one independently falsifiable technical behavior.",
+            "intents":[{
+                "id":"persist-cart-item",
+                "operation":"create",
+                "name":"a valid cart item is persisted",
+                "criterion":"A valid SKU and quantity are recorded in the cart",
+                "level":"feature",
+                "visibility":"internal",
+                "rationale":"Persistence is the one observable boundary projected from this authored step.",
+                "step_ids":["add-item"]
+            }],
+            "relationships":[],
+            "unresolved_question":null
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let decision = "I approve this exact singleton technical projection.";
+    let accepted = builder_json(
+        &tmp,
+        &[
+            "journey",
+            "derive-accept",
+            "checkout.singleton",
+            "--manifest",
+            manifest.to_str().unwrap(),
+            "--human-decision",
+            decision,
+            "--json",
+        ],
+    );
+    assert_eq!(accepted["created"], 1, "{accepted}");
+    let local_before = loom::batch_auth::load_envelopes(tmp.path())
+        .unwrap()
+        .into_iter()
+        .filter(|(_, envelope)| envelope.command_id == "journey-derive-accept:1")
+        .count();
+    assert_eq!(local_before, 1);
+
+    // Import keeps ratification facts but drops local envelope standing.
+    // Replay must reseal, not no-op, without a new product decision.
+    let journal_path = loom::journal::path(tmp.path());
+    let rewritten = loom::journal::read(tmp.path())
+        .unwrap()
+        .into_iter()
+        .map(|mut entry| {
+            if entry.event == loom::batch_auth::EVENT {
+                entry.origin = loom::journal::Origin::Imported;
+            }
+            serde_json::to_string(&entry).unwrap()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    std::fs::write(&journal_path, rewritten).unwrap();
+    assert!(loom::batch_auth::load_envelopes(tmp.path())
+        .unwrap()
+        .is_empty());
+
+    let repeated = builder_json(
+        &tmp,
+        &[
+            "journey",
+            "derive-accept",
+            "checkout.singleton",
+            "--manifest",
+            manifest.to_str().unwrap(),
+            "--human-decision",
+            decision,
+            "--json",
+        ],
+    );
+    assert_eq!(repeated["idempotent"], true, "{repeated}");
+    assert_eq!(repeated["created"], 0, "{repeated}");
+    let local_after: Vec<_> = loom::batch_auth::load_envelopes(tmp.path())
+        .unwrap()
+        .into_iter()
+        .map(|(_, envelope)| envelope)
+        .filter(|envelope| envelope.command_id == "journey-derive-accept:1")
+        .collect();
+    assert_eq!(local_after.len(), 1, "{local_after:#?}");
+    assert_eq!(
+        local_after[0].claim,
+        loom::batch_auth::BatchClaim::Ratification
+    );
+    assert_eq!(local_after[0].operation, "ratify");
+}
+
+#[test]
 fn derivation_preflight_rolls_back_and_relationship_ownership_preserves_independent_edges() {
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("derivation-preflight"));
