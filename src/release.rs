@@ -3095,7 +3095,14 @@ impl ProcessSandbox {
             b"[credential]\n\thelper =\n[commit]\n\tgpgsign = false\n",
         )?;
         let mut environment = BTreeMap::new();
-        for key in ["PATH", "SYSTEMROOT", "WINDIR", "PATHEXT", "COMSPEC"] {
+        for key in [
+            "PATH",
+            "SYSTEMROOT",
+            "WINDIR",
+            "PATHEXT",
+            "COMSPEC",
+            "CARGO_BUILD_JOBS",
+        ] {
             if let Ok(value) = std::env::var(key) {
                 environment.insert(key.into(), value);
             }
