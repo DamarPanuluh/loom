@@ -55,4 +55,4 @@ for field, value in expected["source_inventory"].items():
 
 echo "== v12 fresh-graph fixpoint =="
 "$WORK/scripts/dogfood.sh" --fresh-in-place --check
-echo "fixpoint: OK — a fresh v12 graph completed the structural Journey-root dogfood gate (profiles not executed)"
+echo "fixpoint: OK — a fresh v12 graph completed the structural Journey-root dogfood gate (cold-import integrity only; profiles not executed; not graph-maturity green)"

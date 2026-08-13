@@ -395,6 +395,10 @@
       "mode": "executable"
     },
     {
+      "path": "scripts/reconstruct-v12.sh",
+      "mode": "executable"
+    },
+    {
       "path": "scripts/release.sh",
       "mode": "executable"
     },

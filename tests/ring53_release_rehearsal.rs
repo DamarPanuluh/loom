@@ -21,9 +21,9 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "646e2756532efcc2";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 266;
-const RELEASE_INVENTORY_FILE_COUNT: usize = 266;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "d357d55e2ec28c02";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 267;
+const RELEASE_INVENTORY_FILE_COUNT: usize = 267;
 const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
 
 #[test]
@@ -2262,6 +2262,50 @@ fn dogfood_is_a_cold_authority_structural_gate() {
     assert!(!script.contains("runnable"));
     assert!(script.contains("not executed — authority_voided_by_import"));
     assert!(script.contains("unratified_journey_derivation"));
+    assert!(script.contains("cold-import integrity only"));
+    assert!(script.contains("this is not graph-maturity green"));
+    assert!(script.contains("the temporary graph and export were discarded"));
+}
+
+#[test]
+fn reconstruct_v12_is_mechanical_and_refuses_live_or_existing_loom() {
+    let script = std::fs::read_to_string("scripts/reconstruct-v12.sh").unwrap();
+    assert!(script.contains("--destination"));
+    assert!(script.contains("review-manifests"));
+    assert!(script.contains("INDEX.json"));
+    assert!(script.contains("intent ratify --all"));
+    assert!(script.contains("this is not graph-maturity green"));
+    assert!(script.contains("refusing the live repository"));
+    assert!(script.contains("refusing existing .loom/"));
+    assert!(!script.contains("journey run"));
+    for forbidden in [
+        "loom intent ratify",
+        "loom journey derive-accept",
+        "loom intent reject",
+        "loom question answer",
+    ] {
+        assert!(
+            !script.contains(&format!("\"$B\" {forbidden}"))
+                && !script.contains(&format!("\"$B\" --graph \"$DEST\" {forbidden}")),
+            "reconstruct-v12.sh must not execute {forbidden}"
+        );
+    }
+
+    let fixture = Tmp::new();
+    fixture.write("loom.graph.json", "{}\n");
+    fixture.write("journeys/.keep", "");
+    std::fs::create_dir(fixture.path().join(".loom")).unwrap();
+    let output = ProcessCommand::new("bash")
+        .args([
+            "scripts/reconstruct-v12.sh",
+            "--destination",
+            fixture.path().to_str().unwrap(),
+        ])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("refusing existing .loom/"));
 }
 
 #[test]

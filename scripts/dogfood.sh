@@ -29,6 +29,10 @@ usage: scripts/dogfood.sh [--check]
 
 Runs the Journey-root dogfood gate in an isolated fresh v12 worktree.
 `--check` is the CI/release form of the same gate.
+
+This gate checks cold-import integrity only. It does not climb the maturity
+ladder, execute Journey proofs, or persist a v12 graph. A passing run is not
+graph-maturity green.
 EOF
       exit 0
       ;;
@@ -306,4 +310,6 @@ assert report["stale"] == len(roster) == len(rows), (report["stale"], len(roster
 ' "$AUTHORITY_ROSTER"
 fi
 
-echo "dogfood: OK — $journey_count Journey(s) structurally current; $profile_count profile(s) not executed — authority_voided_by_import"
+echo "dogfood: OK — cold-import integrity only"
+echo "dogfood: $journey_count Journey(s) re-registered; $profile_count profile(s) not executed — authority_voided_by_import"
+echo "dogfood: this is not graph-maturity green — doctor remains fail-closed on unratified imported derivations; proofs were not compiled or run; the temporary graph and export were discarded"

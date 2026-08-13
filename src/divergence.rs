@@ -39,6 +39,9 @@ pub enum Kind {
     PromiseBroken,
     /// Redefined after ratification: the words changed under the yes.
     MeaningDrifted,
+    /// A previously recorded yes has no local journal standing — typically an
+    /// imported ratification. Meaning did not change; local authority did.
+    AuthorityVoided,
     /// Two intents describing the same behavior.
     DuplicateIntent,
     /// Happening, and never spoken to. Blocks ONLY when users can see it.
@@ -51,6 +54,7 @@ impl Kind {
             Kind::ZombieBehavior => "zombie_behavior",
             Kind::PromiseBroken => "promise_broken",
             Kind::MeaningDrifted => "meaning_drifted",
+            Kind::AuthorityVoided => "authority_voided",
             Kind::DuplicateIntent => "duplicate_intent",
             Kind::DiscoveredBehavior => "discovered_behavior",
         }
@@ -111,11 +115,7 @@ pub fn all(store: &Store) -> Result<Vec<Divergence>> {
                 missing_conjunct(witness.as_ref()),
                 true,
             )),
-            Ratification::NeedsReconfirmation => Some((
-                Kind::MeaningDrifted,
-                "redefined after ratification — the words changed under the yes".into(),
-                true,
-            )),
+            Ratification::NeedsReconfirmation => Some(reconfirmation_divergence(store, intent)?),
             // Happening, never spoken to. The one row that is usually silent.
             Ratification::Unratified | Ratification::DeFacto if holds => {
                 let visible = store
@@ -251,7 +251,10 @@ pub fn is_rectifiable(store: &Store, d: &Divergence) -> Result<bool> {
                 == Some(RECTIFY_ESCALATED);
             Ok(!escalated)
         }
-        Kind::ZombieBehavior | Kind::PromiseBroken | Kind::MeaningDrifted => Ok(false),
+        Kind::ZombieBehavior
+        | Kind::PromiseBroken
+        | Kind::MeaningDrifted
+        | Kind::AuthorityVoided => Ok(false),
     }
 }
 
@@ -295,6 +298,32 @@ pub fn next_human_blocking(store: &Store) -> Result<Option<Divergence>> {
         }
     }
     Ok(None)
+}
+
+fn reconfirmation_divergence(
+    store: &Store,
+    intent: &crate::model::Node,
+) -> Result<(Kind, String, bool)> {
+    let criterion = store
+        .fact(
+            &crate::store::Subject::Node(intent.id.clone()),
+            crate::model::Claim::Ratification,
+        )?
+        .map(|view| view.fact.criterion)
+        .unwrap_or_default();
+    if criterion == "redefined after ratification" {
+        Ok((
+            Kind::MeaningDrifted,
+            "redefined after ratification — the words changed under the yes".into(),
+            true,
+        ))
+    } else {
+        Ok((
+            Kind::AuthorityVoided,
+            "imported or otherwise non-local ratification has no local journal standing — meaning is unchanged; re-establish local authority".into(),
+            true,
+        ))
+    }
 }
 
 fn make(
@@ -571,6 +600,8 @@ mod tests {
     fn a_zombie_outranks_a_question() {
         assert!(Kind::ZombieBehavior < Kind::DiscoveredBehavior);
         assert!(Kind::PromiseBroken < Kind::DuplicateIntent);
+        assert!(Kind::MeaningDrifted < Kind::AuthorityVoided);
+        assert!(Kind::AuthorityVoided < Kind::DuplicateIntent);
     }
 
     #[test]
@@ -771,6 +802,64 @@ mod tests {
         assert_eq!(
             reads, 1,
             "divergence::all must fully parse the journal exactly once, got {reads}"
+        );
+    }
+
+    #[test]
+    fn imported_ratification_is_authority_voided_not_meaning_drift() {
+        let tmp = Tmp::new("authority-voided");
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let intent = store
+            .add_node(
+                NodeType::Intent,
+                "keep imported behavior",
+                "a falsifiable behavior whose meaning did not change",
+                "implemented",
+                serde_json::json!({}),
+            )
+            .unwrap();
+        store
+            .ratify_intent(&intent.id, "the local human wants this", "test fixture")
+            .unwrap();
+        assert_eq!(store.ratification(&intent.id).unwrap(), "ratified");
+
+        let path = crate::journal::path(tmp.path());
+        let rewritten = fs::read_to_string(&path)
+            .unwrap()
+            .lines()
+            .map(|line| {
+                let mut value: serde_json::Value = serde_json::from_str(line).unwrap();
+                if value.get("event").and_then(|event| event.as_str()) == Some("ratification") {
+                    value["origin"] = serde_json::json!("imported");
+                }
+                serde_json::to_string(&value).unwrap()
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(&path, rewritten + "\n").unwrap();
+
+        assert_eq!(
+            store.ratification(&intent.id).unwrap(),
+            "needs_reconfirmation"
+        );
+        let found: Vec<_> = all(&store)
+            .unwrap()
+            .into_iter()
+            .filter(|row| row.intent_id == intent.id)
+            .collect();
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].kind, Kind::AuthorityVoided);
+        assert!(
+            found[0].evidence.contains("no local journal standing"),
+            "{}",
+            found[0].evidence
+        );
+        assert!(
+            !found[0]
+                .evidence
+                .contains("the words changed under the yes"),
+            "{}",
+            found[0].evidence
         );
     }
 }
