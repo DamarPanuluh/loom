@@ -1,12 +1,23 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "duplicate-command-warn",
+  "bindings": [
+    {
+      "operation_id": "register-duplicate-proof",
+      "step_id": "register-second-proof"
+    }
+  ],
   "journey_hash": "c28da61dc5013846",
+  "journey_id": "duplicate-command-warn",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "establish-prior-proof"
+    ]
+  },
   "surface": {
-    "id": "validation-command-collision",
-    "title": "Register a validation and expose proof-command collisions",
-    "identity": "loom validation add",
     "codefile": "src/commands/proof_cmd.rs",
+    "id": "validation-command-collision",
+    "identity": "loom validation add",
     "locator": "validation",
     "operations": [
       {
@@ -150,13 +161,13 @@
             {
               "equals": "56d44edf69fdfa63987c0569d22a37c3",
               "id": "prior-behavior-id-is-exposed",
-              "pointer": "/collision/prior_behaviors/0/id",
+              "pointer": "/collision/prior_behaviors/[id=56d44edf69fdfa63987c0569d22a37c3]/id",
               "type": "string"
             },
             {
               "equals": "Loom detects proof command collisions",
               "id": "prior-behavior-name-is-exposed",
-              "pointer": "/collision/prior_behaviors/0/name",
+              "pointer": "/collision/prior_behaviors/[id=56d44edf69fdfa63987c0569d22a37c3]/name",
               "type": "string"
             },
             {
@@ -170,18 +181,7 @@
         "read_only": false,
         "summary": "Register the same command for a second behavior and return the nonblocking collision diagnostic"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "establish-prior-proof"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "register-duplicate-proof",
-      "step_id": "register-second-proof"
-    }
-  ]
+    ],
+    "title": "Register a validation and expose proof-command collisions"
+  }
 }

@@ -1,12 +1,33 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "ordered-steps",
+  "bindings": [
+    {
+      "operation_id": "inspect-blocked-build-order",
+      "step_id": "request-work-before-prerequisite"
+    },
+    {
+      "operation_id": "realize-readiness-prerequisite",
+      "step_id": "realize-earlier-behavior"
+    },
+    {
+      "operation_id": "inspect-released-build-order",
+      "step_id": "request-work-after-prerequisite"
+    }
+  ],
   "journey_hash": "01dff27404b6b1a9",
+  "journey_id": "ordered-steps",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-owned-snapshot",
+      "plan-readiness-prerequisite",
+      "plan-dependent-selector"
+    ]
+  },
   "surface": {
-    "id": "ordered-build-readiness-cli",
-    "title": "Ordered build readiness roster",
-    "identity": "loom",
     "codefile": "src/commands.rs",
+    "id": "ordered-build-readiness-cli",
+    "identity": "loom",
     "locator": "run",
     "operations": [
       {
@@ -109,19 +130,19 @@
             {
               "equals": "2d16cabcf844b5d7f9dbd929c7da0f5c",
               "id": "after-dependent-served",
-              "pointer": "/items/0/target/id",
+              "pointer": "/items/[mode=build]/target/id",
               "type": "string"
             },
             {
               "equals": "the highest-priority asserted residue is selected",
               "id": "after-dependent-named",
-              "pointer": "/items/0/target/name",
+              "pointer": "/items/[mode=build]/target/name",
               "type": "string"
             },
             {
               "equals": "intent is planned and not yet realized",
               "id": "after-dependent-actionable",
-              "pointer": "/items/0/reason",
+              "pointer": "/items/[mode=build]/reason",
               "type": "string"
             },
             {
@@ -289,28 +310,7 @@
         "read_only": false,
         "summary": "Restore the grounded prerequisite to implemented so it becomes realized in the isolated snapshot"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "prepare-owned-snapshot",
-      "plan-readiness-prerequisite",
-      "plan-dependent-selector"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "inspect-blocked-build-order",
-      "step_id": "request-work-before-prerequisite"
-    },
-    {
-      "operation_id": "realize-readiness-prerequisite",
-      "step_id": "realize-earlier-behavior"
-    },
-    {
-      "operation_id": "inspect-released-build-order",
-      "step_id": "request-work-after-prerequisite"
-    }
-  ]
+    ],
+    "title": "Ordered build readiness roster"
+  }
 }

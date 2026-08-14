@@ -1,12 +1,24 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "plain-next-not-ratify",
+  "bindings": [
+    {
+      "operation_id": "route-ordinary-then-explicit-ratify",
+      "step_id": "request-ordinary-next-work"
+    }
+  ],
   "journey_hash": "06773af184c4e0f3",
+  "journey_id": "plain-next-not-ratify",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-pending-ratification",
+      "prepare-autonomous-residue"
+    ]
+  },
   "surface": {
-    "id": "plain-next-routing-transcript-cli",
-    "title": "Autonomous next routing with explicit ratification",
-    "identity": "loom mcp transcript --requests-json",
     "codefile": "src/mcp.rs",
+    "id": "plain-next-routing-transcript-cli",
+    "identity": "loom mcp transcript --requests-json",
     "locator": "transcript",
     "operations": [
       {
@@ -179,13 +191,13 @@
             {
               "equals": "loom_next",
               "id": "routing-listed-next-tool",
-              "pointer": "/responses/1/result/tools/1/name",
+              "pointer": "/responses/1/result/tools/[name=loom_next]/name",
               "type": "string"
             },
             {
               "equals": "string",
               "id": "routing-listed-lane-argument",
-              "pointer": "/responses/1/result/tools/1/inputSchema/properties/lane/type",
+              "pointer": "/responses/1/result/tools/[name=loom_next]/inputSchema/properties/lane/type",
               "type": "string"
             },
             {
@@ -278,19 +290,7 @@
         "read_only": false,
         "summary": "Serve autonomous work first, then prove the human ratification packet remains explicitly available"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "prepare-pending-ratification",
-      "prepare-autonomous-residue"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "route-ordinary-then-explicit-ratify",
-      "step_id": "request-ordinary-next-work"
-    }
-  ]
+    ],
+    "title": "Autonomous next routing with explicit ratification"
+  }
 }

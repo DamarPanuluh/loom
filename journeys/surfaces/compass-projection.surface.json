@@ -1,12 +1,23 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "compass-projection",
+  "bindings": [
+    {
+      "operation_id": "inspect-work-direction",
+      "step_id": "inspect-work-direction"
+    }
+  ],
   "journey_hash": "ed6a23c4d1d8f2b4",
+  "journey_id": "compass-projection",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "make-derived-intent-unrealized"
+    ]
+  },
   "surface": {
-    "id": "loom-compass-status",
-    "title": "Loom compass status",
-    "identity": "loom",
     "codefile": "src/commands.rs",
+    "id": "loom-compass-status",
+    "identity": "loom",
     "locator": "run",
     "operations": [
       {
@@ -22,31 +33,31 @@
             {
               "equals": "met",
               "id": "seed-is-met",
-              "pointer": "/maturity/rungs/0/state",
+              "pointer": "/maturity/rungs/[name=seeded]/state",
               "type": "string"
             },
             {
               "equals": "met",
               "id": "fix-is-met",
-              "pointer": "/maturity/rungs/1/state",
+              "pointer": "/maturity/rungs/[name=repaired]/state",
               "type": "string"
             },
             {
               "equals": "met",
               "id": "derive-is-met",
-              "pointer": "/maturity/rungs/2/state",
+              "pointer": "/maturity/rungs/[name=derived]/state",
               "type": "string"
             },
             {
               "equals": "build",
               "id": "grounding-lane-is-build",
-              "pointer": "/maturity/rungs/3/lane",
+              "pointer": "/maturity/rungs/[name=grounded]/lane",
               "type": "string"
             },
             {
               "equals": "unmet",
               "id": "grounding-rung-is-unmet",
-              "pointer": "/maturity/rungs/3/state",
+              "pointer": "/maturity/rungs/[name=grounded]/state",
               "type": "string"
             },
             {
@@ -107,18 +118,7 @@
         "read_only": false,
         "summary": "Make one current rooted behavior unrealized in the isolated proof graph"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "make-derived-intent-unrealized"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "inspect-work-direction",
-      "step_id": "inspect-work-direction"
-    }
-  ]
+    ],
+    "title": "Loom compass status"
+  }
 }

@@ -1,12 +1,17 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "impact",
+  "bindings": [
+    {
+      "operation_id": "inspect-change-impact",
+      "step_id": "inspect-change-impact"
+    }
+  ],
   "journey_hash": "352296cc29dd349c",
+  "journey_id": "impact",
+  "schema": "loom.journey.surface/v1",
   "surface": {
-    "id": "loom-impact",
-    "title": "Loom change impact",
-    "identity": "loom impact",
     "codefile": "src/commands/diagnostics_cmd.rs",
+    "id": "loom-impact",
+    "identity": "loom impact",
     "locator": "impact_cmd",
     "operations": [
       {
@@ -83,23 +88,23 @@
             {
               "id": "behavior-risk-names-an-intent",
               "matches": "\\S",
-              "pointer": "/intents_at_risk/0/intent",
+              "pointer": "/intents_at_risk/[id=01d410d0]/intent",
               "type": "string"
             },
             {
               "id": "behavior-risk-has-stable-id",
               "matches": "^[0-9a-f]{8}$",
-              "pointer": "/intents_at_risk/0/id",
+              "pointer": "/intents_at_risk/[id=01d410d0]/id",
               "type": "string"
             },
             {
               "id": "behavior-risk-reports-proof-count",
-              "pointer": "/intents_at_risk/0/proofs",
+              "pointer": "/intents_at_risk/[id=01d410d0]/proofs",
               "type": "integer"
             },
             {
               "id": "behavior-risk-reports-passing-count",
-              "pointer": "/intents_at_risk/0/passing",
+              "pointer": "/intents_at_risk/[id=01d410d0]/passing",
               "type": "integer"
             }
           ],
@@ -108,12 +113,7 @@
         "read_only": true,
         "summary": "Inspect reverse caller reach, confidence classes, unresolved calls, and grounded behavior proof exposure"
       }
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "inspect-change-impact",
-      "step_id": "inspect-change-impact"
-    }
-  ]
+    ],
+    "title": "Loom change impact"
+  }
 }

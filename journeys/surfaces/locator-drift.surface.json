@@ -52,37 +52,37 @@
             {
               "equals": "classify locator resolution cardinality",
               "id": "cardinality-owner-is-exact",
-              "pointer": "/owners/0/intent",
+              "pointer": "/owners/[locator=ripple_locator_drift]/intent",
               "type": "string"
             },
             {
               "equals": "ripple_locator_drift",
               "id": "cardinality-locator-still-resolves",
-              "pointer": "/owners/0/locator",
+              "pointer": "/owners/[locator=ripple_locator_drift]/locator",
               "type": "string"
             },
             {
               "equals": "passing",
               "id": "cardinality-grounding-remains-settled",
-              "pointer": "/owners/0/verdict",
+              "pointer": "/owners/[locator=ripple_locator_drift]/verdict",
               "type": "string"
             },
             {
               "equals": "detect grounding anchor changes",
               "id": "changed-owner-is-exact",
-              "pointer": "/owners/2/intent",
+              "pointer": "/owners/[locator=run]/intent",
               "type": "string"
             },
             {
               "equals": "run",
               "id": "vanished-run-locator-is-retained",
-              "pointer": "/owners/2/locator",
+              "pointer": "/owners/[locator=run]/locator",
               "type": "string"
             },
             {
               "equals": "needs_reverification",
               "id": "vanished-run-grounding-needs-reverification",
-              "pointer": "/owners/2/verdict",
+              "pointer": "/owners/[locator=run]/verdict",
               "type": "string"
             }
           ],

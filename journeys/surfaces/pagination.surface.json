@@ -1,12 +1,21 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "pagination",
+  "bindings": [
+    {
+      "operation_id": "request-first-page",
+      "step_id": "request-first-page"
+    },
+    {
+      "operation_id": "request-page-past-end",
+      "step_id": "request-page-past-end"
+    }
+  ],
   "journey_hash": "c27cf7514665164b",
+  "journey_id": "pagination",
+  "schema": "loom.journey.surface/v1",
   "surface": {
-    "id": "loom-pagination-intents",
-    "title": "Loom Intent pagination",
-    "identity": "loom intent list",
     "codefile": "src/commands/intent.rs",
+    "id": "loom-pagination-intents",
+    "identity": "loom intent list",
     "locator": "intent_list",
     "operations": [
       {
@@ -27,7 +36,7 @@
             {
               "id": "first-page-row-is-deterministic",
               "matches": "^[0-9a-f]{32}$",
-              "pointer": "/items/0/id",
+              "pointer": "/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id",
               "type": "string"
             },
             {
@@ -99,16 +108,7 @@
         "read_only": true,
         "summary": "Request an Intent page beyond the final row"
       }
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "request-first-page",
-      "step_id": "request-first-page"
-    },
-    {
-      "operation_id": "request-page-past-end",
-      "step_id": "request-page-past-end"
-    }
-  ]
+    ],
+    "title": "Loom Intent pagination"
+  }
 }

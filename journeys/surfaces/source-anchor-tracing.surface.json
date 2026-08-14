@@ -1,12 +1,56 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "source-anchor-tracing",
+  "bindings": [
+    {
+      "operation_id": "request-codefile-command-anchor",
+      "step_id": "request-anchor"
+    },
+    {
+      "operation_id": "bind-existing-grounding-to-attached-anchor",
+      "step_id": "attach-anchor"
+    },
+    {
+      "operation_id": "trace-renamed-entry-by-anchor",
+      "step_id": "trace-anchor"
+    },
+    {
+      "operation_id": "reject-duplicated-anchor-on-sync",
+      "step_id": "reject-invalid-anchor"
+    }
+  ],
   "journey_hash": "2662e55df8bfbc05",
+  "journey_id": "source-anchor-tracing",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "before_steps": {
+      "attach-anchor": [
+        {
+          "expected_hash": "2b4de1145d650a07",
+          "path": "src/commands/codefile_cmd.rs",
+          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor() {}\n"
+        }
+      ],
+      "reject-invalid-anchor": [
+        {
+          "expected_hash": "e030df467a994f2c",
+          "path": "src/commands/codefile_cmd.rs",
+          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\n// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor_renamed() {}\n"
+        }
+      ],
+      "trace-anchor": [
+        {
+          "expected_hash": "beae001daf92c4d1",
+          "path": "src/commands/codefile_cmd.rs",
+          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor_renamed() {}\n"
+        }
+      ]
+    },
+    "graph": "local_snapshot",
+    "operations": []
+  },
   "surface": {
-    "id": "loom-source-anchor-tracing",
-    "title": "Loom source anchor navigation and rejection",
-    "identity": "loom codefile anchor, edge set-locator, impact, and sync",
     "codefile": "src/commands.rs",
+    "id": "loom-source-anchor-tracing",
+    "identity": "loom codefile anchor, edge set-locator, impact, and sync",
     "locator": "run",
     "operations": [
       {
@@ -196,7 +240,7 @@
             {
               "equals": "Issue stable source anchor identifiers",
               "id": "trace-projects-anchor-owner",
-              "pointer": "/intents_at_risk/0/intent",
+              "pointer": "/intents_at_risk/[id=dece3f2b]/intent",
               "type": "string"
             },
             {
@@ -210,51 +254,7 @@
         "read_only": true,
         "summary": "Resolve the same attached entry after its ordinary function name changes and project its blast radius"
       }
-    ]
-  },
-  "setup": {
-    "before_steps": {
-      "attach-anchor": [
-        {
-          "expected_hash": "2b4de1145d650a07",
-          "path": "src/commands/codefile_cmd.rs",
-          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor() {}\n"
-        }
-      ],
-      "reject-invalid-anchor": [
-        {
-          "expected_hash": "e030df467a994f2c",
-          "path": "src/commands/codefile_cmd.rs",
-          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\n// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor_renamed() {}\n"
-        }
-      ],
-      "trace-anchor": [
-        {
-          "expected_hash": "beae001daf92c4d1",
-          "path": "src/commands/codefile_cmd.rs",
-          "template": "// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\npub(crate) fn codefile_anchor_renamed() {}\n"
-        }
-      ]
-    },
-    "graph": "local_snapshot",
-    "operations": []
-  },
-  "bindings": [
-    {
-      "operation_id": "request-codefile-command-anchor",
-      "step_id": "request-anchor"
-    },
-    {
-      "operation_id": "bind-existing-grounding-to-attached-anchor",
-      "step_id": "attach-anchor"
-    },
-    {
-      "operation_id": "trace-renamed-entry-by-anchor",
-      "step_id": "trace-anchor"
-    },
-    {
-      "operation_id": "reject-duplicated-anchor-on-sync",
-      "step_id": "reject-invalid-anchor"
-    }
-  ]
+    ],
+    "title": "Loom source anchor navigation and rejection"
+  }
 }

@@ -52,19 +52,19 @@
             {
               "equals": "selectively invalidate anchored claims",
               "id": "untouched-owner-is-exact",
-              "pointer": "/owners/0/intent",
+              "pointer": "/owners/[locator=level]/intent",
               "type": "string"
             },
             {
               "equals": "level",
               "id": "untouched-locator-is-level",
-              "pointer": "/owners/0/locator",
+              "pointer": "/owners/[locator=level]/locator",
               "type": "string"
             },
             {
               "equals": "passing",
               "id": "untouched-grounding-starts-settled",
-              "pointer": "/owners/0/verdict",
+              "pointer": "/owners/[locator=level]/verdict",
               "type": "string"
             }
           ],

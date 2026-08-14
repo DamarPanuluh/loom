@@ -1,12 +1,24 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "divergence-queue",
+  "bindings": [
+    {
+      "operation_id": "inspect-human-decision-work",
+      "step_id": "inspect-human-decision-work"
+    }
+  ],
   "journey_hash": "7d33d153451ae8c2",
+  "journey_id": "divergence-queue",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "verify-fixture-ratification",
+      "create-meaning-drift"
+    ]
+  },
   "surface": {
-    "id": "loom-human-decision-queue-cli",
-    "title": "Loom Human Decision Queue CLI",
-    "identity": "loom next --mode ratify",
     "codefile": "src/commands/status_cmd.rs",
+    "id": "loom-human-decision-queue-cli",
+    "identity": "loom next --mode ratify",
     "locator": "next_cmd",
     "operations": [
       {
@@ -177,37 +189,37 @@
             {
               "equals": "ratify",
               "id": "keep-id",
-              "pointer": "/work_item/prompt_contract/human_gate/options/0/id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/[id=ratify]/id",
               "type": "string"
             },
             {
               "equals": "Keep behavior",
               "id": "keep-label",
-              "pointer": "/work_item/prompt_contract/human_gate/options/0/label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/[id=ratify]/label",
               "type": "string"
             },
             {
               "equals": "reject",
               "id": "remove-id",
-              "pointer": "/work_item/prompt_contract/human_gate/options/1/id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/[id=reject]/id",
               "type": "string"
             },
             {
               "equals": "Remove behavior",
               "id": "remove-label",
-              "pointer": "/work_item/prompt_contract/human_gate/options/1/label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/[id=reject]/label",
               "type": "string"
             },
             {
               "equals": "revise",
               "id": "revise-id",
-              "pointer": "/work_item/prompt_contract/human_gate/options/2/id",
+              "pointer": "/work_item/prompt_contract/human_gate/options/[id=revise]/id",
               "type": "string"
             },
             {
               "equals": "Revise criterion",
               "id": "revise-label",
-              "pointer": "/work_item/prompt_contract/human_gate/options/2/label",
+              "pointer": "/work_item/prompt_contract/human_gate/options/[id=revise]/label",
               "type": "string"
             },
             {
@@ -231,19 +243,7 @@
         "read_only": false,
         "summary": "Inspect the next concrete evidence-judgment conflict as a recommendation-first human decision packet"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "verify-fixture-ratification",
-      "create-meaning-drift"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "inspect-human-decision-work",
-      "step_id": "inspect-human-decision-work"
-    }
-  ]
+    ],
+    "title": "Loom Human Decision Queue CLI"
+  }
 }

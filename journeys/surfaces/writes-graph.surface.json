@@ -89,53 +89,53 @@
             {
               "equals": 1,
               "id": "writes-first-persisted-item-number",
-              "pointer": "/persisted_proposal/body/items/0/number",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/number",
               "type": "integer"
             },
             {
               "equals": "open",
               "id": "writes-first-persisted-item-status",
-              "pointer": "/persisted_proposal/body/items/0/status",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/status",
               "type": "string"
             },
             {
               "id": "writes-first-persisted-item-kind",
               "matches": "^(extend_locator|ground_to_intent|repoint_locator|resolve_coverage|register_proof)$",
-              "pointer": "/persisted_proposal/body/items/0/kind",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/kind",
               "type": "string"
             },
             {
               "id": "writes-first-persisted-item-text",
               "matches": "\\S",
-              "pointer": "/persisted_proposal/body/items/0/text",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/text",
               "type": "string"
             },
             {
               "id": "writes-first-persisted-evidence-file",
               "matches": "\\S",
-              "pointer": "/persisted_proposal/body/items/0/absorb_evidence/file",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/absorb_evidence/file",
               "type": "string"
             },
             {
               "id": "writes-first-persisted-evidence-symbol",
-              "pointer": "/persisted_proposal/body/items/0/absorb_evidence/symbol",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/absorb_evidence/symbol",
               "type": "string"
             },
             {
               "id": "writes-first-persisted-evidence-fingerprint",
               "matches": "^[0-9a-f]{16}$",
-              "pointer": "/persisted_proposal/body/items/0/absorb_evidence/fingerprint",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/absorb_evidence/fingerprint",
               "type": "string"
             },
             {
               "id": "writes-first-persisted-needs",
-              "pointer": "/persisted_proposal/body/items/0/needs",
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/needs",
               "type": "json"
             },
             {
               "exists": false,
               "id": "writes-no-authoritative-spawn",
-              "pointer": "/persisted_proposal/body/items/0/spawned"
+              "pointer": "/persisted_proposal/body/items/[kind=repoint_locator]/spawned"
             },
             {
               "id": "writes-legacy-items-preserved",
