@@ -217,6 +217,36 @@ impl Store {
         Ok(true)
     }
 
+    /// Re-open a never-inspected asserted edge with a recorded cause. Ordinary
+    /// staleness deliberately leaves `uninspected` untouched — an uninspected
+    /// claim is already queue work. `exercises` provenance is the exception:
+    /// while intact it is deliberately NOT queued, so when sync detects that
+    /// its locator stopped resolving, this transition is the only way the
+    /// repair ever reaches a lane.
+    pub fn stale_uninspected_edge(&self, edge_id: &str, cause: &str) -> Result<bool> {
+        let cause = cause.trim();
+        if cause.is_empty() {
+            bail!("stale_uninspected_edge requires a cause");
+        }
+        let edge = self
+            .get_edge(edge_id)?
+            .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
+        if edge.truth_class != TruthClass::Asserted
+            || edge.status != InspectionStatus::Uninspected
+        {
+            return Ok(false);
+        }
+        self.write_edge_status(edge_id, InspectionStatus::NeedsReverification.as_str())?;
+        self.set_facet(
+            edge_id,
+            TargetKind::Edge,
+            "stale_cause",
+            cause,
+            TruthClass::Derived,
+        )?;
+        Ok(true)
+    }
+
     /// Reset a Validation to `not_run` as a deterministic sync consequence.
     /// Sync-derived invalidation is not an authored state transition, so it uses
     /// the derived timestamp sentinel to preserve INV-2 byte-identical exports

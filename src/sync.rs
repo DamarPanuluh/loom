@@ -585,6 +585,45 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
             report.edges_staled += 1;
         }
     }
+    // `exercises` provenance makes the same symbol promise a realizing
+    // grounding does, and nothing else re-checks it: the anchor machinery
+    // covers only anchor-form locators, and intact-looking provenance is
+    // deliberately not queue work — so this ripple must fire even on a
+    // never-inspected edge or the repair reaches no lane. Compiler-owned
+    // Journey topology is excepted: its provenance is policed against the
+    // accepted surface's canonical projection, and its door is journey
+    // compile/run.
+    for edge in store.edges_with(Some(EdgeKind::Exercises), None, None)? {
+        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
+            continue;
+        };
+        let locator = locator.trim();
+        if locator.is_empty()
+            || crate::locator::is_module_scope(locator)
+            || crate::locator::is_anchor_locator(locator)
+        {
+            continue;
+        }
+        if crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_some() {
+            continue;
+        }
+        let Some(file) = store.get_node(&edge.to_id)? else {
+            continue;
+        };
+        if !root.join(&file.name).exists() {
+            continue;
+        }
+        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))
+            .map(|r| r.match_count)
+            .unwrap_or(0);
+        if matched > 0 {
+            continue;
+        }
+        let cause = format!("locator '{locator}' names no symbol in {}", file.name);
+        if store.stale_edge(&edge.id, &cause)? || store.stale_uninspected_edge(&edge.id, &cause)? {
+            report.edges_staled += 1;
+        }
+    }
     Ok(())
 }
 
@@ -640,6 +679,17 @@ fn apply_anchor_staleness(
                 let Some(edge) = store.get_edge(&anchor.edge_id)? else {
                     continue;
                 };
+                // A broken anchor on never-inspected provenance was invisible:
+                // the closure reset below re-fires every sync while the edge
+                // carrying the actual defect stayed uninspected and unqueued.
+                // Surface it as the analyze work it is; compiler-owned Journey
+                // topology keeps its own door.
+                if edge.status == InspectionStatus::Uninspected
+                    && crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_none()
+                    && store.stale_uninspected_edge(&edge.id, &anchor.cause)?
+                {
+                    report.edges_staled += 1;
+                }
                 if reset_validations.insert(edge.from_id.clone()) {
                     stale_validation_closure(store, &edge.from_id, &anchor.cause, false, report)?;
                 }

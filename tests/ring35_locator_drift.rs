@@ -417,6 +417,183 @@ fn a_valid_source_anchor_survives_an_ordinary_symbol_rename() {
     assert_eq!(resolved.entry_name, "new_name");
 }
 
+/// A generic (hand-authored) validation exercising `file` at `locator`,
+/// with the edge left uninspected — intact provenance, not queue work.
+fn exercised(
+    store: &Store,
+    tmp: &Tmp,
+    file: &str,
+    body: &str,
+    locator: &str,
+) -> (loom::model::Node, String) {
+    std::fs::write(tmp.path().join(file), body).unwrap();
+    let cf = store
+        .add_node(NodeType::CodeFile, file, "", "", serde_json::json!({}))
+        .unwrap();
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            &format!("proof-of-{file}"),
+            "drives the entry point",
+            "passed",
+            serde_json::json!({"type":"test", "command":"cargo test entry"}),
+        )
+        .unwrap();
+    let e = store
+        .add_edge(
+            EdgeKind::Exercises,
+            &validation.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(&e.id, TargetKind::Edge, "locator", locator, TruthClass::Asserted)
+        .unwrap();
+    (validation, e.id)
+}
+
+/// **Dead exercises provenance re-opens even when it was never inspected.**
+///
+/// Intact `exercises` provenance is deliberately not queue work, which means
+/// drift on a never-inspected edge reached no lane: the symbol ripple walked
+/// `implements` only, and `stale_edge` no-ops on `uninspected`. The repair
+/// was invisible while grading honestly refused the dead entry.
+#[test]
+fn dead_exercises_provenance_reopens_even_uninspected() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (_validation, edge) = exercised(
+        &store,
+        &tmp,
+        "entry.rs",
+        "pub fn present() {}\n",
+        "vanished",
+    );
+    assert_eq!(status(&store, &edge), "uninspected");
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        status(&store, &edge),
+        "needs_reverification",
+        "provenance whose locator names nothing is drift, whatever its inspection history"
+    );
+    let cause = store
+        .get_facet(&edge, TargetKind::Edge, "stale_cause")
+        .unwrap()
+        .unwrap();
+    assert!(cause.contains("vanished") && cause.contains("entry.rs"), "{cause}");
+    let served = loom::workitem::next(&store, Some(loom::lane::Lane::Analyze))
+        .unwrap()
+        .expect("the surfaced drift is analyze work");
+    assert_eq!(served.target.id, edge);
+}
+
+/// **Resolving exercises provenance is left alone.** The ripple must not feed
+/// every generic exercises edge to analyze on every sync — intact provenance
+/// stays out of the queues by design.
+#[test]
+fn resolving_exercises_provenance_stays_uninspected_and_unqueued() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (_validation, edge) = exercised(
+        &store,
+        &tmp,
+        "entry.rs",
+        "pub fn present() {}\n",
+        "present",
+    );
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(status(&store, &edge), "uninspected");
+    assert!(
+        loom::workitem::queue_items(&store, loom::lane::Lane::Analyze)
+            .unwrap()
+            .iter()
+            .all(|entry| entry.target.id != edge),
+        "intact provenance is not a claim awaiting inspection"
+    );
+}
+
+/// **A dead source anchor on uninspected exercises provenance re-opens.**
+///
+/// Before: the anchor machinery reset the validation closure on EVERY sync —
+/// the proof re-ran forever — while the edge carrying the broken anchor
+/// stayed uninspected and unqueued. The treadmill still fires until repaired;
+/// the repair is now queued.
+#[test]
+fn a_dead_anchor_on_uninspected_exercises_reopens() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (validation, edge) = exercised(
+        &store,
+        &tmp,
+        "anchored_entry.rs",
+        "// loom:anchor entry.point\npub fn handler() {}\n",
+        "anchor:entry.point",
+    );
+    // The marker is deleted out from under the anchor.
+    std::fs::write(
+        tmp.path().join("anchored_entry.rs"),
+        "pub fn handler() {}\n",
+    )
+    .unwrap();
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(status(&store, &edge), "needs_reverification");
+    assert_eq!(
+        store.get_node(&validation.id).unwrap().unwrap().status,
+        "not_run",
+        "the closure reset still expires the proof"
+    );
+}
+
+/// **Compiler-owned exercises provenance keeps its own door.** Its currency is
+/// policed against the accepted surface's canonical projection; the symbol
+/// ripple must not hand it to analyze, whose write-back the CLI refuses.
+#[test]
+fn compiler_owned_exercises_provenance_is_left_to_its_own_door() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (validation, edge) = exercised(
+        &store,
+        &tmp,
+        "entry.rs",
+        "pub fn present() {}\n",
+        "vanished",
+    );
+    store
+        .set_node_body(
+            &validation.id,
+            &serde_json::json!({"type":"journey", "profile":"proof"}),
+        )
+        .unwrap();
+    let journey = store
+        .add_node(
+            NodeType::Journey,
+            "flow",
+            "the flow",
+            "authored",
+            serde_json::json!({"profile_ids": ["proof"]}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Proves,
+            &validation.id,
+            &journey.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    loom::sync::run(&store, tmp.path()).unwrap();
+    assert_eq!(
+        status(&store, &edge),
+        "uninspected",
+        "journey compile/run owns this edge; the generic ripple must not touch it"
+    );
+}
+
 #[test]
 fn a_duplicate_source_anchor_reopens_the_grounding() {
     let tmp = Tmp::new();
