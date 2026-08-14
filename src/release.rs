@@ -4246,37 +4246,73 @@ fn hash_optional_path_excluding(path: &Path, top_level_excludes: &[&str]) -> Res
     hash_tree(path, top_level_excludes)
 }
 
+/// Streaming FNV-1a with exactly the schedule [`fingerprint_bytes`] uses, so a
+/// streamed tree hash equals hashing the same byte sequence in one buffer.
+///
+/// Buffering was not viable: a declared cache root is a real toolchain cache
+/// (`~/.rustup` alone is gigabytes across six figures of files), and holding
+/// every byte of it in one `Vec` to hash it at the end got the rehearsal
+/// SIGKILLed before it could emit a single line of its report.
+struct TreeHasher(u64);
+
+impl TreeHasher {
+    fn new() -> Self {
+        Self(0xcbf2_9ce4_8422_2325)
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for byte in bytes {
+            self.0 ^= *byte as u64;
+            self.0 = self.0.wrapping_mul(0x0100_0000_01b3);
+        }
+    }
+
+    fn finish(self) -> String {
+        format!("{:016x}", self.0)
+    }
+}
+
 fn hash_tree(root: &Path, top_level_excludes: &[&str]) -> Result<String> {
-    let mut bytes = Vec::new();
-    hash_tree_into(root, root, top_level_excludes, &mut bytes)?;
-    Ok(fingerprint_bytes(&bytes))
+    let mut hasher = TreeHasher::new();
+    hash_tree_into(root, root, top_level_excludes, &mut hasher)?;
+    Ok(hasher.finish())
 }
 
 fn hash_tree_into(
     root: &Path,
     path: &Path,
     top_level_excludes: &[&str],
-    out: &mut Vec<u8>,
+    out: &mut TreeHasher,
 ) -> Result<()> {
     let metadata = fs::symlink_metadata(path)?;
     let relative = path.strip_prefix(root).unwrap_or(path);
     if metadata.file_type().is_symlink() {
-        out.extend_from_slice(b"link\0");
-        out.extend_from_slice(relative.to_string_lossy().as_bytes());
-        out.push(0);
-        out.extend_from_slice(fs::read_link(path)?.to_string_lossy().as_bytes());
+        out.write(b"link\0");
+        out.write(relative.to_string_lossy().as_bytes());
+        out.write(&[0]);
+        out.write(fs::read_link(path)?.to_string_lossy().as_bytes());
         return Ok(());
     }
     if metadata.is_file() {
-        out.extend_from_slice(b"file\0");
-        out.extend_from_slice(relative.to_string_lossy().as_bytes());
-        out.push(0);
-        out.extend_from_slice(&fs::read(path)?);
+        out.write(b"file\0");
+        out.write(relative.to_string_lossy().as_bytes());
+        out.write(&[0]);
+        // Stream the contents: one cache root can hold gigabytes, and the
+        // hash only needs the bytes in order, never all of them at once.
+        let mut file = fs::File::open(path)?;
+        let mut buffer = vec![0u8; 64 * 1024];
+        loop {
+            let read = file.read(&mut buffer)?;
+            if read == 0 {
+                break;
+            }
+            out.write(&buffer[..read]);
+        }
         return Ok(());
     }
     if !metadata.is_dir() {
-        out.extend_from_slice(b"special\0");
-        out.extend_from_slice(relative.to_string_lossy().as_bytes());
+        out.write(b"special\0");
+        out.write(relative.to_string_lossy().as_bytes());
         return Ok(());
     }
     let mut entries: Vec<_> = fs::read_dir(path)?.collect::<std::io::Result<_>>()?;
