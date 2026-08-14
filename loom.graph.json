@@ -15752,21 +15752,6 @@
       "updated_at": ""
     },
     {
-      "id": "d1a30ea90a0570f08",
-      "type": "finding",
-      "name": "user-visible intent 'semantic commit recommendations expose exact scope and evidence' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:a0c67e4b689e9f31f477cb6cdd894535",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d1b13324746c62103",
       "type": "finding",
       "name": "src/journey.rs::validate_for is long",
@@ -16336,21 +16321,6 @@
         "kind": "large_symbol",
         "metric": 126,
         "symbol": "topology_problems"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d33a346c0850ed0e1",
-      "type": "finding",
-      "name": "user-visible intent 'the LLM decides whether to create a semantic checkpoint' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:057bc2ec51dde77864587a258a3c3bd6",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -17721,7 +17691,7 @@
       "type": "validation",
       "name": "journey:semantic-commit-recommendation:proof",
       "description": "compiler-owned Journey proof profile",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "compiler_version": "6",
@@ -17731,7 +17701,7 @@
         "type": "journey"
       },
       "created_at": "2026-08-11T16:48:42.761Z",
-      "updated_at": ""
+      "updated_at": "2026-08-14T08:53:55.619Z"
     },
     {
       "id": "d72eca0d3e450759b",
@@ -19491,21 +19461,6 @@
       "updated_at": "2026-08-09T12:54:04.539Z"
     },
     {
-      "id": "dc3503c7c10635421",
-      "type": "finding",
-      "name": "user-visible intent 'semantic checkpoint readiness is assessed' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:8eb58e388d9b999f62666a0582c1b893",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "dc5c21d2cdcfe88ad",
       "type": "finding",
       "name": "src/absorb.rs imports src/model.rs but their intents have no recorded relationship",
@@ -20306,21 +20261,6 @@
         "kind": "complex_symbol",
         "metric": 44,
         "symbol": "journey_readiness"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "def843c9cfe845ffe",
-      "type": "finding",
-      "name": "user-visible intent 'Git push requires an explicit human decision' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:4df3da35d45316e7777ae9e4fa2efabd",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -24956,6 +24896,20 @@
       "updated_at": "2026-08-14T07:16:39.590Z"
     },
     {
+      "id": "19583ae721c2847294be0b134cd6bc14",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.257Z",
+      "updated_at": "2026-08-14T08:53:55.614Z"
+    },
+    {
       "id": "195cfd6611113f576d0d199d06492a58",
       "from_id": "6808563516646ae785a81cdd1cb16d78",
       "to_id": "5345985b41a16ffdade0d603bced3643",
@@ -25138,18 +25092,18 @@
       "updated_at": "2026-08-14T08:51:26.778Z"
     },
     {
-      "id": "1f26369b4fe526228624aca95b7d849b",
+      "id": "1f69f8aa36dd2c0a3270c67e26ca6104",
       "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "4b57916015b6dcb9c2ad67404f6c1fac",
-      "kind": "calls",
+      "to_id": "a0c67e4b689e9f31f477cb6cdd894535",
+      "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.257Z",
+      "updated_at": "2026-08-14T08:53:55.615Z"
     },
     {
       "id": "1f832ee47849a4056b1c536db2bfcbaf",
@@ -25936,6 +25890,34 @@
       "updated_at": "2026-08-14T04:22:36.323Z"
     },
     {
+      "id": "387c2d9791dbc583fe8fef80c36c18fb",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "ecd01554eaee1e917013d3e24b4e76b1",
+      "kind": "exercises",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.258Z",
+      "updated_at": "2026-08-14T08:53:55.618Z"
+    },
+    {
+      "id": "38f5d9249324e813ed831f229468d104",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "4b57916015b6dcb9c2ad67404f6c1fac",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.257Z",
+      "updated_at": "2026-08-14T08:53:55.617Z"
+    },
+    {
       "id": "394f3f8ff879ed0e109fd20706e99417",
       "from_id": "47934b4b783f39cb8f9b475353d669a1",
       "to_id": "5de4a7d9d91461db77ecc726f95cf79a",
@@ -26272,20 +26254,6 @@
       "updated_at": "2026-08-14T07:36:25.137Z"
     },
     {
-      "id": "45abf2ead5c3382e97638dab55c85d88",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
-    },
-    {
       "id": "46519163421c0f6d0fab8e56a76dd2d8",
       "from_id": "c58d0663c95b8bdd7583e7d16726934c",
       "to_id": "cd3f3bc4fb4e12f0ed0c2a6fe73f4141",
@@ -26620,20 +26588,6 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-11T02:14:11.891Z",
       "updated_at": "2026-08-11T02:24:50.578Z"
-    },
-    {
-      "id": "52168c10e6b9cb6a67498d4f8f4ae252",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "8eb58e388d9b999f62666a0582c1b893",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
     },
     {
       "id": "523133910b88f43e9d1684a54821e119",
@@ -27138,20 +27092,6 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:20.008Z",
       "updated_at": "2026-08-09T12:54:20.008Z"
-    },
-    {
-      "id": "658008b62a3219eb933840413e089c30",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "ecd01554eaee1e917013d3e24b4e76b1",
-      "kind": "exercises",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
     },
     {
       "id": "6844335785547d79441a02026be01b22",
@@ -27670,20 +27610,6 @@
       "inspected_by": "",
       "created_at": "2026-08-11T02:29:27.817Z",
       "updated_at": "2026-08-11T02:29:27.817Z"
-    },
-    {
-      "id": "7a3de924c0ba27e4d2564ebddd1d9bc6",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "a0c67e4b689e9f31f477cb6cdd894535",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
     },
     {
       "id": "7a4da8f02e200858bcc8804a5d1115e0",
@@ -28316,20 +28242,6 @@
       "updated_at": "2026-08-14T08:51:54.226Z"
     },
     {
-      "id": "8b62a0565d11aec1237d17fc4247d31d",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "057bc2ec51dde77864587a258a3c3bd6",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
-    },
-    {
       "id": "8c45a95b53c96ed91d7e1721cd6573d1",
       "from_id": "8de90b8bb12da4e88463e63e9de7c1d0",
       "to_id": "60f1ef851c1b7d369c1e25455259af12",
@@ -28960,6 +28872,20 @@
       "updated_at": "2026-08-11T01:17:05.807Z"
     },
     {
+      "id": "a1c86c6dab3d53f1d2b4ed1f61d99038",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "057bc2ec51dde77864587a258a3c3bd6",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.256Z",
+      "updated_at": "2026-08-14T08:53:55.615Z"
+    },
+    {
       "id": "a24548820ce68d74fe311c764698a70a",
       "from_id": "5aa77e3fa29d3d31a1de118a609e5894",
       "to_id": "06265c58361431f69de3bf70060c7c44",
@@ -29142,20 +29068,6 @@
       "updated_at": "2026-08-13T13:34:38.677Z"
     },
     {
-      "id": "a58e3502c72825253a2387eeeb77ef9e",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "998eb146c4c794c94594acc451a04c30",
-      "kind": "proves",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.921Z",
-      "updated_at": "2026-08-14T08:52:26.921Z"
-    },
-    {
       "id": "a5a75afb0e38f5633d1fe5e4130621d2",
       "from_id": "fbbf81e0b7fea5b2da647cb62b6f1d22",
       "to_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
@@ -29308,6 +29220,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-09T16:58:42.718Z",
       "updated_at": "2026-08-14T07:16:40.884Z"
+    },
+    {
+      "id": "ae68724cf23c3a4514d97bef621bc495",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "bbd0126142a517757982cc9ba1d27a0d",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.257Z",
+      "updated_at": "2026-08-14T08:53:55.616Z"
     },
     {
       "id": "ae92d3b1a432a1fd39be14fc036a2669",
@@ -29666,12 +29592,12 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "For every release request, rehearse_cmd's underlying gate mechanism must run both the isolated-dogfood gate and the independent empty-workspace fixpoint gate to success before any version/changelog/build/install mutation, leave targets unchanged on failure, exit after gates without mutation in rehearsal mode, and never commit or push.",
-      "confidence": 0.74,
+      "criterion": "rehearse_cmd runs the release gates in detached candidates and refuses to proceed past a blocked status, never mutating the caller, committing, or pushing.",
+      "confidence": 0.8,
       "depends_on": [],
       "inspected_by": "solo",
       "created_at": "2026-08-10T05:01:42.971Z",
-      "updated_at": "2026-08-14T06:58:21.188Z"
+      "updated_at": "2026-08-14T08:53:33.944Z"
     },
     {
       "id": "bad5e3945a02185648e43f63b222dc04",
@@ -30080,6 +30006,20 @@
       "updated_at": "2026-08-14T07:29:18.952Z"
     },
     {
+      "id": "c65673ad15a927c73a3b955d550a3dcd",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "998eb146c4c794c94594acc451a04c30",
+      "kind": "proves",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.255Z",
+      "updated_at": "2026-08-14T08:53:55.617Z"
+    },
+    {
       "id": "c86f28a25e3378c1e543df4bfeb1c98e",
       "from_id": "2e8cbf11bab0349b7cb1b5925fbef95c",
       "to_id": "782e24a7b6a941dec0e64cf09009b65a",
@@ -30176,20 +30116,6 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T05:01:42.744Z",
       "updated_at": "2026-08-14T07:16:40.978Z"
-    },
-    {
-      "id": "cc455c36abe2927eede3470b1fccdad3",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "bbd0126142a517757982cc9ba1d27a0d",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
     },
     {
       "id": "cd6f98d12217f411ee389b24b4fa2889",
@@ -33776,6 +33702,20 @@
       "updated_at": ""
     },
     {
+      "id": "db2c4cb7b28b4248173b1cdc63fa869b",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "0d40306d9479b9a428a843a37b22b156",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.257Z",
+      "updated_at": "2026-08-14T08:53:55.616Z"
+    },
+    {
       "id": "db2c8b5df4eb356a2",
       "from_id": "d3293257c85460916",
       "to_id": "2433b42cba6d02f8705f7465a984738e",
@@ -34180,20 +34120,6 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
-    },
-    {
-      "id": "dc43456acd044004d8081958f5bd0955",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "0d40306d9479b9a428a843a37b22b156",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T08:52:26.922Z",
-      "updated_at": "2026-08-14T08:52:26.922Z"
     },
     {
       "id": "dc4494a885204e6f6",
@@ -36044,6 +35970,20 @@
       "updated_at": "2026-08-14T06:58:21.135Z"
     },
     {
+      "id": "f2f72b2fac27227c8790cb5948a1162d",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "8eb58e388d9b999f62666a0582c1b893",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T08:53:51.257Z",
+      "updated_at": "2026-08-14T08:53:55.617Z"
+    },
+    {
       "id": "f31053e408896375b87039d1c8794f4d",
       "from_id": "4df3da35d45316e7777ae9e4fa2efabd",
       "to_id": "057bc2ec51dde77864587a258a3c3bd6",
@@ -36795,6 +36735,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T04:21:57.086Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f1dbd35f810cb1953",
+      "subject_kind": "edge",
+      "subject_id": "db2c4cb7b28b4248173b1cdc63fa869b",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.616Z",
       "decision_mode": "individual"
     },
     {
@@ -37726,6 +37679,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f4648ad32f44855c1",
+      "subject_kind": "edge",
+      "subject_id": "387c2d9791dbc583fe8fef80c36c18fb",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.618Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f46f5a6143f2abe8d",
       "subject_kind": "edge",
       "subject_id": "523133910b88f43e9d1684a54821e119",
@@ -38458,11 +38424,24 @@
       "subject_id": "bad0e87a38beffd718523a8ebdc75f43",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "For every release request, rehearse_cmd's underlying gate mechanism must run both the isolated-dogfood gate and the independent empty-workspace fixpoint gate to success before any version/changelog/build/install mutation, leave targets unchanged on failure, exit after gates without mutation in rehearsal mode, and never commit or push.",
+      "criterion": "rehearse_cmd runs the release gates in detached candidates and refuses to proceed past a blocked status, never mutating the caller, committing, or pushing.",
       "verification": "verified",
-      "confidence": 0.74,
+      "confidence": 0.8,
       "asserted_by": "solo",
-      "asserted_at": "2026-08-14T06:58:21.187Z",
+      "asserted_at": "2026-08-14T08:53:33.938Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f68f765f948791786",
+      "subject_kind": "edge",
+      "subject_id": "1f69f8aa36dd2c0a3270c67e26ca6104",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.615Z",
       "decision_mode": "individual"
     },
     {
@@ -38982,6 +38961,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f8100e508cba3c03c",
+      "subject_kind": "edge",
+      "subject_id": "a1c86c6dab3d53f1d2b4ed1f61d99038",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.615Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f829986125d89a336",
       "subject_kind": "edge",
       "subject_id": "7a8bb8a5e56cd13cdc8339f17700ed47",
@@ -39084,6 +39076,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-13T13:33:18.757Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f8766cafb3a6909e4",
+      "subject_kind": "edge",
+      "subject_id": "ae68724cf23c3a4514d97bef621bc495",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.616Z",
       "decision_mode": "individual"
     },
     {
@@ -39431,6 +39436,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f959f277deb5cc2b1",
+      "subject_kind": "edge",
+      "subject_id": "f2f72b2fac27227c8790cb5948a1162d",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.616Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f95e34ee39c6666ef",
       "subject_kind": "edge",
       "subject_id": "6878ea47856277236e9ad051f5d48c5d",
@@ -39481,6 +39499,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-13T13:46:09.592Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f993e50f8a6ac2f2c",
+      "subject_kind": "edge",
+      "subject_id": "38f5d9249324e813ed831f229468d104",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.617Z",
       "decision_mode": "individual"
     },
     {
@@ -41098,6 +41129,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fe29f2931d80a38f2",
+      "subject_kind": "edge",
+      "subject_id": "19583ae721c2847294be0b134cd6bc14",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.613Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fe34c6a76450a48f0",
       "subject_kind": "edge",
       "subject_id": "424b6eac94a737e28987db1c49c46325",
@@ -41305,6 +41349,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T08:51:25.355Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "feed8b16db865ef24",
+      "subject_kind": "edge",
+      "subject_id": "c65673ad15a927c73a3b955d550a3dcd",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T08:53:55.617Z",
       "decision_mode": "individual"
     },
     {
@@ -44252,6 +44309,192 @@
         "text": "compiled Journey 'journey:sync-ripple:proof' already passed; copied locally-minted observation onto uninspected compiler topology"
       },
       "recorded_at": "2026-08-14T04:21:57.086Z"
+    },
+    {
+      "id": "e2dcfe1b976a1fc7e",
+      "fact_id": "f1dbd35f810cb1953",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.616Z"
+    },
+    {
+      "id": "efe30f4fb46192a48",
+      "fact_id": "f1dbd35f810cb1953",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.616Z"
     },
     {
       "id": "e848fb4aadcbc04c0",
@@ -48406,6 +48649,192 @@
       "recorded_at": "2026-08-14T07:16:41.298Z"
     },
     {
+      "id": "e3465461173d4231b",
+      "fact_id": "f4648ad32f44855c1",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.618Z"
+    },
+    {
+      "id": "ecf0a687053d6f571",
+      "fact_id": "f4648ad32f44855c1",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.618Z"
+    },
+    {
       "id": "e74371ac3716be154",
       "fact_id": "f46f5a6143f2abe8d",
       "payload": {
@@ -51995,18 +52424,6 @@
       "recorded_at": "2026-08-14T06:58:20.672Z"
     },
     {
-      "id": "e2826f02193fb6bc9",
-      "fact_id": "f688fa1690a16c193",
-      "payload": {
-        "kind": "span",
-        "file": "journeys/surfaces/release-workflow.surface.json",
-        "start": 8,
-        "end": 8,
-        "hash": "e9b6d01b4f74e214"
-      },
-      "recorded_at": "2026-08-14T06:58:21.187Z"
-    },
-    {
       "id": "e3c9385e7cc0f62ee",
       "fact_id": "f688fa1690a16c193",
       "payload": {
@@ -52024,10 +52441,10 @@
         "assertions": 1,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786690701188",
+        "ran_at": "1786697613941",
         "loom_version": "0.32.0"
       },
-      "recorded_at": "2026-08-14T06:58:21.187Z"
+      "recorded_at": "2026-08-14T08:53:33.938Z"
     },
     {
       "id": "e4f9ad2ef93b93afe",
@@ -52041,7 +52458,16 @@
         "symbol": "rehearse_cmd",
         "symbol_hash": "f822154932807aca"
       },
-      "recorded_at": "2026-08-14T06:58:21.187Z"
+      "recorded_at": "2026-08-14T08:53:33.938Z"
+    },
+    {
+      "id": "e5b739b566b03c555",
+      "fact_id": "f688fa1690a16c193",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/release_cmd.rs:39-54 rehearse_cmd dispatches to crate::release::rehearse(root, phase) and bails on ReleaseStatus::Blocked without proceeding further. src/release.rs:941-958 (GatedPreparation branch of rehearse_inner) runs two independent isolated gates, requires their candidate_hash/result_hash to match, and only then emits the timeline events isolated_dogfood passed -> fresh_fixpoint passed -> mutation skipped_rehearsal, so this path performs no real mutation. src/release.rs:4157-4172 EffectAttestation records live_source/live_target/live_git/installed_binary_changed plus top_level_commit_argv_attempted/top_level_push_argv_attempted, and src/release.rs:882-886 sets status=Blocked whenever caller_state_changed is true. Evidence deliberately cites only registered codefiles: the prior revision also cited journeys/surfaces/release-workflow.surface.json, which is not registered, so its span could not anchor inside an isolated Journey snapshot and re-opened this claim on every such run."
+      },
+      "recorded_at": "2026-08-14T08:53:33.938Z"
     },
     {
       "id": "e71c6bca2c9c87540",
@@ -52056,7 +52482,7 @@
         "symbol_hash": "ff9aeeb900bf16d9",
         "symbol_offset": 34
       },
-      "recorded_at": "2026-08-14T06:58:21.187Z"
+      "recorded_at": "2026-08-14T08:53:33.938Z"
     },
     {
       "id": "ebb127272998f36e1",
@@ -52071,7 +52497,7 @@
         "symbol_hash": "288f704d8481f6f9",
         "symbol_offset": 79
       },
-      "recorded_at": "2026-08-14T06:58:21.187Z"
+      "recorded_at": "2026-08-14T08:53:33.938Z"
     },
     {
       "id": "ec431aaa5ded554ef",
@@ -52086,16 +52512,193 @@
         "symbol_hash": "dbe50dec1e281a9f",
         "symbol_offset": 41
       },
-      "recorded_at": "2026-08-14T06:58:21.187Z"
+      "recorded_at": "2026-08-14T08:53:33.938Z"
     },
     {
-      "id": "ed0c5e6a88dd75e5d",
-      "fact_id": "f688fa1690a16c193",
+      "id": "e3b235be94d495c3a",
+      "fact_id": "f68f765f948791786",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.615Z"
+    },
+    {
+      "id": "eaa2be0009e2b9b3c",
+      "fact_id": "f68f765f948791786",
       "payload": {
         "kind": "claim",
-        "text": "src/commands/release_cmd.rs:39-54 rehearse_cmd dispatches to crate::release::rehearse(root, phase) and bails on ReleaseStatus::Blocked without proceeding further. src/release.rs:941-958 (GatedPreparation branch of rehearse_inner) runs two independent isolated gates (first_permit/second_permit), requires their candidate_hash/result_hash to match, and only then emits the timeline events 'isolated_dogfood passed' -> 'fresh_fixpoint passed' -> 'mutation skipped_rehearsal' -- i.e. this code path never performs a real mutation itself. src/release.rs:4157-4172 EffectAttestation records live_source/live_target/live_git/installed_binary_changed plus top_level_commit_argv_attempted/top_level_push_argv_attempted, and src/release.rs:882-886 sets status=Blocked whenever caller_state_changed is true, matching 'either failure leaves those targets unchanged' and 'never commits or pushes'. journeys/surfaces/release-workflow.surface.json:8 declares this surface's identity as literally \"loom release rehearse\", and `loom explain a45b15e4` lists a live journey:release-workflow:proof validation on this exact intent, confirming rehearse_cmd is the deliberate Journey-rooted entry point for this intent (the intent also co-grounds rehearse_inner and scripts/release.sh, consistent with a multi-part realization)."
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
       },
-      "recorded_at": "2026-08-14T06:58:21.187Z"
+      "recorded_at": "2026-08-14T08:53:55.615Z"
     },
     {
       "id": "e41477364b4a7c7c1",
@@ -54665,6 +55268,192 @@
       "recorded_at": "2026-08-13T13:46:08.143Z"
     },
     {
+      "id": "e9e864c5e15c66044",
+      "fact_id": "f8100e508cba3c03c",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.615Z"
+    },
+    {
+      "id": "ee5da58a7fe98e602",
+      "fact_id": "f8100e508cba3c03c",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.615Z"
+    },
+    {
       "id": "e0945b9f6d99aaf4c",
       "fact_id": "f829986125d89a336",
       "payload": {
@@ -55299,6 +56088,192 @@
         "text": "compiled Journey 'mcp-in-band:proof' observed passed with 55 typed assertion(s)"
       },
       "recorded_at": "2026-08-13T13:33:18.757Z"
+    },
+    {
+      "id": "e432360bd997b86e3",
+      "fact_id": "f8766cafb3a6909e4",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.616Z"
+    },
+    {
+      "id": "ec30e4b339250fd59",
+      "fact_id": "f8766cafb3a6909e4",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.616Z"
     },
     {
       "id": "e2d4fdd7f91c81105",
@@ -57289,6 +58264,192 @@
       "recorded_at": "2026-08-14T06:58:20.207Z"
     },
     {
+      "id": "e665d527ad1441ecb",
+      "fact_id": "f959f277deb5cc2b1",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.616Z"
+    },
+    {
+      "id": "e8900b44574c42e41",
+      "fact_id": "f959f277deb5cc2b1",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.616Z"
+    },
+    {
       "id": "eb0c039734451454c",
       "fact_id": "f95e34ee39c6666ef",
       "payload": {
@@ -57606,6 +58767,192 @@
         "text": "`cargo test --lib fsglob::tests` exit 0"
       },
       "recorded_at": "2026-08-13T13:46:09.592Z"
+    },
+    {
+      "id": "e9f0b24fc62f2c2f6",
+      "fact_id": "f993e50f8a6ac2f2c",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.617Z"
+    },
+    {
+      "id": "ec41985d0addebcf0",
+      "fact_id": "f993e50f8a6ac2f2c",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.617Z"
     },
     {
       "id": "e317713b4debd7a45",
@@ -65327,6 +66674,192 @@
       "recorded_at": "2026-08-14T07:26:58.030Z"
     },
     {
+      "id": "e5d4919ba899e4b5e",
+      "fact_id": "fe29f2931d80a38f2",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.613Z"
+    },
+    {
+      "id": "e6ba3983f69855678",
+      "fact_id": "fe29f2931d80a38f2",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.613Z"
+    },
+    {
       "id": "e207d6251a30d3244",
       "fact_id": "fe34c6a76450a48f0",
       "payload": {
@@ -66771,6 +68304,192 @@
         "text": "compiled Journey 'next-router:proof' observed passed with 12 typed assertion(s)"
       },
       "recorded_at": "2026-08-14T08:51:25.355Z"
+    },
+    {
+      "id": "e741ced704cca33c4",
+      "fact_id": "feed8b16db865ef24",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'semantic-commit-recommendation:proof' observed passed with 38 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T08:53:55.617Z"
+    },
+    {
+      "id": "ef4e3c7bba4f73d82",
+      "fact_id": "feed8b16db865ef24",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run semantic-commit-recommendation --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "c0ce23de46b597bb",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":38,\"journey\":\"semantic-commit-recommendation\",\"passed_assertions\":[{\"assertion_id\":\"checkpoint-is-ready\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-blockers\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-scope-names-no-journey\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-registered-source\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-unstaged\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-source-is-grounded-to-scope\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-includes-no-second-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-excludes-no-fixture-path\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"doctor-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"export-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"sync-check-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-passes\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-check-is-a-registered-proof\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-command-is-exact\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"fixture-validation-evidence-is-current\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"checkpoint-has-no-extra-check\",\"operation_id\":\"inspect-checkpoint-readiness\"},{\"assertion_id\":\"recommendation-schema-is-current\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-rationale-is-semantic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-names-exact-source\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-exposes-observed-checks\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-message-is-deterministic\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"recommendation-creates-no-commit\",\"operation_id\":\"review-commit-recommendation\"},{\"assertion_id\":\"local-authority-is-acting-llm\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-may-commit-or-defer\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"llm-stages-only-recommended-paths\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"bulk-staging-is-forbidden\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"ambiguity-causes-deferral\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"checkpoint-remains-local\",\"operation_id\":\"observe-llm-commit-or-defer-policy\"},{\"assertion_id\":\"push-needs-human\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-binding-is-exact\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"push-drift-needs-new-decision\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"missing-decision-keeps-local\",\"operation_id\":\"observe-human-push-gate\"},{\"assertion_id\":\"observation-performs-no-push\",\"operation_id\":\"observe-human-push-gate\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/checkpoint_cmd.rs": "eefeff953e10092c"
+        },
+        "assertions": 38,
+        "observed_assertions": [
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-is-ready"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-blockers"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-scope-names-no-journey"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-registered-source"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-unstaged"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-source-is-grounded-to-scope"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-includes-no-second-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-excludes-no-fixture-path"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "doctor-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "export-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "sync-check-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-passes"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-check-is-a-registered-proof"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-command-is-exact"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "fixture-validation-evidence-is-current"
+          },
+          {
+            "group": "inspect-checkpoint-readiness",
+            "assertion": "checkpoint-has-no-extra-check"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-schema-is-current"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-rationale-is-semantic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-names-exact-source"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-exposes-observed-checks"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-message-is-deterministic"
+          },
+          {
+            "group": "review-commit-recommendation",
+            "assertion": "recommendation-creates-no-commit"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "local-authority-is-acting-llm"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-may-commit-or-defer"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "llm-stages-only-recommended-paths"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "bulk-staging-is-forbidden"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "ambiguity-causes-deferral"
+          },
+          {
+            "group": "observe-llm-commit-or-defer-policy",
+            "assertion": "checkpoint-remains-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-needs-human"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-binding-is-exact"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "push-drift-needs-new-decision"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "missing-decision-keeps-local"
+          },
+          {
+            "group": "observe-human-push-gate",
+            "assertion": "observation-performs-no-push"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786697635613",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T08:53:55.617Z"
     },
     {
       "id": "e038e65c116f74d7e",
@@ -72268,6 +73987,20 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "387c2d9791dbc583fe8fef80c36c18fb",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "dispatch",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "387c2d9791dbc583fe8fef80c36c18fb",
+      "target_kind": "edge",
+      "key": "surface_locator",
+      "value": "dispatch",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "3aa03b6467c0f4b27bbbf2bc82e69935",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -73692,7 +75425,7 @@
       "target_id": "4df3da35d45316e7777ae9e4fa2efabd",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/checkpoint.rs\",\"proven_by\":\"checkpoint-push-human-gate\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/checkpoint.rs\",\"proven_by\":\"journey:semantic-commit-recommendation:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -75219,20 +76952,6 @@
       "target_kind": "edge",
       "key": "journey_derivation_created",
       "value": "true",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "658008b62a3219eb933840413e089c30",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "dispatch",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "658008b62a3219eb933840413e089c30",
-      "target_kind": "edge",
-      "key": "surface_locator",
-      "value": "dispatch",
       "truth_class": "asserted"
     },
     {
@@ -81420,7 +83139,7 @@
       "target_id": "bad0e87a38beffd718523a8ebdc75f43",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/release_cmd.rs\",\"start\":39,\"end\":54,\"hash\":\"f822154932807aca\",\"symbol\":\"rehearse_cmd\",\"symbol_hash\":\"f822154932807aca\"},{\"file\":\"src/release.rs\",\"start\":941,\"end\":958,\"hash\":\"4730b9dcda705153\",\"symbol\":\"rehearse_inner\",\"symbol_hash\":\"dbe50dec1e281a9f\",\"symbol_offset\":41},{\"file\":\"src/release.rs\",\"start\":4157,\"end\":4172,\"hash\":\"62272e19f0c61362\",\"symbol\":\"compare\",\"symbol_hash\":\"ff9aeeb900bf16d9\",\"symbol_offset\":34},{\"file\":\"src/release.rs\",\"start\":882,\"end\":886,\"hash\":\"9574b2e946065008\",\"symbol\":\"rehearse_with_executor\",\"symbol_hash\":\"288f704d8481f6f9\",\"symbol_offset\":79},{\"file\":\"journeys/surfaces/release-workflow.surface.json\",\"start\":8,\"end\":8,\"hash\":\"e9b6d01b4f74e214\"}]",
+      "value": "[{\"file\":\"src/commands/release_cmd.rs\",\"start\":39,\"end\":54,\"hash\":\"f822154932807aca\",\"symbol\":\"rehearse_cmd\",\"symbol_hash\":\"f822154932807aca\"},{\"file\":\"src/release.rs\",\"start\":941,\"end\":958,\"hash\":\"4730b9dcda705153\",\"symbol\":\"rehearse_inner\",\"symbol_hash\":\"dbe50dec1e281a9f\",\"symbol_offset\":41},{\"file\":\"src/release.rs\",\"start\":4157,\"end\":4172,\"hash\":\"62272e19f0c61362\",\"symbol\":\"compare\",\"symbol_hash\":\"ff9aeeb900bf16d9\",\"symbol_offset\":34},{\"file\":\"src/release.rs\",\"start\":882,\"end\":886,\"hash\":\"9574b2e946065008\",\"symbol\":\"rehearse_with_executor\",\"symbol_hash\":\"288f704d8481f6f9\",\"symbol_offset\":79}]",
       "truth_class": "asserted"
     },
     {
@@ -83373,7 +85092,7 @@
       "target_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"38\",\"call_witness\":\"push_policy\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands/checkpoint_cmd.rs\",\"entry_symbol\":\"dispatch\",\"grounded_symbol\":\"push_policy\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
     },
     {
