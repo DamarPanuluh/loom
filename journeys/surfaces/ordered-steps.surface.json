@@ -58,37 +58,37 @@
             {
               "equals": "bfdfe73447a2ce9bd3714d02af3a0e9e",
               "id": "before-prerequisite-served-first",
-              "pointer": "/items/0/target/id",
+              "pointer": "/items/[reason=intent is planned and not yet realized]/target/id",
               "type": "string"
             },
             {
               "equals": "enforce requires readiness",
               "id": "before-prerequisite-named",
-              "pointer": "/items/0/target/name",
+              "pointer": "/items/[reason=intent is planned and not yet realized]/target/name",
               "type": "string"
             },
             {
               "equals": "intent is planned and not yet realized",
               "id": "before-prerequisite-actionable",
-              "pointer": "/items/0/reason",
+              "pointer": "/items/[reason=intent is planned and not yet realized]/reason",
               "type": "string"
             },
             {
               "equals": "2d16cabcf844b5d7f9dbd929c7da0f5c",
               "id": "before-dependent-second",
-              "pointer": "/items/1/target/id",
+              "pointer": "/items/[reason=blocked: requires 'enforce requires readiness' (planned) — build what it stands on first, or break the cycle]/target/id",
               "type": "string"
             },
             {
               "equals": "the highest-priority asserted residue is selected",
               "id": "before-dependent-named",
-              "pointer": "/items/1/target/name",
+              "pointer": "/items/[reason=blocked: requires 'enforce requires readiness' (planned) — build what it stands on first, or break the cycle]/target/name",
               "type": "string"
             },
             {
               "contains": "blocked: requires 'enforce requires readiness' (planned)",
               "id": "before-dependent-blocked-by-name",
-              "pointer": "/items/1/reason",
+              "pointer": "/items/[reason=blocked: requires 'enforce requires readiness' (planned) — build what it stands on first, or break the cycle]/reason",
               "type": "string"
             },
             {

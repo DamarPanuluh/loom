@@ -1,12 +1,24 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "wantedness",
+  "bindings": [
+    {
+      "operation_id": "inspect-unratified-evidence",
+      "step_id": "inspect-behavior-wantedness"
+    }
+  ],
   "journey_hash": "fc692fa0bdcac876",
+  "journey_id": "wantedness",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "seed-unratified-implemented-intent",
+      "ground-unratified-implemented-intent"
+    ]
+  },
   "surface": {
-    "id": "wantedness-context-cli",
-    "title": "Inspect technical evidence without inferring wantedness",
-    "identity": "loom context <intent>",
     "codefile": "src/ratification.rs",
+    "id": "wantedness-context-cli",
+    "identity": "loom context <intent>",
     "locator": "effective",
     "operations": [
       {
@@ -132,43 +144,43 @@
             {
               "equals": "grounding",
               "id": "technical-grounding-is-separate",
-              "pointer": "/context/linked_entities/1/role",
+              "pointer": "/context/linked_entities/[locator=effective]/role",
               "type": "string"
             },
             {
               "equals": "implements",
               "id": "technical-grounding-kind",
-              "pointer": "/context/linked_entities/1/edge_kind",
+              "pointer": "/context/linked_entities/[locator=effective]/edge_kind",
               "type": "string"
             },
             {
               "equals": "effective",
               "id": "technical-grounding-locator",
-              "pointer": "/context/linked_entities/1/locator",
+              "pointer": "/context/linked_entities/[locator=effective]/locator",
               "type": "string"
             },
             {
               "equals": "grounding_file",
               "id": "technical-grounding-file-role",
-              "pointer": "/context/linked_entities/2/role",
+              "pointer": "/context/linked_entities/[kind=codefile]/role",
               "type": "string"
             },
             {
               "equals": "src/ratification.rs",
               "id": "technical-grounding-file",
-              "pointer": "/context/linked_entities/2/name",
+              "pointer": "/context/linked_entities/[kind=codefile]/name",
               "type": "string"
             },
             {
               "equals": "src/ratification.rs",
               "id": "technical-read-set-path",
-              "pointer": "/context/read_set/0/path",
+              "pointer": "/context/read_set/[locator=effective]/path",
               "type": "string"
             },
             {
               "equals": "effective",
               "id": "technical-read-set-locator",
-              "pointer": "/context/read_set/0/locator",
+              "pointer": "/context/read_set/[locator=effective]/locator",
               "type": "string"
             },
             {
@@ -245,19 +257,7 @@
         "read_only": false,
         "summary": "Create an implemented fixture Intent without human authority"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "seed-unratified-implemented-intent",
-      "ground-unratified-implemented-intent"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "inspect-unratified-evidence",
-      "step_id": "inspect-behavior-wantedness"
-    }
-  ]
+    ],
+    "title": "Inspect technical evidence without inferring wantedness"
+  }
 }

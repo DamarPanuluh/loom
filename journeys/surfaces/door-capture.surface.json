@@ -1,12 +1,31 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "door-capture",
+  "bindings": [
+    {
+      "operation_id": "submit-topic",
+      "step_id": "submit-topic"
+    },
+    {
+      "operation_id": "choose-destination",
+      "step_id": "choose-destination"
+    },
+    {
+      "operation_id": "inspect-disposition",
+      "step_id": "inspect-disposition"
+    }
+  ],
   "journey_hash": "0e928822d2f50877",
+  "journey_id": "door-capture",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "normalize-local-snapshot"
+    ]
+  },
   "surface": {
-    "id": "door-capture-cli",
-    "title": "Capture and route a topic through Loom's typed intake",
-    "identity": "loom door and inbox mark/show",
     "codefile": "src/commands/capture_cmd.rs",
+    "id": "door-capture-cli",
+    "identity": "loom door and inbox mark/show",
     "locator": "door",
     "operations": [
       {
@@ -180,19 +199,19 @@
             },
             {
               "id": "typed-landing",
-              "pointer": "/landing_menu/0/landing",
+              "pointer": "/landing_menu/[after=loom next --mode derive projects the smallest falsifiable technical Intents; build and surface follow only after the exact derivation is human-authorized]/landing",
               "type": "string"
             },
             {
               "id": "landing-rationale",
               "matches": "\\S",
-              "pointer": "/landing_menu/0/why",
+              "pointer": "/landing_menu/[after=loom next --mode derive projects the smallest falsifiable technical Intents; build and surface follow only after the exact derivation is human-authorized]/why",
               "type": "string"
             },
             {
               "id": "typed-route-command",
               "matches": "^loom inbox mark [0-9a-f]{8} routed --reason '[a-z_]+:[^']+'$",
-              "pointer": "/landing_menu/0/route_command",
+              "pointer": "/landing_menu/[after=loom next --mode derive projects the smallest falsifiable technical Intents; build and surface follow only after the exact derivation is human-authorized]/route_command",
               "type": "string"
             }
           ],
@@ -201,26 +220,7 @@
         "read_only": false,
         "summary": "Capture the exact authored topic and return typed landing choices"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "normalize-local-snapshot"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "submit-topic",
-      "step_id": "submit-topic"
-    },
-    {
-      "operation_id": "choose-destination",
-      "step_id": "choose-destination"
-    },
-    {
-      "operation_id": "inspect-disposition",
-      "step_id": "inspect-disposition"
-    }
-  ]
+    ],
+    "title": "Capture and route a topic through Loom's typed intake"
+  }
 }

@@ -1,12 +1,45 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "semantic-commit-recommendation",
+  "bindings": [
+    {
+      "operation_id": "inspect-checkpoint-readiness",
+      "step_id": "inspect-checkpoint-readiness"
+    },
+    {
+      "operation_id": "review-commit-recommendation",
+      "step_id": "review-commit-recommendation"
+    },
+    {
+      "operation_id": "observe-llm-commit-or-defer-policy",
+      "step_id": "decide-commit-checkpoint"
+    },
+    {
+      "operation_id": "observe-human-push-gate",
+      "step_id": "request-push-decision"
+    }
+  ],
   "journey_hash": "5b97bc005b7f5990",
+  "journey_id": "semantic-commit-recommendation",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "git": {
+      "dirty_paths": [
+        "src/fsglob.rs"
+      ],
+      "mode": "isolated_snapshot"
+    },
+    "graph": "local_snapshot",
+    "operations": [
+      "isolate-current-journey-proof",
+      "isolate-prior-scope-proof",
+      "register-checkpoint-fixture-proof",
+      "run-checkpoint-fixture-proof",
+      "verify-isolated-checkpoint-fixture"
+    ]
+  },
   "surface": {
-    "id": "semantic-checkpoint-cli",
-    "title": "Semantic checkpoint recommendation CLI",
-    "identity": "loom checkpoint recommend",
     "codefile": "src/commands/checkpoint_cmd.rs",
+    "id": "semantic-checkpoint-cli",
+    "identity": "loom checkpoint recommend",
     "locator": "dispatch",
     "operations": [
       {
@@ -80,67 +113,67 @@
             {
               "equals": "passed",
               "id": "doctor-check-passes",
-              "pointer": "/checks/0/status",
+              "pointer": "/checks/[command=loom doctor]/status",
               "type": "string"
             },
             {
               "equals": "loom_doctor",
               "id": "doctor-check-is-exact",
-              "pointer": "/checks/0/id",
+              "pointer": "/checks/[command=loom doctor]/id",
               "type": "string"
             },
             {
               "equals": "passed",
               "id": "export-check-passes",
-              "pointer": "/checks/1/status",
+              "pointer": "/checks/[command=loom export --check]/status",
               "type": "string"
             },
             {
               "equals": "loom_export",
               "id": "export-check-is-exact",
-              "pointer": "/checks/1/id",
+              "pointer": "/checks/[command=loom export --check]/id",
               "type": "string"
             },
             {
               "equals": "loom.graph.json matches the live graph",
               "id": "export-evidence-is-current",
-              "pointer": "/checks/1/evidence/0",
+              "pointer": "/checks/[command=loom export --check]/evidence/0",
               "type": "string"
             },
             {
               "equals": "passed",
               "id": "sync-check-passes",
-              "pointer": "/checks/2/status",
+              "pointer": "/checks/[command=loom sync]/status",
               "type": "string"
             },
             {
               "equals": "loom_sync",
               "id": "sync-check-is-exact",
-              "pointer": "/checks/2/id",
+              "pointer": "/checks/[command=loom sync]/id",
               "type": "string"
             },
             {
               "equals": "passed",
               "id": "fixture-validation-check-passes",
-              "pointer": "/checks/3/status",
+              "pointer": "/checks/[command=loom whoami --json]/status",
               "type": "string"
             },
             {
               "id": "fixture-validation-check-is-a-registered-proof",
               "matches": "^validation:[0-9a-f]{32}$",
-              "pointer": "/checks/3/id",
+              "pointer": "/checks/[command=loom whoami --json]/id",
               "type": "string"
             },
             {
               "equals": "loom whoami --json",
               "id": "fixture-validation-command-is-exact",
-              "pointer": "/checks/3/command",
+              "pointer": "/checks/[command=loom whoami --json]/command",
               "type": "string"
             },
             {
               "equals": "validates:130380027f0e1102581bb31f303ee2f0:passing",
               "id": "fixture-validation-evidence-is-current",
-              "pointer": "/checks/3/evidence/0",
+              "pointer": "/checks/[command=loom whoami --json]/evidence/0",
               "type": "string"
             },
             {
@@ -539,40 +572,7 @@
         "read_only": false,
         "summary": "Re-synchronize the cloned graph after the fixture proof and refresh its portable export"
       }
-    ]
-  },
-  "setup": {
-    "git": {
-      "dirty_paths": [
-        "src/fsglob.rs"
-      ],
-      "mode": "isolated_snapshot"
-    },
-    "graph": "local_snapshot",
-    "operations": [
-      "isolate-current-journey-proof",
-      "isolate-prior-scope-proof",
-      "register-checkpoint-fixture-proof",
-      "run-checkpoint-fixture-proof",
-      "verify-isolated-checkpoint-fixture"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "inspect-checkpoint-readiness",
-      "step_id": "inspect-checkpoint-readiness"
-    },
-    {
-      "operation_id": "review-commit-recommendation",
-      "step_id": "review-commit-recommendation"
-    },
-    {
-      "operation_id": "observe-llm-commit-or-defer-policy",
-      "step_id": "decide-commit-checkpoint"
-    },
-    {
-      "operation_id": "observe-human-push-gate",
-      "step_id": "request-push-decision"
-    }
-  ]
+    ],
+    "title": "Semantic checkpoint recommendation CLI"
+  }
 }
