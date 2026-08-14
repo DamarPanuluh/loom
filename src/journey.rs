@@ -2233,6 +2233,20 @@ impl SurfaceManifest {
                 add("real-clock-minute-bucket", JourneyLintSeverity::Advisory, Some(&operation.id), None, "replace the real-clock judgment-burst/minute-bucket fixture with deterministic clock-controlled evidence".into());
             }
             for assertion in &operation.output.assertions {
+                // A compiler-version pin is a deliberate tripwire — a bump
+                // means every proof must be recompiled — but it is only a
+                // tripwire while it names the version that is actually
+                // current. Left stale it is the opposite: an assertion that
+                // refuses a correct run, and one whose repair the runtime can
+                // compute exactly. Three of these sat at "3" from compiler v3
+                // through v6 because no release run ever reached them.
+                if assertion.pointer.ends_with("/compiler_version") {
+                    if let Some(Value::String(pinned)) = &assertion.equals {
+                        if pinned != JOURNEY_COMPILER_VERSION {
+                            add("stale-compiler-version-pin", JourneyLintSeverity::Blocking, Some(&operation.id), Some(&assertion.id), format!("update the pinned Journey compiler version '{pinned}' to the current '{JOURNEY_COMPILER_VERSION}'"));
+                        }
+                    }
+                }
                 let undeclared_equals = match &assertion.equals {
                     Some(value) => value_contains_undeclared_graph_identity(store, value)?,
                     None => false,

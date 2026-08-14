@@ -1,17 +1,29 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "release-workflow",
+  "bindings": [
+    {
+      "operation_id": "verify-isolated-dogfood",
+      "step_id": "verify-isolated-dogfood"
+    },
+    {
+      "operation_id": "verify-fresh-fixpoint",
+      "step_id": "verify-fresh-fixpoint"
+    },
+    {
+      "operation_id": "prepare-gated-local-release",
+      "step_id": "prepare-gated-local-release"
+    }
+  ],
   "journey_hash": "8cd6742023f60b62",
+  "journey_id": "release-workflow",
+  "schema": "loom.journey.surface/v1",
   "surface": {
-    "id": "loom-release-rehearsal",
-    "title": "Detached Loom release rehearsal",
-    "identity": "loom release rehearse",
     "codefile": "src/commands/release_cmd.rs",
+    "id": "loom-release-rehearsal",
+    "identity": "loom release rehearse",
     "locator": "rehearse_cmd",
     "operations": [
       {
-        "id": "verify-isolated-dogfood",
-        "summary": "Verify the exact candidate in one detached fresh-v12 graph",
+        "arguments": [],
         "argv": [
           "loom",
           "release",
@@ -24,182 +36,180 @@
           "CARGO_HOME",
           "RUSTUP_HOME"
         ],
-        "read_only": true,
-        "arguments": [],
+        "id": "verify-isolated-dogfood",
         "output": {
-          "format": "json",
           "assertions": [
             {
+              "equals": "loom.release-rehearsal/v1",
               "id": "isolated_dogfood-schema",
               "pointer": "/schema",
-              "type": "string",
-              "equals": "loom.release-rehearsal/v1"
+              "type": "string"
             },
             {
+              "equals": "isolated_dogfood",
               "id": "isolated_dogfood-phase",
               "pointer": "/phase",
-              "type": "string",
-              "equals": "isolated_dogfood"
+              "type": "string"
             },
             {
+              "equals": "passed",
               "id": "isolated_dogfood-passed",
               "pointer": "/status",
-              "type": "string",
-              "equals": "passed"
+              "type": "string"
             },
             {
+              "equals": "release/inventory.json",
               "id": "isolated_dogfood-inventory-path",
               "pointer": "/source_inventory/path",
-              "type": "string",
-              "equals": "release/inventory.json"
+              "type": "string"
             },
             {
+              "equals": "loom.release-source-inventory-attestation/v1",
               "id": "isolated_dogfood-inventory-schema",
               "pointer": "/source_inventory/schema",
-              "type": "string",
-              "equals": "loom.release-source-inventory-attestation/v1"
+              "type": "string"
             },
             {
+              "equals": "d357d55e2ec28c02",
               "id": "isolated_dogfood-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
-              "type": "string",
-              "equals": "d357d55e2ec28c02"
+              "type": "string"
             },
             {
               "id": "isolated_dogfood-inventory-provenance",
+              "matches": "^source_controlled_manifest_(git_verified|non_git)$",
               "pointer": "/source_inventory/provenance",
-              "type": "string",
-              "matches": "^source_controlled_manifest_(git_verified|non_git)$"
+              "type": "string"
             },
             {
               "id": "isolated_dogfood-inventory-git-verification",
+              "matches": "^(verified|not_applicable)$",
               "pointer": "/source_inventory/git_verification",
-              "type": "string",
-              "matches": "^(verified|not_applicable)$"
+              "type": "string"
             },
             {
+              "equals": 267,
               "id": "isolated_dogfood-inventory-entries",
               "pointer": "/source_inventory/entry_count",
-              "type": "integer",
-              "equals": 267
+              "type": "integer"
             },
             {
+              "equals": 267,
               "id": "isolated_dogfood-inventory-files",
               "pointer": "/source_inventory/file_count",
-              "type": "integer",
-              "equals": 267
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "isolated_dogfood-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
               "id": "isolated_dogfood-inventory-content-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/source_inventory/inventory_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-inventory-not-git-selected",
               "pointer": "/source_inventory/git_influenced_plan",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-inventory-materialized",
               "pointer": "/source_inventory/materialized_matches",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": 0,
               "id": "isolated_dogfood-inventory-missing",
               "pointer": "/source_inventory/missing",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "isolated_dogfood-inventory-unexpected",
               "pointer": "/source_inventory/unexpected",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "isolated_dogfood-inventory-secret",
               "pointer": "/source_inventory/secret",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "isolated_dogfood-inventory-symlink",
               "pointer": "/source_inventory/symlink",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "isolated_dogfood-inventory-non-regular",
               "pointer": "/source_inventory/non_regular",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "isolated_dogfood-inventory-reserved",
               "pointer": "/source_inventory/reserved",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
               "id": "isolated_dogfood-candidate-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/candidate_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
               "id": "isolated_dogfood-result-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/result_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-detached",
               "pointer": "/workspace/detached",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-empty",
               "pointer": "/workspace/initially_empty",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
-              "id": "isolated_dogfood-excludes",
-              "pointer": "/workspace/source_excludes",
-              "type": "json",
               "equals": [
                 ".git",
                 ".loom",
                 "target"
-              ]
+              ],
+              "id": "isolated_dogfood-excludes",
+              "pointer": "/workspace/source_excludes",
+              "type": "json"
             },
             {
+              "equals": 12,
               "id": "isolated_dogfood-schema-v12",
               "pointer": "/graph/schema_version",
-              "type": "integer",
-              "equals": 12
+              "type": "integer"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-no-legacy-import",
               "pointer": "/graph/legacy_imported",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-no-legacy-migration",
               "pointer": "/graph/legacy_migrated",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
               "id": "isolated_dogfood-import-quarantined",
@@ -208,152 +218,152 @@
             },
             {
               "id": "isolated_dogfood-local-manifests",
+              "not_equals": [],
               "pointer": "/graph/manifests_reauthorized",
-              "type": "json",
-              "not_equals": []
+              "type": "json"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-authority-fails-closed",
               "pointer": "/graph/authority_fail_closed",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-authority-not-fabricated",
               "pointer": "/graph/authority_fabricated",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "release-workflow",
               "id": "isolated_dogfood-exact-outer-journey",
               "pointer": "/graph/outer_profile/journey_id",
-              "type": "string",
-              "equals": "release-workflow"
+              "type": "string"
             },
             {
+              "equals": "proof",
               "id": "isolated_dogfood-exact-outer-profile",
               "pointer": "/graph/outer_profile/profile",
-              "type": "string",
-              "equals": "proof"
+              "type": "string"
             },
             {
               "id": "isolated_dogfood-outer-run-id",
+              "matches": "^release-workflow\\.proof\\.",
               "pointer": "/graph/outer_profile/run_id",
-              "type": "string",
-              "matches": "^release-workflow\\.proof\\."
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-one-self-exclusion",
               "pointer": "/graph/outer_profile/excluded_from_nested_execution",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-source-unchanged",
               "pointer": "/effects/live_source_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-graph-unchanged",
               "pointer": "/effects/live_graph_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-target-unchanged",
               "pointer": "/effects/live_target_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-git-unchanged",
               "pointer": "/effects/live_git_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-installed-binary-unchanged",
               "pointer": "/effects/installed_binary_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": [],
               "id": "isolated_dogfood-no-release-files",
               "pointer": "/effects/release_paths_changed",
-              "type": "json",
-              "equals": []
+              "type": "json"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-push-human-gated",
               "pointer": "/policy/push_requires_explicit_human_decision",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-no-bitwise-claim",
               "pointer": "/policy/bitwise_reproducibility_claimed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated-no-fixpoint-claim",
               "pointer": "/fixpoint/performed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "not_run",
               "id": "isolated-nonempty-probe-not-run",
               "pointer": "/workspace/nonempty_probe",
-              "type": "string",
-              "equals": "not_run"
+              "type": "string"
             },
             {
+              "equals": "not_run",
               "id": "isolated-preinitialized-probe-not-run",
               "pointer": "/workspace/preinitialized_probe",
-              "type": "string",
-              "equals": "not_run"
+              "type": "string"
             },
             {
-              "id": "isolated-timeline",
-              "pointer": "/timeline",
-              "type": "json",
               "equals": [
                 {
                   "id": "isolated_dogfood",
                   "outcome": "passed"
                 }
-              ]
+              ],
+              "id": "isolated-timeline",
+              "pointer": "/timeline",
+              "type": "json"
             },
             {
+              "equals": "8cd6742023f60b62",
               "id": "isolated_dogfood-journey-hash",
               "pointer": "/graph/outer_profile/journey_hash",
-              "type": "string",
-              "equals": "8cd6742023f60b62"
+              "type": "string"
             },
             {
               "id": "isolated_dogfood-surface-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/graph/outer_profile/surface_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": "6",
               "id": "isolated_dogfood-compiler-version",
               "pointer": "/graph/outer_profile/compiler_version",
-              "type": "string",
-              "equals": "3"
+              "type": "string"
             },
             {
               "id": "isolated_dogfood-proof-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/graph/outer_profile/proof_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": "same-user filesystem/process isolation is not a cryptographic authority boundary",
               "id": "isolated_dogfood-context-binding-limit",
               "pointer": "/graph/outer_profile/context_binding_limit",
-              "type": "string",
-              "equals": "same-user filesystem/process isolation is not a cryptographic authority boundary"
+              "type": "string"
             },
             {
               "id": "isolated_dogfood-ledger",
@@ -361,77 +371,79 @@
               "type": "json"
             },
             {
+              "equals": "declared_cache_roots_before_after_verified",
               "id": "isolated_dogfood-cache-strategy",
               "pointer": "/dependency_cache/strategy",
-              "type": "string",
-              "equals": "declared_cache_roots_before_after_verified"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-cache-unchanged",
               "pointer": "/dependency_cache/unchanged",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "isolated_dogfood-cache-offline",
               "pointer": "/dependency_cache/offline",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-git-head-unchanged",
               "pointer": "/effects/live_git_head_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-git-index-unchanged",
               "pointer": "/effects/live_git_index_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-git-remotes-unchanged",
               "pointer": "/effects/live_git_remotes_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "direct top-level argv ledger only; descendant process containment is not claimed",
               "id": "isolated_dogfood-argv-attempt-scope",
               "pointer": "/effects/argv_attempt_scope",
-              "type": "string",
-              "equals": "direct top-level argv ledger only; descendant process containment is not claimed"
+              "type": "string"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-no-top-level-install",
               "pointer": "/effects/top_level_install_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-no-top-level-commit",
               "pointer": "/effects/top_level_commit_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "isolated_dogfood-no-top-level-push",
               "pointer": "/effects/top_level_push_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "candidate_file_plan",
               "id": "isolated-ledger-candidate-plan",
               "pointer": "/execution_ledger/0/source",
-              "type": "string",
-              "equals": "candidate_file_plan"
+              "type": "string"
             }
-          ]
-        }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Verify the exact candidate in one detached fresh-v12 graph"
       },
       {
-        "id": "verify-fresh-fixpoint",
-        "summary": "Repeat the candidate verification from independent empty workspaces",
+        "arguments": [],
         "argv": [
           "loom",
           "release",
@@ -444,182 +456,180 @@
           "CARGO_HOME",
           "RUSTUP_HOME"
         ],
-        "read_only": true,
-        "arguments": [],
+        "id": "verify-fresh-fixpoint",
         "output": {
-          "format": "json",
           "assertions": [
             {
+              "equals": "loom.release-rehearsal/v1",
               "id": "fresh_fixpoint-schema",
               "pointer": "/schema",
-              "type": "string",
-              "equals": "loom.release-rehearsal/v1"
+              "type": "string"
             },
             {
+              "equals": "fresh_fixpoint",
               "id": "fresh_fixpoint-phase",
               "pointer": "/phase",
-              "type": "string",
-              "equals": "fresh_fixpoint"
+              "type": "string"
             },
             {
+              "equals": "passed",
               "id": "fresh_fixpoint-passed",
               "pointer": "/status",
-              "type": "string",
-              "equals": "passed"
+              "type": "string"
             },
             {
+              "equals": "release/inventory.json",
               "id": "fresh_fixpoint-inventory-path",
               "pointer": "/source_inventory/path",
-              "type": "string",
-              "equals": "release/inventory.json"
+              "type": "string"
             },
             {
+              "equals": "loom.release-source-inventory-attestation/v1",
               "id": "fresh_fixpoint-inventory-schema",
               "pointer": "/source_inventory/schema",
-              "type": "string",
-              "equals": "loom.release-source-inventory-attestation/v1"
+              "type": "string"
             },
             {
+              "equals": "d357d55e2ec28c02",
               "id": "fresh_fixpoint-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
-              "type": "string",
-              "equals": "d357d55e2ec28c02"
+              "type": "string"
             },
             {
               "id": "fresh_fixpoint-inventory-provenance",
+              "matches": "^source_controlled_manifest_(git_verified|non_git)$",
               "pointer": "/source_inventory/provenance",
-              "type": "string",
-              "matches": "^source_controlled_manifest_(git_verified|non_git)$"
+              "type": "string"
             },
             {
               "id": "fresh_fixpoint-inventory-git-verification",
+              "matches": "^(verified|not_applicable)$",
               "pointer": "/source_inventory/git_verification",
-              "type": "string",
-              "matches": "^(verified|not_applicable)$"
+              "type": "string"
             },
             {
+              "equals": 267,
               "id": "fresh_fixpoint-inventory-entries",
               "pointer": "/source_inventory/entry_count",
-              "type": "integer",
-              "equals": 267
+              "type": "integer"
             },
             {
+              "equals": 267,
               "id": "fresh_fixpoint-inventory-files",
               "pointer": "/source_inventory/file_count",
-              "type": "integer",
-              "equals": 267
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "fresh_fixpoint-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
               "id": "fresh_fixpoint-inventory-content-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/source_inventory/inventory_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-inventory-not-git-selected",
               "pointer": "/source_inventory/git_influenced_plan",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-inventory-materialized",
               "pointer": "/source_inventory/materialized_matches",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": 0,
               "id": "fresh_fixpoint-inventory-missing",
               "pointer": "/source_inventory/missing",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "fresh_fixpoint-inventory-unexpected",
               "pointer": "/source_inventory/unexpected",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "fresh_fixpoint-inventory-secret",
               "pointer": "/source_inventory/secret",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "fresh_fixpoint-inventory-symlink",
               "pointer": "/source_inventory/symlink",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "fresh_fixpoint-inventory-non-regular",
               "pointer": "/source_inventory/non_regular",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "fresh_fixpoint-inventory-reserved",
               "pointer": "/source_inventory/reserved",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
               "id": "fresh_fixpoint-candidate-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/candidate_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
               "id": "fresh_fixpoint-result-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/result_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-detached",
               "pointer": "/workspace/detached",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-empty",
               "pointer": "/workspace/initially_empty",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
-              "id": "fresh_fixpoint-excludes",
-              "pointer": "/workspace/source_excludes",
-              "type": "json",
               "equals": [
                 ".git",
                 ".loom",
                 "target"
-              ]
+              ],
+              "id": "fresh_fixpoint-excludes",
+              "pointer": "/workspace/source_excludes",
+              "type": "json"
             },
             {
+              "equals": 12,
               "id": "fresh_fixpoint-schema-v12",
               "pointer": "/graph/schema_version",
-              "type": "integer",
-              "equals": 12
+              "type": "integer"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-no-legacy-import",
               "pointer": "/graph/legacy_imported",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-no-legacy-migration",
               "pointer": "/graph/legacy_migrated",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
               "id": "fresh_fixpoint-import-quarantined",
@@ -628,164 +638,164 @@
             },
             {
               "id": "fresh_fixpoint-local-manifests",
+              "not_equals": [],
               "pointer": "/graph/manifests_reauthorized",
-              "type": "json",
-              "not_equals": []
+              "type": "json"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-authority-fails-closed",
               "pointer": "/graph/authority_fail_closed",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-authority-not-fabricated",
               "pointer": "/graph/authority_fabricated",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "release-workflow",
               "id": "fresh_fixpoint-exact-outer-journey",
               "pointer": "/graph/outer_profile/journey_id",
-              "type": "string",
-              "equals": "release-workflow"
+              "type": "string"
             },
             {
+              "equals": "proof",
               "id": "fresh_fixpoint-exact-outer-profile",
               "pointer": "/graph/outer_profile/profile",
-              "type": "string",
-              "equals": "proof"
+              "type": "string"
             },
             {
               "id": "fresh_fixpoint-outer-run-id",
+              "matches": "^release-workflow\\.proof\\.",
               "pointer": "/graph/outer_profile/run_id",
-              "type": "string",
-              "matches": "^release-workflow\\.proof\\."
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-one-self-exclusion",
               "pointer": "/graph/outer_profile/excluded_from_nested_execution",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-source-unchanged",
               "pointer": "/effects/live_source_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-graph-unchanged",
               "pointer": "/effects/live_graph_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-target-unchanged",
               "pointer": "/effects/live_target_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-git-unchanged",
               "pointer": "/effects/live_git_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-installed-binary-unchanged",
               "pointer": "/effects/installed_binary_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": [],
               "id": "fresh_fixpoint-no-release-files",
               "pointer": "/effects/release_paths_changed",
-              "type": "json",
-              "equals": []
+              "type": "json"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-push-human-gated",
               "pointer": "/policy/push_requires_explicit_human_decision",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-no-bitwise-claim",
               "pointer": "/policy/bitwise_reproducibility_claimed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "rejected",
               "id": "fixpoint-nonempty-rejected",
               "pointer": "/workspace/nonempty_probe",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": "rejected",
               "id": "fixpoint-preinitialized-rejected",
               "pointer": "/workspace/preinitialized_probe",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "fixpoint-performed",
               "pointer": "/fixpoint/performed",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "fixpoint-candidate-equal",
               "pointer": "/fixpoint/candidate_hash_equal",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "fixpoint-result-equal",
               "pointer": "/fixpoint/result_hash_equal",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
-              "id": "fixpoint-timeline",
-              "pointer": "/timeline",
-              "type": "json",
               "equals": [
                 {
                   "id": "fresh_fixpoint",
                   "outcome": "passed"
                 }
-              ]
+              ],
+              "id": "fixpoint-timeline",
+              "pointer": "/timeline",
+              "type": "json"
             },
             {
+              "equals": "8cd6742023f60b62",
               "id": "fresh_fixpoint-journey-hash",
               "pointer": "/graph/outer_profile/journey_hash",
-              "type": "string",
-              "equals": "8cd6742023f60b62"
+              "type": "string"
             },
             {
               "id": "fresh_fixpoint-surface-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/graph/outer_profile/surface_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": "6",
               "id": "fresh_fixpoint-compiler-version",
               "pointer": "/graph/outer_profile/compiler_version",
-              "type": "string",
-              "equals": "3"
+              "type": "string"
             },
             {
               "id": "fresh_fixpoint-proof-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/graph/outer_profile/proof_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": "same-user filesystem/process isolation is not a cryptographic authority boundary",
               "id": "fresh_fixpoint-context-binding-limit",
               "pointer": "/graph/outer_profile/context_binding_limit",
-              "type": "string",
-              "equals": "same-user filesystem/process isolation is not a cryptographic authority boundary"
+              "type": "string"
             },
             {
               "id": "fresh_fixpoint-ledger",
@@ -793,101 +803,103 @@
               "type": "json"
             },
             {
+              "equals": "declared_cache_roots_before_after_verified",
               "id": "fresh_fixpoint-cache-strategy",
               "pointer": "/dependency_cache/strategy",
-              "type": "string",
-              "equals": "declared_cache_roots_before_after_verified"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-cache-unchanged",
               "pointer": "/dependency_cache/unchanged",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "fresh_fixpoint-cache-offline",
               "pointer": "/dependency_cache/offline",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-git-head-unchanged",
               "pointer": "/effects/live_git_head_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-git-index-unchanged",
               "pointer": "/effects/live_git_index_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-git-remotes-unchanged",
               "pointer": "/effects/live_git_remotes_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "direct top-level argv ledger only; descendant process containment is not claimed",
               "id": "fresh_fixpoint-argv-attempt-scope",
               "pointer": "/effects/argv_attempt_scope",
-              "type": "string",
-              "equals": "direct top-level argv ledger only; descendant process containment is not claimed"
+              "type": "string"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-no-top-level-install",
               "pointer": "/effects/top_level_install_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-no-top-level-commit",
               "pointer": "/effects/top_level_commit_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "fresh_fixpoint-no-top-level-push",
               "pointer": "/effects/top_level_push_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "empty_workspace_probe:nonempty",
               "id": "fixpoint-ledger-nonempty-source",
               "pointer": "/execution_ledger/0/source",
-              "type": "string",
-              "equals": "empty_workspace_probe:nonempty"
+              "type": "string"
             },
             {
+              "equals": "rejected",
               "id": "fixpoint-ledger-nonempty-outcome",
               "pointer": "/execution_ledger/0/outcome",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": "empty_workspace_probe:preinitialized",
               "id": "fixpoint-ledger-preinitialized-source",
               "pointer": "/execution_ledger/1/source",
-              "type": "string",
-              "equals": "empty_workspace_probe:preinitialized"
+              "type": "string"
             },
             {
+              "equals": "rejected",
               "id": "fixpoint-ledger-preinitialized-outcome",
               "pointer": "/execution_ledger/1/outcome",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": "candidate_file_plan",
               "id": "fixpoint-ledger-candidate-plan",
               "pointer": "/execution_ledger/2/source",
-              "type": "string",
-              "equals": "candidate_file_plan"
+              "type": "string"
             }
-          ]
-        }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Repeat the candidate verification from independent empty workspaces"
       },
       {
-        "id": "prepare-gated-local-release",
-        "summary": "Run both gates and stop before release, install, commit, or push mutation",
+        "arguments": [],
         "argv": [
           "loom",
           "release",
@@ -900,182 +912,180 @@
           "CARGO_HOME",
           "RUSTUP_HOME"
         ],
-        "read_only": true,
-        "arguments": [],
+        "id": "prepare-gated-local-release",
         "output": {
-          "format": "json",
           "assertions": [
             {
+              "equals": "loom.release-rehearsal/v1",
               "id": "gated_preparation-schema",
               "pointer": "/schema",
-              "type": "string",
-              "equals": "loom.release-rehearsal/v1"
+              "type": "string"
             },
             {
+              "equals": "gated_preparation",
               "id": "gated_preparation-phase",
               "pointer": "/phase",
-              "type": "string",
-              "equals": "gated_preparation"
+              "type": "string"
             },
             {
+              "equals": "passed",
               "id": "gated_preparation-passed",
               "pointer": "/status",
-              "type": "string",
-              "equals": "passed"
+              "type": "string"
             },
             {
+              "equals": "release/inventory.json",
               "id": "gated_preparation-inventory-path",
               "pointer": "/source_inventory/path",
-              "type": "string",
-              "equals": "release/inventory.json"
+              "type": "string"
             },
             {
+              "equals": "loom.release-source-inventory-attestation/v1",
               "id": "gated_preparation-inventory-schema",
               "pointer": "/source_inventory/schema",
-              "type": "string",
-              "equals": "loom.release-source-inventory-attestation/v1"
+              "type": "string"
             },
             {
+              "equals": "d357d55e2ec28c02",
               "id": "gated_preparation-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
-              "type": "string",
-              "equals": "d357d55e2ec28c02"
+              "type": "string"
             },
             {
               "id": "gated_preparation-inventory-provenance",
+              "matches": "^source_controlled_manifest_(git_verified|non_git)$",
               "pointer": "/source_inventory/provenance",
-              "type": "string",
-              "matches": "^source_controlled_manifest_(git_verified|non_git)$"
+              "type": "string"
             },
             {
               "id": "gated_preparation-inventory-git-verification",
+              "matches": "^(verified|not_applicable)$",
               "pointer": "/source_inventory/git_verification",
-              "type": "string",
-              "matches": "^(verified|not_applicable)$"
+              "type": "string"
             },
             {
+              "equals": 267,
               "id": "gated_preparation-inventory-entries",
               "pointer": "/source_inventory/entry_count",
-              "type": "integer",
-              "equals": 267
+              "type": "integer"
             },
             {
+              "equals": 267,
               "id": "gated_preparation-inventory-files",
               "pointer": "/source_inventory/file_count",
-              "type": "integer",
-              "equals": 267
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "gated_preparation-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
               "id": "gated_preparation-inventory-content-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/source_inventory/inventory_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": false,
               "id": "gated_preparation-inventory-not-git-selected",
               "pointer": "/source_inventory/git_influenced_plan",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "gated_preparation-inventory-materialized",
               "pointer": "/source_inventory/materialized_matches",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": 0,
               "id": "gated_preparation-inventory-missing",
               "pointer": "/source_inventory/missing",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "gated_preparation-inventory-unexpected",
               "pointer": "/source_inventory/unexpected",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "gated_preparation-inventory-secret",
               "pointer": "/source_inventory/secret",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "gated_preparation-inventory-symlink",
               "pointer": "/source_inventory/symlink",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "gated_preparation-inventory-non-regular",
               "pointer": "/source_inventory/non_regular",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
+              "equals": 0,
               "id": "gated_preparation-inventory-reserved",
               "pointer": "/source_inventory/reserved",
-              "type": "integer",
-              "equals": 0
+              "type": "integer"
             },
             {
               "id": "gated_preparation-candidate-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/candidate_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
               "id": "gated_preparation-result-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/result_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "gated_preparation-detached",
               "pointer": "/workspace/detached",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "gated_preparation-empty",
               "pointer": "/workspace/initially_empty",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
-              "id": "gated_preparation-excludes",
-              "pointer": "/workspace/source_excludes",
-              "type": "json",
               "equals": [
                 ".git",
                 ".loom",
                 "target"
-              ]
+              ],
+              "id": "gated_preparation-excludes",
+              "pointer": "/workspace/source_excludes",
+              "type": "json"
             },
             {
+              "equals": 12,
               "id": "gated_preparation-schema-v12",
               "pointer": "/graph/schema_version",
-              "type": "integer",
-              "equals": 12
+              "type": "integer"
             },
             {
+              "equals": false,
               "id": "gated_preparation-no-legacy-import",
               "pointer": "/graph/legacy_imported",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-no-legacy-migration",
               "pointer": "/graph/legacy_migrated",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
               "id": "gated_preparation-import-quarantined",
@@ -1084,128 +1094,125 @@
             },
             {
               "id": "gated_preparation-local-manifests",
+              "not_equals": [],
               "pointer": "/graph/manifests_reauthorized",
-              "type": "json",
-              "not_equals": []
+              "type": "json"
             },
             {
+              "equals": true,
               "id": "gated_preparation-authority-fails-closed",
               "pointer": "/graph/authority_fail_closed",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-authority-not-fabricated",
               "pointer": "/graph/authority_fabricated",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "release-workflow",
               "id": "gated_preparation-exact-outer-journey",
               "pointer": "/graph/outer_profile/journey_id",
-              "type": "string",
-              "equals": "release-workflow"
+              "type": "string"
             },
             {
+              "equals": "proof",
               "id": "gated_preparation-exact-outer-profile",
               "pointer": "/graph/outer_profile/profile",
-              "type": "string",
-              "equals": "proof"
+              "type": "string"
             },
             {
               "id": "gated_preparation-outer-run-id",
+              "matches": "^release-workflow\\.proof\\.",
               "pointer": "/graph/outer_profile/run_id",
-              "type": "string",
-              "matches": "^release-workflow\\.proof\\."
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "gated_preparation-one-self-exclusion",
               "pointer": "/graph/outer_profile/excluded_from_nested_execution",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-source-unchanged",
               "pointer": "/effects/live_source_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-graph-unchanged",
               "pointer": "/effects/live_graph_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-target-unchanged",
               "pointer": "/effects/live_target_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-git-unchanged",
               "pointer": "/effects/live_git_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-installed-binary-unchanged",
               "pointer": "/effects/installed_binary_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": [],
               "id": "gated_preparation-no-release-files",
               "pointer": "/effects/release_paths_changed",
-              "type": "json",
-              "equals": []
+              "type": "json"
             },
             {
+              "equals": true,
               "id": "gated_preparation-push-human-gated",
               "pointer": "/policy/push_requires_explicit_human_decision",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-no-bitwise-claim",
               "pointer": "/policy/bitwise_reproducibility_claimed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "rejected",
               "id": "gated-nonempty-rejected",
               "pointer": "/workspace/nonempty_probe",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": "rejected",
               "id": "gated-preinitialized-rejected",
               "pointer": "/workspace/preinitialized_probe",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "gated-fixpoint-performed",
               "pointer": "/fixpoint/performed",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "gated-candidate-equal",
               "pointer": "/fixpoint/candidate_hash_equal",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "gated-result-equal",
               "pointer": "/fixpoint/result_hash_equal",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
-              "id": "gated-timeline",
-              "pointer": "/timeline",
-              "type": "json",
               "equals": [
                 {
                   "id": "isolated_dogfood",
@@ -1219,37 +1226,40 @@
                   "id": "mutation",
                   "outcome": "skipped_rehearsal"
                 }
-              ]
+              ],
+              "id": "gated-timeline",
+              "pointer": "/timeline",
+              "type": "json"
             },
             {
+              "equals": "8cd6742023f60b62",
               "id": "gated_preparation-journey-hash",
               "pointer": "/graph/outer_profile/journey_hash",
-              "type": "string",
-              "equals": "8cd6742023f60b62"
+              "type": "string"
             },
             {
               "id": "gated_preparation-surface-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/graph/outer_profile/surface_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": "6",
               "id": "gated_preparation-compiler-version",
               "pointer": "/graph/outer_profile/compiler_version",
-              "type": "string",
-              "equals": "3"
+              "type": "string"
             },
             {
               "id": "gated_preparation-proof-hash",
+              "matches": "^[0-9a-f]{16}$",
               "pointer": "/graph/outer_profile/proof_hash",
-              "type": "string",
-              "matches": "^[0-9a-f]{16}$"
+              "type": "string"
             },
             {
+              "equals": "same-user filesystem/process isolation is not a cryptographic authority boundary",
               "id": "gated_preparation-context-binding-limit",
               "pointer": "/graph/outer_profile/context_binding_limit",
-              "type": "string",
-              "equals": "same-user filesystem/process isolation is not a cryptographic authority boundary"
+              "type": "string"
             },
             {
               "id": "gated_preparation-ledger",
@@ -1257,112 +1267,102 @@
               "type": "json"
             },
             {
+              "equals": "declared_cache_roots_before_after_verified",
               "id": "gated_preparation-cache-strategy",
               "pointer": "/dependency_cache/strategy",
-              "type": "string",
-              "equals": "declared_cache_roots_before_after_verified"
+              "type": "string"
             },
             {
+              "equals": true,
               "id": "gated_preparation-cache-unchanged",
               "pointer": "/dependency_cache/unchanged",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": true,
               "id": "gated_preparation-cache-offline",
               "pointer": "/dependency_cache/offline",
-              "type": "boolean",
-              "equals": true
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-git-head-unchanged",
               "pointer": "/effects/live_git_head_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-git-index-unchanged",
               "pointer": "/effects/live_git_index_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-git-remotes-unchanged",
               "pointer": "/effects/live_git_remotes_changed",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "direct top-level argv ledger only; descendant process containment is not claimed",
               "id": "gated_preparation-argv-attempt-scope",
               "pointer": "/effects/argv_attempt_scope",
-              "type": "string",
-              "equals": "direct top-level argv ledger only; descendant process containment is not claimed"
+              "type": "string"
             },
             {
+              "equals": false,
               "id": "gated_preparation-no-top-level-install",
               "pointer": "/effects/top_level_install_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-no-top-level-commit",
               "pointer": "/effects/top_level_commit_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": false,
               "id": "gated_preparation-no-top-level-push",
               "pointer": "/effects/top_level_push_argv_attempted",
-              "type": "boolean",
-              "equals": false
+              "type": "boolean"
             },
             {
+              "equals": "empty_workspace_probe:nonempty",
               "id": "gated-ledger-nonempty-source",
               "pointer": "/execution_ledger/0/source",
-              "type": "string",
-              "equals": "empty_workspace_probe:nonempty"
+              "type": "string"
             },
             {
+              "equals": "rejected",
               "id": "gated-ledger-nonempty-outcome",
               "pointer": "/execution_ledger/0/outcome",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": "empty_workspace_probe:preinitialized",
               "id": "gated-ledger-preinitialized-source",
               "pointer": "/execution_ledger/1/source",
-              "type": "string",
-              "equals": "empty_workspace_probe:preinitialized"
+              "type": "string"
             },
             {
+              "equals": "rejected",
               "id": "gated-ledger-preinitialized-outcome",
               "pointer": "/execution_ledger/1/outcome",
-              "type": "string",
-              "equals": "rejected"
+              "type": "string"
             },
             {
+              "equals": "candidate_file_plan",
               "id": "gated-ledger-candidate-plan",
               "pointer": "/execution_ledger/2/source",
-              "type": "string",
-              "equals": "candidate_file_plan"
+              "type": "string"
             }
-          ]
-        }
+          ],
+          "format": "json"
+        },
+        "read_only": true,
+        "summary": "Run both gates and stop before release, install, commit, or push mutation"
       }
-    ]
-  },
-  "bindings": [
-    {
-      "step_id": "verify-isolated-dogfood",
-      "operation_id": "verify-isolated-dogfood"
-    },
-    {
-      "step_id": "verify-fresh-fixpoint",
-      "operation_id": "verify-fresh-fixpoint"
-    },
-    {
-      "step_id": "prepare-gated-local-release",
-      "operation_id": "prepare-gated-local-release"
-    }
-  ]
+    ],
+    "title": "Detached Loom release rehearsal"
+  }
 }
