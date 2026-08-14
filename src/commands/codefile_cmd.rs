@@ -120,7 +120,11 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: CodefileCmd, json: bool) -> Re
             )?;
             Ok(())
         }
-        CodefileCmd::Anchor { path, at_line } => codefile_anchor(graph, &path, at_line, json),
+        CodefileCmd::Anchor {
+            path,
+            at_line,
+            at_symbol,
+        } => codefile_anchor(graph, &path, at_line, at_symbol.as_deref(), json),
         CodefileCmd::Rescan => codefile_rescan(graph, json),
         CodefileCmd::Remove { key, successor } => {
             let store = open(graph)?;
@@ -462,11 +466,19 @@ pub(crate) fn rescan_globs(store: &Store, root: &Path) -> Result<RescanOutcome> 
 pub(crate) fn codefile_anchor(
     graph: Option<&Path>,
     path: &str,
-    at_line: usize,
+    at_line: Option<usize>,
+    at_symbol: Option<&str>,
     json: bool,
 ) -> Result<()> {
     let store = open_read(graph)?;
     let codefile = store.resolve_node(path, Some(NodeType::CodeFile))?;
+    // A named declaration resolves to its current line here, so the caller
+    // pins the declaration it means rather than a coordinate that drifts.
+    let at_line = match (at_line, at_symbol) {
+        (Some(line), _) => line,
+        (None, Some(symbol)) => crate::locator::line_for_symbol(&store, &codefile, symbol)?,
+        (None, None) => anyhow::bail!("source anchor needs --at-line or --at-symbol"),
+    };
     let anchor = crate::locator::issue_anchor(&store, &codefile, at_line)?;
     if json {
         println!(

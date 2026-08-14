@@ -316,8 +316,17 @@ pub enum CodefileCmd {
     /// Issue a stable source anchor for a one-based source line without editing source or graph state.
     Anchor {
         path: String,
-        #[arg(long, value_name = "LINE")]
-        at_line: usize,
+        #[arg(
+            long,
+            value_name = "LINE",
+            conflicts_with = "at_symbol",
+            required_unless_present = "at_symbol"
+        )]
+        at_line: Option<usize>,
+        /// Name the declaration instead of its line. A line moves whenever
+        /// anything above it changes; a declaration name does not.
+        #[arg(long, value_name = "SYMBOL", conflicts_with = "at_line")]
+        at_symbol: Option<String>,
     },
     /// Re-expand every glob ever registered and add any newly-appeared files
     /// (e.g. an endpoint an upstream just added). Run before `loom sync`.

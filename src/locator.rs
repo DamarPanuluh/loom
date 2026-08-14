@@ -353,6 +353,52 @@ fn is_supported_config(path: &str) -> bool {
         || file.ends_with(".dockerfile")
 }
 
+/// Resolve a declaration by NAME to the one-based line an anchor should be
+/// issued for.
+///
+/// A line number is a coordinate, not an identity: inserting anything above a
+/// declaration silently moves it, and a pinned line then resolves to whatever
+/// now occupies it — a neighbouring function, reported as a confident answer
+/// rather than an error. Callers that mean a specific declaration can name it
+/// and stay correct across edits.
+pub fn line_for_symbol(store: &Store, codefile: &Node, symbol: &str) -> Result<usize> {
+    if codefile.node_type != NodeType::CodeFile {
+        bail!("source anchors can be issued only for a CodeFile");
+    }
+    let symbol = symbol.trim();
+    if symbol.is_empty() {
+        bail!("source anchor --at-symbol requires a declaration name");
+    }
+    let content = read_codefile(store, codefile)?;
+    if crate::extract::Language::detect(&codefile.name) == crate::extract::Language::Other {
+        bail!(
+            "'{}' has no extractable declarations; use --at-line",
+            codefile.name
+        );
+    }
+    let extraction = crate::extract::extract(&codefile.name, &content);
+    let mut matches: Vec<_> = extraction
+        .symbols
+        .iter()
+        .filter(|candidate| candidate.name == symbol)
+        .collect();
+    matches.sort_by_key(|candidate| candidate.line_start);
+    match matches.as_slice() {
+        [] => bail!("'{}' declares no symbol named '{symbol}'", codefile.name),
+        [only] => Ok(only.line_start),
+        several => bail!(
+            "'{}' declares {} symbols named '{symbol}' (lines {}); use --at-line to select one",
+            codefile.name,
+            several.len(),
+            several
+                .iter()
+                .map(|candidate| candidate.line_start.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    }
+}
+
 fn selected_entry(path: &str, content: &str, at_line: usize) -> Result<AnchorEntry> {
     if crate::extract::Language::detect(path) == crate::extract::Language::Other {
         if !is_supported_config(path) {

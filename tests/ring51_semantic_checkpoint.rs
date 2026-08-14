@@ -135,10 +135,16 @@ fn checkpoint_and_anchor_cli_surfaces_are_strict() {
     .unwrap();
     match parsed.command.unwrap() {
         Command::Codefile {
-            cmd: CodefileCmd::Anchor { path, at_line },
+            cmd:
+                CodefileCmd::Anchor {
+                    path,
+                    at_line,
+                    at_symbol,
+                },
         } => {
             assert_eq!(path, "src/lib.rs");
-            assert_eq!(at_line, 42);
+            assert_eq!(at_line, Some(42));
+            assert_eq!(at_symbol, None);
         }
         other => panic!("unexpected command: {other:?}"),
     }
