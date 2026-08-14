@@ -43,6 +43,12 @@ pub struct SyncReport {
     /// proof drifted since the page was last recorded.
     pub wiki_staled: usize,
     pub missing: Vec<String>,
+    /// The exact edges this run re-opened, in deterministic id order. The count
+    /// alone is not actionable: anything that asserts on `edges_staled` — a
+    /// Journey fixture, a release gate, an operator reading `sync --json` — has
+    /// to know WHICH claim moved before it can decide whether the ripple was
+    /// the expected one.
+    pub staled_edges: BTreeSet<String>,
 }
 
 /// One strict source-anchor locator that a read-only sync preview can no
@@ -239,9 +245,11 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
         .filter(|edge| edge.status == InspectionStatus::NeedsReverification)
         .map(|edge| edge.id)
         .collect();
-    report.edges_staled += stale_after_reverify
-        .difference(&stale_before_reverify)
-        .count();
+    let newly_stale = stale_after_reverify.difference(&stale_before_reverify);
+    for edge_id in newly_stale {
+        report.edges_staled += 1;
+        report.staled_edges.insert(edge_id.clone());
+    }
     report.edges_spared += pass.spared;
     report.validations_reset += pass.validations_reset;
     report.evidence_reanchored += pass.reanchored;
@@ -357,6 +365,7 @@ fn stale_validation_closure(
         for edge in store.edges_with(Some(kind), Some(validation_id), None)? {
             if store.stale_edge(&edge.id, cause)? {
                 report.edges_staled += 1;
+                report.staled_edges.insert(edge.id.clone());
             }
         }
     }
@@ -364,6 +373,7 @@ fn stale_validation_closure(
         for edge in store.edges_with(Some(EdgeKind::Calls), Some(validation_id), None)? {
             if store.stale_edge(&edge.id, cause)? {
                 report.edges_staled += 1;
+                report.staled_edges.insert(edge.id.clone());
             }
         }
     }
@@ -583,6 +593,7 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
         let cause = format!("locator '{locator}' names no symbol in {}", file.name);
         if store.stale_edge(&edge.id, &cause)? {
             report.edges_staled += 1;
+            report.staled_edges.insert(edge.id.clone());
         }
     }
     // `exercises` provenance makes the same symbol promise a realizing
@@ -622,6 +633,7 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
         let cause = format!("locator '{locator}' names no symbol in {}", file.name);
         if store.stale_edge(&edge.id, &cause)? || store.stale_uninspected_edge(&edge.id, &cause)? {
             report.edges_staled += 1;
+            report.staled_edges.insert(edge.id.clone());
         }
     }
     Ok(())
@@ -673,6 +685,7 @@ fn apply_anchor_staleness(
     for anchor in stale {
         if store.stale_edge(&anchor.edge_id, &anchor.cause)? {
             report.edges_staled += 1;
+            report.staled_edges.insert(anchor.edge_id.clone());
         }
         match anchor.edge_kind {
             EdgeKind::Exercises => {
@@ -689,6 +702,7 @@ fn apply_anchor_staleness(
                     && store.stale_uninspected_edge(&edge.id, &anchor.cause)?
                 {
                     report.edges_staled += 1;
+                    report.staled_edges.insert(edge.id.clone());
                 }
                 if reset_validations.insert(edge.from_id.clone()) {
                     stale_validation_closure(store, &edge.from_id, &anchor.cause, false, report)?;
