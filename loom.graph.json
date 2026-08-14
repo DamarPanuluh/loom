@@ -376,169 +376,6 @@
       "updated_at": "2026-08-09T12:54:20.782Z"
     },
     {
-      "id": "04a9dfe1805bb6c3714812526afee008",
-      "type": "interface_surface",
-      "name": "loom-idempotent-sync-ripple",
-      "description": "Loom idempotent repository sync ripple",
-      "status": "declared",
-      "truth_class": "asserted",
-      "body": {
-        "codefile": "src/commands.rs",
-        "identity": "loom sync and codefile anchor",
-        "kind": "cli",
-        "locator": "run",
-        "operations": [
-          {
-            "arguments": [],
-            "argv": [
-              "loom",
-              "codefile",
-              "anchor",
-              "src/sync.rs",
-              "--at-symbol",
-              "run",
-              "--json"
-            ],
-            "id": "observe-temporally-edited-run",
-            "output": {
-              "assertions": [
-                {
-                  "equals": "run",
-                  "id": "edited-entry-is-run",
-                  "pointer": "/attached_entry/name",
-                  "type": "string"
-                },
-                {
-                  "equals": "function",
-                  "id": "edited-entry-remains-a-function",
-                  "pointer": "/attached_entry/kind",
-                  "type": "string"
-                },
-                {
-                  "equals": "src/sync.rs",
-                  "id": "edited-entry-file-is-exact",
-                  "pointer": "/codefile",
-                  "type": "string"
-                },
-                {
-                  "equals": "anchor:sync.run",
-                  "id": "edited-entry-navigation-locator",
-                  "pointer": "/locator",
-                  "type": "string"
-                }
-              ],
-              "format": "json"
-            },
-            "read_only": true,
-            "summary": "Observe the live run declaration after the confined temporal edit and before synchronization"
-          },
-          {
-            "arguments": [],
-            "argv": [
-              "loom",
-              "sync",
-              "--json"
-            ],
-            "id": "sync-changed-snapshot",
-            "output": {
-              "assertions": [
-                {
-                  "equals": 1,
-                  "id": "changed-sync-sees-one-file",
-                  "pointer": "/files_changed",
-                  "type": "integer"
-                },
-                {
-                  "equals": 1,
-                  "id": "changed-sync-stales-one-grounding",
-                  "pointer": "/groundings_staled",
-                  "type": "integer"
-                },
-                {
-                  "equals": 6,
-                  "id": "changed-sync-spares-one-grounding",
-                  "pointer": "/edges_spared",
-                  "type": "integer"
-                },
-                {
-                  "equals": 0,
-                  "id": "changed-sync-deletes-no-file",
-                  "pointer": "/files_deleted",
-                  "type": "integer"
-                },
-                {
-                  "equals": [],
-                  "id": "changed-sync-has-no-missing-file",
-                  "pointer": "/missing",
-                  "type": "json"
-                }
-              ],
-              "format": "json"
-            },
-            "read_only": false,
-            "summary": "Synchronize after the grounded run bytes change while ripple_locator_drift remains byte-identical"
-          },
-          {
-            "arguments": [],
-            "argv": [
-              "loom",
-              "sync",
-              "--json"
-            ],
-            "id": "sync-unchanged-snapshot",
-            "output": {
-              "assertions": [
-                {
-                  "equals": 0,
-                  "id": "unchanged-sync-sees-no-file-change",
-                  "pointer": "/files_changed",
-                  "type": "integer"
-                },
-                {
-                  "equals": 0,
-                  "id": "unchanged-sync-stales-no-edge",
-                  "pointer": "/edges_staled",
-                  "type": "integer"
-                },
-                {
-                  "equals": 0,
-                  "id": "unchanged-sync-spares-no-rechecked-edge",
-                  "pointer": "/edges_spared",
-                  "type": "integer"
-                },
-                {
-                  "equals": 0,
-                  "id": "unchanged-sync-resets-no-validation",
-                  "pointer": "/validations_reset",
-                  "type": "integer"
-                },
-                {
-                  "equals": 0,
-                  "id": "unchanged-sync-resets-no-contract",
-                  "pointer": "/contracts_reset",
-                  "type": "integer"
-                },
-                {
-                  "equals": 0,
-                  "id": "unchanged-sync-affects-no-surface",
-                  "pointer": "/surfaces_affected",
-                  "type": "integer"
-                }
-              ],
-              "format": "json"
-            },
-            "read_only": false,
-            "summary": "Synchronize the unchanged isolated snapshot"
-          }
-        ],
-        "schema": "loom.interface-surface/v1",
-        "stable_id": "loom-idempotent-sync-ripple",
-        "title": "Loom idempotent repository sync ripple"
-      },
-      "created_at": "2026-08-14T11:51:32.933Z",
-      "updated_at": "2026-08-14T11:51:32.933Z"
-    },
-    {
       "id": "04ab72d9c5d740eb4abeac566b2091e7",
       "type": "note",
       "name": "note:decision",
@@ -6600,11 +6437,11 @@
         "compiler_version": "6",
         "journey_hash": "4c1411a69c0ba64b",
         "profile": "proof",
-        "surface_hash": "261e7ad58da0a572",
+        "surface_hash": "a545c0a75f8c7229",
         "type": "journey"
       },
       "created_at": "2026-08-11T16:48:43.078Z",
-      "updated_at": "2026-08-14T11:55:04.497Z"
+      "updated_at": "2026-08-14T12:24:03.084Z"
     },
     {
       "id": "58026b539f9db91cd4a437023877b381",
@@ -11881,6 +11718,169 @@
       },
       "created_at": "2026-08-11T18:17:59.986Z",
       "updated_at": "2026-08-13T13:45:27.754Z"
+    },
+    {
+      "id": "ad1cf607bb94c31b711329fac138ecff",
+      "type": "interface_surface",
+      "name": "loom-idempotent-sync-ripple",
+      "description": "Loom idempotent repository sync ripple",
+      "status": "declared",
+      "truth_class": "asserted",
+      "body": {
+        "codefile": "src/commands.rs",
+        "identity": "loom sync and codefile anchor",
+        "kind": "cli",
+        "locator": "run",
+        "operations": [
+          {
+            "arguments": [],
+            "argv": [
+              "loom",
+              "codefile",
+              "anchor",
+              "src/sync.rs",
+              "--at-symbol",
+              "run",
+              "--json"
+            ],
+            "id": "observe-temporally-edited-run",
+            "output": {
+              "assertions": [
+                {
+                  "equals": "run",
+                  "id": "edited-entry-is-run",
+                  "pointer": "/attached_entry/name",
+                  "type": "string"
+                },
+                {
+                  "equals": "function",
+                  "id": "edited-entry-remains-a-function",
+                  "pointer": "/attached_entry/kind",
+                  "type": "string"
+                },
+                {
+                  "equals": "src/sync.rs",
+                  "id": "edited-entry-file-is-exact",
+                  "pointer": "/codefile",
+                  "type": "string"
+                },
+                {
+                  "equals": "anchor:sync.run",
+                  "id": "edited-entry-navigation-locator",
+                  "pointer": "/locator",
+                  "type": "string"
+                }
+              ],
+              "format": "json"
+            },
+            "read_only": true,
+            "summary": "Observe the live run declaration after the confined temporal edit and before synchronization"
+          },
+          {
+            "arguments": [],
+            "argv": [
+              "loom",
+              "sync",
+              "--json"
+            ],
+            "id": "sync-changed-snapshot",
+            "output": {
+              "assertions": [
+                {
+                  "equals": 1,
+                  "id": "changed-sync-sees-one-file",
+                  "pointer": "/files_changed",
+                  "type": "integer"
+                },
+                {
+                  "equals": 1,
+                  "id": "changed-sync-stales-one-grounding",
+                  "pointer": "/groundings_staled",
+                  "type": "integer"
+                },
+                {
+                  "equals": 6,
+                  "id": "changed-sync-spares-one-grounding",
+                  "pointer": "/edges_spared",
+                  "type": "integer"
+                },
+                {
+                  "equals": 0,
+                  "id": "changed-sync-deletes-no-file",
+                  "pointer": "/files_deleted",
+                  "type": "integer"
+                },
+                {
+                  "equals": [],
+                  "id": "changed-sync-has-no-missing-file",
+                  "pointer": "/missing",
+                  "type": "json"
+                }
+              ],
+              "format": "json"
+            },
+            "read_only": false,
+            "summary": "Synchronize after the grounded run bytes change while ripple_locator_drift remains byte-identical"
+          },
+          {
+            "arguments": [],
+            "argv": [
+              "loom",
+              "sync",
+              "--json"
+            ],
+            "id": "sync-unchanged-snapshot",
+            "output": {
+              "assertions": [
+                {
+                  "equals": 0,
+                  "id": "unchanged-sync-sees-no-file-change",
+                  "pointer": "/files_changed",
+                  "type": "integer"
+                },
+                {
+                  "equals": 0,
+                  "id": "unchanged-sync-stales-no-edge",
+                  "pointer": "/groundings_staled",
+                  "type": "integer"
+                },
+                {
+                  "equals": 0,
+                  "id": "unchanged-sync-spares-no-rechecked-edge",
+                  "pointer": "/edges_spared",
+                  "type": "integer"
+                },
+                {
+                  "equals": 0,
+                  "id": "unchanged-sync-resets-no-validation",
+                  "pointer": "/validations_reset",
+                  "type": "integer"
+                },
+                {
+                  "equals": 0,
+                  "id": "unchanged-sync-resets-no-contract",
+                  "pointer": "/contracts_reset",
+                  "type": "integer"
+                },
+                {
+                  "equals": 0,
+                  "id": "unchanged-sync-affects-no-surface",
+                  "pointer": "/surfaces_affected",
+                  "type": "integer"
+                }
+              ],
+              "format": "json"
+            },
+            "read_only": false,
+            "summary": "Synchronize the unchanged isolated snapshot"
+          }
+        ],
+        "schema": "loom.interface-surface/v1",
+        "stable_id": "loom-idempotent-sync-ripple",
+        "title": "Loom idempotent repository sync ripple"
+      },
+      "created_at": "2026-08-14T12:23:11.633Z",
+      "updated_at": "2026-08-14T12:23:11.633Z"
     },
     {
       "id": "ae58e31f364a0d730ffb117bd513cd35",
@@ -24090,6 +24090,20 @@
   ],
   "edges": [
     {
+      "id": "002d960106128fff5e57feaa64059d4c",
+      "from_id": "b2a369193313752bee520e8b6183d5cf",
+      "to_id": "ad1cf607bb94c31b711329fac138ecff",
+      "kind": "surfaces",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T12:23:11.634Z",
+      "updated_at": "2026-08-14T12:23:11.634Z"
+    },
+    {
       "id": "012e46a9107ca268b668ad01afbe0b1f",
       "from_id": "ba62f2b8383ea538f0169ab58d01cb51",
       "to_id": "2d16cabcf844b5d7f9dbd929c7da0f5c",
@@ -24368,6 +24382,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:48.830Z",
       "updated_at": "2026-08-14T06:58:20.046Z"
+    },
+    {
+      "id": "08bfd9f0bb29a99de68264214193cb37",
+      "from_id": "57a8e53668837b2ce790aabfd6489381",
+      "to_id": "02d66b7b5d4eabc067845e10c794a750",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T12:23:11.685Z",
+      "updated_at": "2026-08-14T12:24:03.078Z"
     },
     {
       "id": "094b8ceac3180a0939835affd8027ca4",
@@ -25686,20 +25714,6 @@
       "updated_at": "2026-08-14T04:21:57.064Z"
     },
     {
-      "id": "324442338ba594b86b9cb6836c8b4bf5",
-      "from_id": "b2a369193313752bee520e8b6183d5cf",
-      "to_id": "04a9dfe1805bb6c3714812526afee008",
-      "kind": "surfaces",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T11:51:32.934Z",
-      "updated_at": "2026-08-14T11:51:32.934Z"
-    },
-    {
       "id": "3331ba78a307de5874f397addeff96e7",
       "from_id": "d5bea5201b443f0556a6f0f66b040096",
       "to_id": "4586ea3cac0b4aee231fa0f863c82653",
@@ -26484,6 +26498,20 @@
       "updated_at": "2026-08-11T11:32:45.071Z"
     },
     {
+      "id": "4ed0130d11b42ab7055aaf8cdc645f1e",
+      "from_id": "ad1cf607bb94c31b711329fac138ecff",
+      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
+      "kind": "exposes",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T12:23:11.633Z",
+      "updated_at": "2026-08-14T12:23:11.633Z"
+    },
+    {
       "id": "4f04b26bbfd5d2531ed4312cc51dfd2d",
       "from_id": "2d16cabcf844b5d7f9dbd929c7da0f5c",
       "to_id": "bc0475648889e9547aaf50f5e0e24b46",
@@ -26890,20 +26918,6 @@
       "updated_at": "2026-08-14T11:51:32.862Z"
     },
     {
-      "id": "5b79924e828f95c336b11f65df686fa4",
-      "from_id": "57a8e53668837b2ce790aabfd6489381",
-      "to_id": "7ff20b538f860ce58e2534ed407e2874",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-14T11:52:25.833Z",
-      "updated_at": "2026-08-14T11:55:04.491Z"
-    },
-    {
       "id": "5baa26e6aff21d697664dcca4f8ec9f2",
       "from_id": "642c476b4ae824bfac96fdb631341d92",
       "to_id": "4384bab2047fef2b1ee7accd81d08ff3",
@@ -27070,6 +27084,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-13T05:07:41.022Z",
       "updated_at": "2026-08-13T13:33:28.644Z"
+    },
+    {
+      "id": "64f933c4582e90305166d5aa2e149b48",
+      "from_id": "57a8e53668837b2ce790aabfd6489381",
+      "to_id": "7ff20b538f860ce58e2534ed407e2874",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T12:23:11.685Z",
+      "updated_at": "2026-08-14T12:24:03.079Z"
     },
     {
       "id": "65153771c290c8f5214a8a141b7c7b19",
@@ -27702,6 +27730,20 @@
       "updated_at": "2026-08-14T06:58:20.543Z"
     },
     {
+      "id": "7b4e66651eb0d2cd84944ad918fd1946",
+      "from_id": "57a8e53668837b2ce790aabfd6489381",
+      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
+      "kind": "exercises",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T12:23:11.686Z",
+      "updated_at": "2026-08-14T12:24:03.082Z"
+    },
+    {
       "id": "7b5e5170a7af6c5569776edbf9d12079",
       "from_id": "d78bfffc8434f5b311ecd170e3349a48",
       "to_id": "f5a874346179b5742587ce283a9dcf9b",
@@ -27896,6 +27938,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:48.802Z",
       "updated_at": "2026-08-14T06:58:20.587Z"
+    },
+    {
+      "id": "801b76183d37e8ced31f3099de201cb6",
+      "from_id": "57a8e53668837b2ce790aabfd6489381",
+      "to_id": "ad1cf607bb94c31b711329fac138ecff",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T12:23:11.685Z",
+      "updated_at": "2026-08-14T12:24:03.081Z"
     },
     {
       "id": "8087be182649cd0881e0c4bccfc54b40",
@@ -28822,20 +28878,6 @@
       "updated_at": "2026-08-14T11:55:27.791Z"
     },
     {
-      "id": "9d5792d6ed931a8d150c3537fc8b6385",
-      "from_id": "57a8e53668837b2ce790aabfd6489381",
-      "to_id": "02d66b7b5d4eabc067845e10c794a750",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-14T11:52:25.833Z",
-      "updated_at": "2026-08-14T11:55:04.493Z"
-    },
-    {
       "id": "9d8d81d287c113dc29c5cef0524bfa6f",
       "from_id": "166192875bfa7f63ae990fffe1196766",
       "to_id": "edfc72be1bbfa6f144e8494da3ac387b",
@@ -29072,20 +29114,6 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:20.856Z",
       "updated_at": "2026-08-09T12:54:20.856Z"
-    },
-    {
-      "id": "a4fa9d36b42a49a9f00838819d4a9f31",
-      "from_id": "57a8e53668837b2ce790aabfd6489381",
-      "to_id": "b2a369193313752bee520e8b6183d5cf",
-      "kind": "proves",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-14T11:52:25.833Z",
-      "updated_at": "2026-08-14T11:55:04.494Z"
     },
     {
       "id": "a5313096db294505493b8b42172fb905",
@@ -31244,6 +31272,20 @@
       "updated_at": ""
     },
     {
+      "id": "d42a3298946ca5895b25970a2c16e123",
+      "from_id": "57a8e53668837b2ce790aabfd6489381",
+      "to_id": "b2a369193313752bee520e8b6183d5cf",
+      "kind": "proves",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T12:23:11.684Z",
+      "updated_at": "2026-08-14T12:24:03.080Z"
+    },
+    {
       "id": "d42da8c84a9a8c24e1946cf8aba75e21",
       "from_id": "ae8d29652ac57ddf2198321aca19042d",
       "to_id": "616aba56a908b7f8a138ce09f3052859",
@@ -33062,20 +33104,6 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
-    },
-    {
-      "id": "d98e9504995c7e9a7fa41bcae8f413d1",
-      "from_id": "04a9dfe1805bb6c3714812526afee008",
-      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
-      "kind": "exposes",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T11:51:32.933Z",
-      "updated_at": "2026-08-14T11:51:32.933Z"
     },
     {
       "id": "d9922040816a08f0c",
@@ -35472,20 +35500,6 @@
       "updated_at": "2026-08-14T07:16:41.062Z"
     },
     {
-      "id": "e4ada62ee3bbdb4a178b8dec114a5a18",
-      "from_id": "57a8e53668837b2ce790aabfd6489381",
-      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
-      "kind": "exercises",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-14T11:52:25.834Z",
-      "updated_at": "2026-08-14T11:55:04.496Z"
-    },
-    {
       "id": "e4c1682d63330f1b99fb4cd77b96d404",
       "from_id": "1c84e4f5fdfd871ddbc8bfbe6934ec53",
       "to_id": "f81b0508e1e2e9c63573da183aacba8e",
@@ -35512,20 +35526,6 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:19.954Z",
       "updated_at": "2026-08-09T12:54:19.954Z"
-    },
-    {
-      "id": "e50bc45b0839ba301a9305c0d440107a",
-      "from_id": "57a8e53668837b2ce790aabfd6489381",
-      "to_id": "04a9dfe1805bb6c3714812526afee008",
-      "kind": "calls",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-14T11:52:25.834Z",
-      "updated_at": "2026-08-14T11:55:04.495Z"
     },
     {
       "id": "e50f77a8e89ac2a1007abfdb04a57540",
@@ -36420,19 +36420,6 @@
       "batch_id": "1786627637130-7908-1"
     },
     {
-      "id": "f0429103297861462",
-      "subject_kind": "edge",
-      "subject_id": "a4fa9d36b42a49a9f00838819d4a9f31",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-14T11:55:04.494Z",
-      "decision_mode": "individual"
-    },
-    {
       "id": "f0588a74f80e73255",
       "subject_kind": "edge",
       "subject_id": "bdb8b749712cf6fb44b1c477a9e4a1e7",
@@ -36443,19 +36430,6 @@
       "confidence": 0.93,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T07:16:41.499Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "f05ebcc6c4d45d714",
-      "subject_kind": "edge",
-      "subject_id": "9d5792d6ed931a8d150c3537fc8b6385",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-14T11:55:04.493Z",
       "decision_mode": "individual"
     },
     {
@@ -37849,6 +37823,32 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f49ac9b8f2573d622",
+      "subject_kind": "edge",
+      "subject_id": "801b76183d37e8ced31f3099de201cb6",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T12:24:03.080Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f4afdc960ea42ba33",
+      "subject_kind": "edge",
+      "subject_id": "64f933c4582e90305166d5aa2e149b48",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T12:24:03.079Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f4c7a4757f71f3959",
       "subject_kind": "edge",
       "subject_id": "2d25dbd7477f046b663afaddd93d22cd",
@@ -38165,19 +38165,6 @@
       "confidence": 0.72,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T06:58:21.085Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "f5c5f72adb94c5dc7",
-      "subject_kind": "edge",
-      "subject_id": "5b79924e828f95c336b11f65df686fa4",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-14T11:55:04.489Z",
       "decision_mode": "individual"
     },
     {
@@ -39448,19 +39435,6 @@
       "decision_mode": "individual"
     },
     {
-      "id": "f95592e5a56876d96",
-      "subject_kind": "edge",
-      "subject_id": "e50bc45b0839ba301a9305c0d440107a",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-14T11:55:04.495Z",
-      "decision_mode": "individual"
-    },
-    {
       "id": "f958eb36ffd09e748",
       "subject_kind": "edge",
       "subject_id": "f15bd6160712b725202744f6d7f90e5a",
@@ -40203,6 +40177,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fb58e5f55e3253c12",
+      "subject_kind": "edge",
+      "subject_id": "08bfd9f0bb29a99de68264214193cb37",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T12:24:03.077Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fb655152579197c6b",
       "subject_kind": "edge",
       "subject_id": "87e3bd3251b157b8e512528950a0e540",
@@ -40357,6 +40344,19 @@
       "confidence": 0.75,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T06:58:20.239Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fbc3d88a467e5a327",
+      "subject_kind": "edge",
+      "subject_id": "7b4e66651eb0d2cd84944ad918fd1946",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T12:24:03.081Z",
       "decision_mode": "individual"
     },
     {
@@ -41534,6 +41534,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "ff3ef87f3acdd8ead",
+      "subject_kind": "edge",
+      "subject_id": "d42a3298946ca5895b25970a2c16e123",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T12:24:03.080Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "ff50c18f94ee23b64",
       "subject_kind": "edge",
       "subject_id": "bcd5ce2efd897b1ddf1098dbb44702e1",
@@ -41779,19 +41792,6 @@
       "confidence": 0.8,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T07:36:24.990Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "fff2e5995c988fae0",
-      "subject_kind": "edge",
-      "subject_id": "e4ada62ee3bbdb4a178b8dec114a5a18",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-14T11:55:04.495Z",
       "decision_mode": "individual"
     }
   ],
@@ -42331,100 +42331,6 @@
       "recorded_at": "2026-08-13T13:27:17.517Z"
     },
     {
-      "id": "e35e76ab6fa350040",
-      "fact_id": "f0429103297861462",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run sync-ripple --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "1cd32f2c2fd3dcd3",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 15,
-        "observed_assertions": [
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-sees-no-file-change"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-stales-no-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-spares-no-rechecked-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-validation"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-contract"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-affects-no-surface"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-is-run"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-remains-a-function"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-file-is-exact"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-navigation-locator"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-sees-one-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-stales-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-spares-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-deletes-no-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-has-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786708504486",
-        "loom_version": "0.32.0"
-      },
-      "recorded_at": "2026-08-14T11:55:04.494Z"
-    },
-    {
-      "id": "ec7dd0e8f6f5e15ec",
-      "fact_id": "f0429103297861462",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-14T11:55:04.494Z"
-    },
-    {
       "id": "e0c3037ed19897ce6",
       "fact_id": "f0588a74f80e73255",
       "payload": {
@@ -42480,100 +42386,6 @@
         "hash": "5db621a93348bd79"
       },
       "recorded_at": "2026-08-14T07:16:41.499Z"
-    },
-    {
-      "id": "e091e23b960b2885c",
-      "fact_id": "f05ebcc6c4d45d714",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-14T11:55:04.493Z"
-    },
-    {
-      "id": "e6e9b661a20f6ad90",
-      "fact_id": "f05ebcc6c4d45d714",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run sync-ripple --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "1cd32f2c2fd3dcd3",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 15,
-        "observed_assertions": [
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-sees-no-file-change"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-stales-no-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-spares-no-rechecked-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-validation"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-contract"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-affects-no-surface"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-is-run"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-remains-a-function"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-file-is-exact"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-navigation-locator"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-sees-one-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-stales-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-spares-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-deletes-no-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-has-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786708504486",
-        "loom_version": "0.32.0"
-      },
-      "recorded_at": "2026-08-14T11:55:04.493Z"
     },
     {
       "id": "e16479beb25f54e74",
@@ -49118,6 +48930,194 @@
       "recorded_at": "2026-08-13T13:33:26.737Z"
     },
     {
+      "id": "e000b7e5f1bb6ebeb",
+      "fact_id": "f49ac9b8f2573d622",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run sync-ripple --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "1cd32f2c2fd3dcd3",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 15,
+        "observed_assertions": [
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-sees-no-file-change"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-stales-no-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-spares-no-rechecked-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-validation"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-contract"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-affects-no-surface"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-is-run"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-remains-a-function"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-file-is-exact"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-navigation-locator"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-sees-one-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-stales-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-spares-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-deletes-no-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-has-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786710243073",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T12:24:03.080Z"
+    },
+    {
+      "id": "e2a57dcb9317fa6ed",
+      "fact_id": "f49ac9b8f2573d622",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T12:24:03.080Z"
+    },
+    {
+      "id": "e6a77fd2a13b81f46",
+      "fact_id": "f4afdc960ea42ba33",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run sync-ripple --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "1cd32f2c2fd3dcd3",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 15,
+        "observed_assertions": [
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-sees-no-file-change"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-stales-no-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-spares-no-rechecked-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-validation"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-contract"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-affects-no-surface"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-is-run"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-remains-a-function"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-file-is-exact"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-navigation-locator"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-sees-one-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-stales-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-spares-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-deletes-no-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-has-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786710243073",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T12:24:03.079Z"
+    },
+    {
+      "id": "edbdec36f6abd8a86",
+      "fact_id": "f4afdc960ea42ba33",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T12:24:03.079Z"
+    },
+    {
       "id": "e4112cce62d372bf5",
       "fact_id": "f4c7a4757f71f3959",
       "payload": {
@@ -50241,100 +50241,6 @@
         "symbol_hash": "b41af6114a9ba917"
       },
       "recorded_at": "2026-08-14T06:58:21.085Z"
-    },
-    {
-      "id": "e3f39a8b2cad0ed9a",
-      "fact_id": "f5c5f72adb94c5dc7",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run sync-ripple --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "1cd32f2c2fd3dcd3",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 15,
-        "observed_assertions": [
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-sees-no-file-change"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-stales-no-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-spares-no-rechecked-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-validation"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-contract"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-affects-no-surface"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-is-run"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-remains-a-function"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-file-is-exact"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-navigation-locator"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-sees-one-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-stales-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-spares-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-deletes-no-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-has-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786708504486",
-        "loom_version": "0.32.0"
-      },
-      "recorded_at": "2026-08-14T11:55:04.489Z"
-    },
-    {
-      "id": "e5d42d3a030a10efa",
-      "fact_id": "f5c5f72adb94c5dc7",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-14T11:55:04.489Z"
     },
     {
       "id": "e13cf1b8aa3d00e38",
@@ -57810,100 +57716,6 @@
       "recorded_at": "2026-08-14T11:55:17.856Z"
     },
     {
-      "id": "eb49f17876c3443c6",
-      "fact_id": "f95592e5a56876d96",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run sync-ripple --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "1cd32f2c2fd3dcd3",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 15,
-        "observed_assertions": [
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-sees-no-file-change"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-stales-no-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-spares-no-rechecked-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-validation"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-contract"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-affects-no-surface"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-is-run"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-remains-a-function"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-file-is-exact"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-navigation-locator"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-sees-one-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-stales-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-spares-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-deletes-no-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-has-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786708504486",
-        "loom_version": "0.32.0"
-      },
-      "recorded_at": "2026-08-14T11:55:04.495Z"
-    },
-    {
-      "id": "eeeb3d164c17fa806",
-      "fact_id": "f95592e5a56876d96",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-14T11:55:04.495Z"
-    },
-    {
       "id": "e8facc282bf51b7e6",
       "fact_id": "f958eb36ffd09e748",
       "payload": {
@@ -61687,6 +61499,100 @@
       "recorded_at": "2026-08-14T07:16:41.153Z"
     },
     {
+      "id": "e387d0b52d0c5316f",
+      "fact_id": "fb58e5f55e3253c12",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run sync-ripple --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "1cd32f2c2fd3dcd3",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 15,
+        "observed_assertions": [
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-sees-no-file-change"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-stales-no-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-spares-no-rechecked-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-validation"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-contract"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-affects-no-surface"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-is-run"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-remains-a-function"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-file-is-exact"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-navigation-locator"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-sees-one-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-stales-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-spares-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-deletes-no-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-has-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786710243073",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T12:24:03.077Z"
+    },
+    {
+      "id": "e566970673c3528c1",
+      "fact_id": "fb58e5f55e3253c12",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T12:24:03.077Z"
+    },
+    {
       "id": "ebd9e9b4b17ec3535",
       "fact_id": "fb655152579197c6b",
       "payload": {
@@ -62555,6 +62461,100 @@
         "symbol_hash": "7c269827f4bb40a9"
       },
       "recorded_at": "2026-08-14T06:58:20.239Z"
+    },
+    {
+      "id": "e326c7559fabaff0b",
+      "fact_id": "fbc3d88a467e5a327",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run sync-ripple --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "1cd32f2c2fd3dcd3",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 15,
+        "observed_assertions": [
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-sees-no-file-change"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-stales-no-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-spares-no-rechecked-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-validation"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-contract"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-affects-no-surface"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-is-run"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-remains-a-function"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-file-is-exact"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-navigation-locator"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-sees-one-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-stales-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-spares-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-deletes-no-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-has-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786710243073",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T12:24:03.081Z"
+    },
+    {
+      "id": "e42b9b717bb40a34d",
+      "fact_id": "fbc3d88a467e5a327",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T12:24:03.081Z"
     },
     {
       "id": "e31b40901b970c40d",
@@ -68962,6 +68962,100 @@
       "recorded_at": "2026-08-14T04:21:57.358Z"
     },
     {
+      "id": "e05364777d492b1f6",
+      "fact_id": "ff3ef87f3acdd8ead",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run sync-ripple --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "1cd32f2c2fd3dcd3",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 15,
+        "observed_assertions": [
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-sees-no-file-change"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-stales-no-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-spares-no-rechecked-edge"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-validation"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-resets-no-contract"
+          },
+          {
+            "group": "sync-unchanged-snapshot",
+            "assertion": "unchanged-sync-affects-no-surface"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-is-run"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-remains-a-function"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-file-is-exact"
+          },
+          {
+            "group": "observe-temporally-edited-run",
+            "assertion": "edited-entry-navigation-locator"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-sees-one-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-stales-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-spares-one-grounding"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-deletes-no-file"
+          },
+          {
+            "group": "sync-changed-snapshot",
+            "assertion": "changed-sync-has-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786710243073",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T12:24:03.080Z"
+    },
+    {
+      "id": "e579f4f2c1b74a256",
+      "fact_id": "ff3ef87f3acdd8ead",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T12:24:03.080Z"
+    },
+    {
       "id": "ecc0af4673f432457",
       "fact_id": "ff50c18f94ee23b64",
       "payload": {
@@ -70262,103 +70356,37 @@
         "symbol_offset": 176
       },
       "recorded_at": "2026-08-14T07:36:24.990Z"
-    },
-    {
-      "id": "e1ec9349932e54deb",
-      "fact_id": "fff2e5995c988fae0",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'sync-ripple:proof' observed passed with 15 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-14T11:55:04.495Z"
-    },
-    {
-      "id": "e7499ed3b21236d5d",
-      "fact_id": "fff2e5995c988fae0",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run sync-ripple --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "1cd32f2c2fd3dcd3",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":15,\"journey\":\"sync-ripple\",\"passed_assertions\":[{\"assertion_id\":\"unchanged-sync-sees-no-file-change\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-stales-no-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-spares-no-rechecked-edge\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-validation\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-resets-no-contract\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"unchanged-sync-affects-no-surface\",\"operation_id\":\"sync-unchanged-snapshot\"},{\"assertion_id\":\"edited-entry-is-run\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-remains-a-function\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-file-is-exact\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"edited-entry-navigation-locator\",\"operation_id\":\"observe-temporally-edited-run\"},{\"assertion_id\":\"changed-sync-sees-one-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-stales-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-spares-one-grounding\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-deletes-no-file\",\"operation_id\":\"sync-changed-snapshot\"},{\"assertion_id\":\"changed-sync-has-no-missing-file\",\"operation_id\":\"sync-changed-snapshot\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 15,
-        "observed_assertions": [
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-sees-no-file-change"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-stales-no-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-spares-no-rechecked-edge"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-validation"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-resets-no-contract"
-          },
-          {
-            "group": "sync-unchanged-snapshot",
-            "assertion": "unchanged-sync-affects-no-surface"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-is-run"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-remains-a-function"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-file-is-exact"
-          },
-          {
-            "group": "observe-temporally-edited-run",
-            "assertion": "edited-entry-navigation-locator"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-sees-one-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-stales-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-spares-one-grounding"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-deletes-no-file"
-          },
-          {
-            "group": "sync-changed-snapshot",
-            "assertion": "changed-sync-has-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786708504486",
-        "loom_version": "0.32.0"
-      },
-      "recorded_at": "2026-08-14T11:55:04.495Z"
     }
   ],
   "facets": [
+    {
+      "target_id": "002d960106128fff5e57feaa64059d4c",
+      "target_kind": "edge",
+      "key": "binding_hashes",
+      "value": "{\"edit-grounded-content\":\"995c64bf3ab0e472\",\"synchronize-changed-file\":\"2bec2d6e32546b69\",\"synchronize-unchanged-file\":\"4f91140e28a7ffa2\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "002d960106128fff5e57feaa64059d4c",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "4c1411a69c0ba64b",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "002d960106128fff5e57feaa64059d4c",
+      "target_kind": "edge",
+      "key": "operation_bindings",
+      "value": "[{\"operation_id\":\"sync-unchanged-snapshot\",\"step_id\":\"synchronize-unchanged-file\"},{\"operation_id\":\"observe-temporally-edited-run\",\"step_id\":\"edit-grounded-content\"},{\"operation_id\":\"sync-changed-snapshot\",\"step_id\":\"synchronize-changed-file\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "002d960106128fff5e57feaa64059d4c",
+      "target_kind": "edge",
+      "key": "setup",
+      "value": "{\"before_steps\":{\"edit-grounded-content\":[{\"content\":\"//! Sync — the structural recompute and ripple engine.\\n//!\\n//! Plane: orchestration over the store. Sync is content-hash based:\\n//! - re-extracts derived facets for files whose content changed,\\n//! - ripples staleness to asserted edges that depended on a *real* change\\n//!   (a file with a PRIOR hash that now differs — a missing prior hash is a\\n//!   rebuild/first-extract, not a change, so it never falsely stales),\\n//! - rebuilds the derived finding plane deterministically every run.\\n//!\\n//! This is the second half of INV-2: `store.wipe_derived()` then `sync` yields a\\n//! byte-identical derived plane (deterministic ids + sentinel timestamps + a\\n//! pure extraction), and ripples nothing because no prior hashes remain.\\n\\nuse crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};\\nuse crate::store::Store;\\nuse crate::Result;\\nuse serde::Serialize;\\nuse std::collections::BTreeSet;\\nuse std::path::Path;\\n\\n/// Summary of one sync run.\\n#[derive(Debug, Default, Clone)]\\npub struct SyncReport {\\n    pub files_scanned: usize,\\n    pub files_changed: usize,\\n    /// Registered files that previously had content and have now disappeared.\\n    pub files_deleted: usize,\\n    pub edges_staled: usize,\\n    /// The grounding-plane share of [`Self::edges_staled`]: how many\\n    /// `implements` edges this run re-opened. `edges_staled` is a union across\\n    /// every plane, so its value depends on how much of the validation plane\\n    /// happens to be settled in the graph at hand — the same source change\\n    /// re-opens one grounding in a locally proven graph and a hundred-odd\\n    /// edges in a freshly imported one, where every imported proof is still\\n    /// prose. Anything asserting \\\"this change moved exactly N groundings\\\" —\\n    /// a Journey fixture, a release gate — has to read this instead.\\n    pub groundings_staled: usize,\\n    /// Realizing groundings NOT re-opened by a file change because the change\\n    /// did not touch the symbol their locator names (and no cited evidence in\\n    /// the file was rewritten) — the payoff of symbol-scoped staleness.\\n    pub edges_spared: usize,\\n    pub validations_reset: usize,\\n    /// Evidence spans re-anchored to new coordinates (a move, not a rewrite) —\\n    /// journaled as `evidence_reanchor`, no re-verdict demanded.\\n    pub evidence_reanchored: usize,\\n    /// Interface surfaces whose backing code changed this run (integration monitoring).\\n    pub surfaces_affected: usize,\\n    /// Contracts (validations exercising an affected surface) reset to `not_run`.\\n    pub contracts_reset: usize,\\n    pub findings: usize,\\n    /// Wiki pages marked stale because a documented intent's meaning, code, or\\n    /// proof drifted since the page was last recorded.\\n    pub wiki_staled: usize,\\n    pub missing: Vec<String>,\\n    /// The exact edges this run re-opened, in deterministic id order. The count\\n    /// alone is not actionable: anything that asserts on `edges_staled` — a\\n    /// Journey fixture, a release gate, an operator reading `sync --json` — has\\n    /// to know WHICH claim moved before it can decide whether the ripple was\\n    /// the expected one.\\n    pub staled_edges: BTreeSet<String>,\\n}\\n\\n/// One strict source-anchor locator that a read-only sync preview can no\\n/// longer resolve. The locator module owns syntax and cardinality policy; sync\\n/// carries only the affected graph edge and the exact resolver error.\\n#[derive(Debug, Clone, Serialize)]\\npub struct AnchorStaleness {\\n    pub edge_id: String,\\n    pub edge_kind: EdgeKind,\\n    pub codefile_id: String,\\n    pub path: String,\\n    pub locator: String,\\n    pub cause: String,\\n}\\n\\n/// Read-only answer to “would structural sync observe different repository\\n/// state?”. It deliberately does not run derivers or write a freshness stamp.\\n#[derive(Debug, Clone, Default, Serialize)]\\npub struct SyncPreview {\\n    pub fresh: bool,\\n    pub changed_files: Vec<String>,\\n    pub missing_files: Vec<String>,\\n    pub unregistered_glob_matches: Vec<String>,\\n    pub invalid_anchors: Vec<AnchorStaleness>,\\n}\\n\\nimpl SyncPreview {\\n    pub fn affected_paths(&self) -> Vec<String> {\\n        let mut paths = self.changed_files.clone();\\n        paths.extend(self.missing_files.iter().cloned());\\n        paths.extend(self.unregistered_glob_matches.iter().cloned());\\n        paths.extend(\\n            self.invalid_anchors\\n                .iter()\\n                .map(|anchor| anchor.path.clone()),\\n        );\\n        paths.sort();\\n        paths.dedup();\\n        paths\\n    }\\n\\n    pub fn evidence_lines(&self) -> Vec<String> {\\n        if self.fresh {\\n            return vec![\\\"registered repository content matches the synchronized graph\\\".into()];\\n        }\\n        let mut evidence = Vec::new();\\n        evidence.extend(\\n            self.changed_files\\n                .iter()\\n                .map(|path| format!(\\\"content changed since sync: {path}\\\")),\\n        );\\n        evidence.extend(\\n            self.missing_files\\n                .iter()\\n                .map(|path| format!(\\\"registered file missing: {path}\\\")),\\n        );\\n        evidence.extend(\\n            self.unregistered_glob_matches\\n                .iter()\\n                .map(|path| format!(\\\"remembered glob has unregistered file: {path}\\\")),\\n        );\\n        evidence.extend(self.invalid_anchors.iter().map(|anchor| {\\n            format!(\\n                \\\"anchor invalid on {} edge {} at {}: {}\\\",\\n                anchor.edge_kind, anchor.edge_id, anchor.path, anchor.cause\\n            )\\n        }));\\n        evidence.sort();\\n        evidence\\n    }\\n}\\n\\n/// Inspect repository/sync drift without mutating graph or filesystem state.\\n/// Both this preview and [`run`] consume the same strict anchor plan, keeping\\n/// the definition of anchor freshness local to one implementation.\\npub fn preview(store: &Store, root: &Path) -> Result<SyncPreview> {\\n    let codefiles = store.codefiles()?;\\n    let mut changed_files = Vec::new();\\n    let mut missing_files = Vec::new();\\n    let existing: BTreeSet<String> = codefiles.iter().map(|file| file.name.clone()).collect();\\n\\n    for file in &codefiles {\\n        let path = root.join(&file.name);\\n        let content = match std::fs::read_to_string(&path) {\\n            Ok(content) if crate::fsglob::contains(root, &path) => content,\\n            _ => {\\n                missing_files.push(file.name.clone());\\n                continue;\\n            }\\n        };\\n        let current = crate::extract::fnv1a(&content);\\n        let stored = store.get_facet(&file.id, TargetKind::Node, \\\"content_hash\\\")?;\\n        if stored.as_deref() != Some(current.as_str()) {\\n            changed_files.push(file.name.clone());\\n        }\\n    }\\n\\n    let ignored = crate::fsglob::matcher(store.ignore_globs()?)?;\\n    let globs: Vec<String> = store\\n        .get_meta(\\\"codefile_globs\\\")?\\n        .map(|raw| serde_json::from_str(&raw))\\n        .transpose()?\\n        .unwrap_or_default();\\n    let mut unregistered_glob_matches = Vec::new();\\n    for glob in globs {\\n        for path in crate::fsglob::expand(root, &glob)? {\\n            if !existing.contains(&path) && !ignored.is_match(&path) {\\n                unregistered_glob_matches.push(path);\\n            }\\n        }\\n    }\\n\\n    changed_files.sort();\\n    changed_files.dedup();\\n    missing_files.sort();\\n    missing_files.dedup();\\n    unregistered_glob_matches.sort();\\n    unregistered_glob_matches.dedup();\\n    let invalid_anchors = plan_anchor_staleness(store)?;\\n    let fresh = changed_files.is_empty()\\n        && missing_files.is_empty()\\n        && unregistered_glob_matches.is_empty()\\n        && invalid_anchors.is_empty();\\n    Ok(SyncPreview {\\n        fresh,\\n        changed_files,\\n        missing_files,\\n        unregistered_glob_matches,\\n        invalid_anchors,\\n    })\\n}\\n\\n/// Run a full sync against the graph rooted at `root`. Orchestrates the\\n/// registered code-seed derivers to recompute the derived plane, then ripples\\n/// the artifact changes they report — the engine names no extraction type, so\\n/// unplugging a deriver leaves this loop intact and rippling correctly.\\npub fn run(store: &Store, root: &Path) -> Result<SyncReport> {\\n    let _journey_sync_ripple_change = ();\\n    let mut report = SyncReport::default();\\n    let mut changed_paths: BTreeSet<String> = BTreeSet::new();\\n    let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();\\n    for deriver in crate::seed::sync_derivers() {\\n        for change in deriver.derive(store, root, &mut report)? {\\n            if let Some(node) = store.get_node(&change.artifact_id)? {\\n                changed_paths.insert(node.name);\\n            }\\n            ripple_surface_contracts(\\n                store,\\n                &change.artifact_id,\\n                &change.cause,\\n                &mut seen_surfaces,\\n                &mut report,\\n            )?;\\n        }\\n    }\\n    report.surfaces_affected = seen_surfaces.len();\\n    ripple_compiled_journey_drift(store, &mut report)?;\\n    // The re-verification pass. One question — \\\"does the thing this fact points\\n    // at still say what it said?\\\" — asked of every anchor in the graph.\\n    //\\n    // This replaced a ~470-line decision table that asked a DIFFERENT question\\n    // per edge kind: does a realizing grounding ripple to its intent, does that\\n    // intent ripple to its relates edges, do those ripple one-sidedly or only\\n    // when both endpoints moved, and so on. Every row of it was a hand-written\\n    // guess at what a change could invalidate. Anchors make the guess\\n    // unnecessary: a fact points at something, and either that thing still\\n    // holds or it does not. Nothing has to know WHY it might not.\\n    //\\n    // Symbol-scoped sparing survives the deletion because it was never really\\n    // about the ripple: a locator Run re-resolves its symbol, so an unrelated\\n    // edit in the same file leaves it standing on its own.\\n    //\\n    // ORDER: this runs BEFORE the derived recomputes below (proof strength,\\n    // ratification, wiki freshness, smell findings). Each of those READS edge\\n    // and validation status — the very state this pass settles by re-opening a\\n    // proof whose anchor broke. Grading first and re-opening after left the\\n    // derived plane one sync stale (a proof graded S3 this run, demoted next),\\n    // so a second sync produced a different graph — a fixpoint violation of\\n    // INV-2. Settling status first makes one sync converge.\\n    // Explicit dependency ripples above may already have moved an edge to\\n    // `needs_reverification` before its evidence fact is rechecked here. The\\n    // re-verifier reports demoted facts, so adding that raw count would count\\n    // the same edge twice. Snapshot the settled boundary and count only edge\\n    // IDs whose status actually transitions during this pass.\\n    let stale_before_reverify: BTreeSet<String> = store\\n        .list_edges(None, usize::MAX)?\\n        .into_iter()\\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\\n        .map(|edge| edge.id)\\n        .collect();\\n    let pass = store.reverify_all(&changed_paths)?;\\n    let stale_after_reverify: BTreeSet<String> = store\\n        .list_edges(None, usize::MAX)?\\n        .into_iter()\\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\\n        .map(|edge| edge.id)\\n        .collect();\\n    let newly_stale = stale_after_reverify.difference(&stale_before_reverify);\\n    for edge_id in newly_stale {\\n        report.edges_staled += 1;\\n        report.staled_edges.insert(edge_id.clone());\\n    }\\n    report.edges_spared += pass.spared;\\n    report.validations_reset += pass.validations_reset;\\n    report.evidence_reanchored += pass.reanchored;\\n    ripple_validation_evidence_drift(store, &changed_paths, &mut report)?;\\n    let anchor_staleness = plan_anchor_staleness(store)?;\\n    apply_anchor_staleness(store, &anchor_staleness, &mut report)?;\\n    // AFTER the pass, deliberately. The anchor machinery is more precise —\\n    // it distinguishes a redefined symbol from a missing one and spares\\n    // untouched groundings — so it gets first say, and this is the backstop\\n    // for anchors it never re-checks at all: a locator whose verdict was\\n    // settled on a cited span, which carries no locator Run to re-resolve.\\n    // Running it first double-counted an edge both mechanisms would stale.\\n    ripple_locator_drift(store, root, &mut report)?;\\n    ripple_wiki_drift(store, &mut report)?;\\n    // Grade every proof from its own shape. Derived, so it is recomputed here\\n    // rather than trusted from whoever registered the validation — the string\\n    // this replaced was supplied by the caller, and `loom journey add`\\n    // hardcoded the top of the scale.\\n    crate::proofstrength::recompute(store, root)?;\\n    // Wantedness earned from evidence. Recomputed AFTER proof strength, which\\n    // one of its three conjuncts reads.\\n    crate::ratification::recompute(store)?;\\n    rebuild_smell_findings(store, &mut report)?;\\n    // Derived from the recorded set rather than counted at each staling site:\\n    // every pass above reaches `staled_edges` through a different door, and a\\n    // plane counter maintained per-door is one door away from being wrong.\\n    report.groundings_staled = grounding_share(store, &report.staled_edges)?;\\n    Ok(report)\\n}\\n\\n/// How many of `staled` are grounding-plane (`implements`) edges. An edge that\\n/// vanished between staling and here simply does not count.\\nfn grounding_share(store: &Store, staled: &BTreeSet<String>) -> Result<usize> {\\n    let mut groundings = 0;\\n    for edge_id in staled {\\n        if store\\n            .get_edge(edge_id)?\\n            .is_some_and(|edge| edge.kind == EdgeKind::Implements)\\n        {\\n            groundings += 1;\\n        }\\n    }\\n    Ok(groundings)\\n}\\n\\n/// Reset validations whose explicit Validation→CodeFile S3 entry surface\\n/// changed. `exercises` is evidence provenance, not a verdict-bearing claim, so\\n/// the validation itself is the state that expires.\\nfn ripple_validation_evidence_drift(\\n    store: &Store,\\n    changed_paths: &BTreeSet<String>,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    let mut reset = BTreeSet::new();\\n    let files_by_path: std::collections::BTreeMap<String, String> = store\\n        .list_nodes(Some(NodeType::CodeFile), usize::MAX)?\\n        .into_iter()\\n        .map(|node| (node.name, node.id))\\n        .collect();\\n    for path in changed_paths {\\n        let Some(file_id) = files_by_path.get(path) else {\\n            continue;\\n        };\\n        for edge in store.edges_with(Some(EdgeKind::Exercises), None, Some(file_id))? {\\n            if !reset.insert(edge.from_id.clone()) {\\n                continue;\\n            }\\n            let was_run = store\\n                .get_node(&edge.from_id)?\\n                .is_some_and(|validation| validation.status != \\\"not_run\\\");\\n            if was_run {\\n                stale_validation_closure(\\n                    store,\\n                    &edge.from_id,\\n                    &format!(\\\"validation evidence file '{}' changed\\\", path),\\n                    false,\\n                    report,\\n                )?;\\n            }\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Reset the contracts that exercise an interface surface this file backs.\\n///\\n/// The one dependency in the graph that is NOT evidence: a contract does not\\n/// cite the surface's backing code, it reaches it at run time through a `calls`\\n/// edge. No anchor points there, so re-verification cannot see it, and it stays\\n/// an explicit walk. Idempotent — a contract already at `not_run` is neither\\n/// reset nor counted.\\nfn ripple_surface_contracts(\\n    store: &Store,\\n    cf_id: &str,\\n    cause: &str,\\n    seen_surfaces: &mut BTreeSet<String>,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    // Integration-monitoring ripple: cf is the `to` of an `exposes` edge; the\\n    // surface is its `from`. Reset the contracts that `call` each surface.\\n    for ex_edge in store.edges_with(Some(EdgeKind::Exposes), None, Some(cf_id))? {\\n        let surface_id = ex_edge.from_id;\\n        if !seen_surfaces.insert(surface_id.clone()) {\\n            continue; // already rippled via another changed file this run\\n        }\\n        for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&surface_id))? {\\n            // Only a contract that was actually proven needs re-checking; one\\n            // already at `not_run` is unchanged, so it is neither reset nor\\n            // counted (avoids overstating \\\"need re-verification\\\").\\n            let was_proven = store\\n                .get_node(&call.from_id)?\\n                .map(|n| n.status != \\\"not_run\\\")\\n                .unwrap_or(false);\\n            if !was_proven {\\n                continue;\\n            }\\n            stale_validation_closure(store, &call.from_id, cause, true, report)?;\\n            report.contracts_reset += 1;\\n        }\\n    }\\n    Ok(())\\n}\\n\\nfn stale_validation_closure(\\n    store: &Store,\\n    validation_id: &str,\\n    cause: &str,\\n    stale_calls: bool,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    for kind in [EdgeKind::Proves, EdgeKind::Validates] {\\n        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {\\n            if store.stale_edge(&edge.id, cause)? {\\n                report.edges_staled += 1;\\n                report.staled_edges.insert(edge.id.clone());\\n            }\\n        }\\n    }\\n    if stale_calls {\\n        for edge in store.edges_with(Some(EdgeKind::Calls), Some(validation_id), None)? {\\n            if store.stale_edge(&edge.id, cause)? {\\n                report.edges_staled += 1;\\n                report.staled_edges.insert(edge.id.clone());\\n            }\\n        }\\n    }\\n    if store\\n        .get_node(validation_id)?\\n        .is_some_and(|validation| validation.status != \\\"not_run\\\")\\n    {\\n        store.reset_validation_status_for_sync(validation_id)?;\\n        report.validations_reset += 1;\\n    }\\n    Ok(())\\n}\\n\\n/// Invalidate compiler output when its semantic or reusable-surface inputs no\\n/// longer match the graph. Raw authored artifact paths are intentionally absent:\\n/// the compiler contract is the Proves+Calls+Exercises closure and its hashes.\\nfn ripple_compiled_journey_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for proves in store.edges_with(Some(EdgeKind::Proves), None, None)? {\\n        let Some(validation) = store.get_node(&proves.from_id)? else {\\n            continue;\\n        };\\n        let Some(journey) = store.get_node(&proves.to_id)? else {\\n            continue;\\n        };\\n        if validation.body.get(\\\"type\\\").and_then(|value| value.as_str()) != Some(\\\"journey\\\") {\\n            continue;\\n        }\\n        let journey_hash = journey\\n            .body\\n            .get(\\\"semantic_hash\\\")\\n            .and_then(|value| value.as_str());\\n        let surface_hash = crate::journey::surface_projection_hash(store, &journey)?;\\n        let body_current = journey_hash.is_some()\\n            && validation\\n                .body\\n                .get(\\\"journey_hash\\\")\\n                .and_then(|value| value.as_str())\\n                == journey_hash\\n            && surface_hash.is_some()\\n            && validation\\n                .body\\n                .get(\\\"surface_hash\\\")\\n                .and_then(|value| value.as_str())\\n                == surface_hash.as_deref()\\n            && validation\\n                .body\\n                .get(\\\"profile\\\")\\n                .and_then(|value| value.as_str())\\n                == Some(\\\"proof\\\")\\n            && validation\\n                .body\\n                .get(\\\"compiler_version\\\")\\n                .and_then(|value| value.as_str())\\n                == Some(crate::journey::JOURNEY_COMPILER_VERSION);\\n        // The compiled Exercises topology and its provenance facets must agree\\n        // exactly with the canonical projection of the accepted surface.\\n        // A missing/stale projection or any semantic disagreement — forged,\\n        // malformed, or obsolete provenance — stales the closure through the\\n        // normal compiler-owned mechanism instead of letting grading carry a\\n        // topology nobody accepted.\\n        let topology_current = match crate::journey_exercises::expected_projection(store, &journey)\\n        {\\n            Ok(projection) => {\\n                crate::journey_exercises::topology_problems(store, &validation.id, &projection)?\\n                    .is_empty()\\n            }\\n            Err(_) => false,\\n        };\\n\\n        let mut accepted_surfaces = BTreeSet::new();\\n        if let Some(hash) = journey_hash {\\n            for surface in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {\\n                if matches!(\\n                    surface.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                ) && store\\n                    .get_facet(&surface.id, TargetKind::Edge, \\\"journey_hash\\\")?\\n                    .as_deref()\\n                    == Some(hash)\\n                {\\n                    accepted_surfaces.insert(surface.to_id);\\n                }\\n            }\\n        }\\n        let calls_current = store\\n            .edges_with(Some(EdgeKind::Calls), Some(&validation.id), None)?\\n            .into_iter()\\n            .any(|call| {\\n                matches!(\\n                    call.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                ) && accepted_surfaces.contains(&call.to_id)\\n            });\\n        let exercises_current = store\\n            .edges_with(Some(EdgeKind::Exercises), Some(&validation.id), None)?\\n            .into_iter()\\n            .any(|edge| {\\n                matches!(\\n                    edge.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                )\\n            });\\n        if body_current && calls_current && exercises_current && topology_current {\\n            continue;\\n        }\\n        stale_validation_closure(\\n            store,\\n            &validation.id,\\n            \\\"compiled Journey inputs or proof topology drifted\\\",\\n            true,\\n            report,\\n        )?;\\n    }\\n    Ok(())\\n}\\n\\n/// The freshness fingerprint of a wiki page's scope: a hash over every intent\\n/// the page `documents` — the intent's meaning (lifecycle + updated_at), the\\n/// content of the files that realize it, and whether it is proven. It changes\\n/// iff something the page describes changed, so a recorded page stays fresh\\n/// exactly until its subject drifts. The page's prose/layout is never hashed —\\n/// the graph governs freshness, not form.\\npub fn wiki_scope_hash(store: &Store, page_id: &str) -> Result<String> {\\n    let mut parts: Vec<String> = Vec::new();\\n    let mut docs = store.edges_with(Some(EdgeKind::Documents), Some(page_id), None)?;\\n    docs.sort_by(|a, b| a.to_id.cmp(&b.to_id));\\n    for d in docs {\\n        let Some(intent) = store.get_node(&d.to_id)? else {\\n            continue;\\n        };\\n        parts.push(format!(\\n            \\\"i:{}:{}:{}\\\",\\n            intent.id, intent.status, intent.updated_at\\n        ));\\n        let mut files: Vec<String> = Vec::new();\\n        for g in store.realizing_groundings(&intent.id)? {\\n            let hash = store\\n                .get_facet(&g.to_id, TargetKind::Node, \\\"content_hash\\\")?\\n                .unwrap_or_default();\\n            files.push(format!(\\\"{}={hash}\\\", g.to_id));\\n        }\\n        files.sort();\\n        parts.push(format!(\\\"f:[{}]\\\", files.join(\\\",\\\")));\\n        let proven = store\\n            .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?\\n            .iter()\\n            .any(|v| v.status == InspectionStatus::Passing);\\n        parts.push(format!(\\\"p:{proven}\\\"));\\n    }\\n    Ok(crate::artifact::fingerprint(&parts.join(\\\"|\\\")))\\n}\\n\\n/// Pass 2d: mark a wiki page stale when its documented scope drifted since it was\\n/// recorded. Mirrors the artifact/runner drift gates — a recorded page's stored\\n/// `scope_hash` is compared to the live one; a `draft` page (never recorded\\n/// fresh) is left alone. loom curates freshness; an agent rewrites the prose.\\n/// Re-open a grounding whose locator names nothing.\\n///\\n/// A locator is the promise \\\"this behavior lives at this symbol\\\". Nothing was\\n/// checking it. `recheck` expires a LOCATOR run when its symbol stops\\n/// resolving, but a verdict recorded with a cited span carries no such run —\\n/// so a grounding could name a deleted symbol and stay `passing` forever. On\\n/// this repository that was 13 live claims at confidence 0.95 pointing at\\n/// symbols that no longer existed, including four left by a hard-cut, while\\n/// `doctor` reported clean and the ladder showed `grounded` met.\\n///\\n/// A locator that opens with `module` is a WHOLE-FILE scope, not a symbol —\\n/// the long-standing convention here for \\\"the behavior is this file\\\". Those\\n/// are left alone; requiring them to resolve would reject 39 legitimate\\n/// groundings to catch 13 broken ones.\\nfn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {\\n    for edge in store.edges_with(Some(EdgeKind::Implements), None, None)? {\\n        if store.edge_superseded(&edge.id)? {\\n            continue;\\n        }\\n        // Only a REALIZES grounding promises a symbol. A `consumes` locator\\n        // names a seam — an interface string the consumer calls, which is not a\\n        // definition and will never resolve as one; `recheck` re-runs those\\n        // through their own Seam arm. `configures` and `verifies` make no\\n        // symbol claim either. Judging them here would stale every seam\\n        // grounding on every sync, which ring11 catches.\\n        if store.grounding_role(&edge.id)? != crate::model::GroundingRole::Realizes {\\n            continue;\\n        }\\n        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n            continue;\\n        };\\n        let locator = locator.trim();\\n        if locator.is_empty()\\n            || crate::locator::is_module_scope(locator)\\n            || crate::locator::is_anchor_locator(locator)\\n        {\\n            continue;\\n        }\\n        let Some(file) = store.get_node(&edge.to_id)? else {\\n            continue;\\n        };\\n        // A missing FILE is already someone else's ripple; only judge the\\n        // symbol when the file is there to look in.\\n        if !root.join(&file.name).exists() {\\n            continue;\\n        }\\n        // `resolve_locator` returns Some whenever the FILE is readable — the\\n        // cardinality is carried separately, which is why `unique_locator_probe`\\n        // reads match_count rather than the Option. A locator that matched\\n        // nothing is the broken case; matching several is ambiguous but still\\n        // points at real code, and the ripple already spares those.\\n        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))\\n            .map(|r| r.match_count)\\n            .unwrap_or(0);\\n        if matched > 0 {\\n            continue;\\n        }\\n        // Name the anchor that fell: a cause that says only \\\"a locator broke\\\"\\n        // leaves the reader to work out which one, and ring13 requires the\\n        // symbol or the file by name.\\n        let cause = format!(\\\"locator '{locator}' names no symbol in {}\\\", file.name);\\n        if store.stale_edge(&edge.id, &cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(edge.id.clone());\\n        }\\n    }\\n    // `exercises` provenance makes the same symbol promise a realizing\\n    // grounding does, and nothing else re-checks it: the anchor machinery\\n    // covers only anchor-form locators, and intact-looking provenance is\\n    // deliberately not queue work — so this ripple must fire even on a\\n    // never-inspected edge or the repair reaches no lane. Compiler-owned\\n    // Journey topology is excepted: its provenance is policed against the\\n    // accepted surface's canonical projection, and its door is journey\\n    // compile/run.\\n    for edge in store.edges_with(Some(EdgeKind::Exercises), None, None)? {\\n        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n            continue;\\n        };\\n        let locator = locator.trim();\\n        if locator.is_empty()\\n            || crate::locator::is_module_scope(locator)\\n            || crate::locator::is_anchor_locator(locator)\\n        {\\n            continue;\\n        }\\n        if crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_some() {\\n            continue;\\n        }\\n        let Some(file) = store.get_node(&edge.to_id)? else {\\n            continue;\\n        };\\n        if !root.join(&file.name).exists() {\\n            continue;\\n        }\\n        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))\\n            .map(|r| r.match_count)\\n            .unwrap_or(0);\\n        if matched > 0 {\\n            continue;\\n        }\\n        let cause = format!(\\\"locator '{locator}' names no symbol in {}\\\", file.name);\\n        if store.stale_edge(&edge.id, &cause)? || store.stale_uninspected_edge(&edge.id, &cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(edge.id.clone());\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Resolve every anchor-form locator through the locator module. Sync never\\n/// parses marker syntax or guesses cardinality itself.\\nfn plan_anchor_staleness(store: &Store) -> Result<Vec<AnchorStaleness>> {\\n    let mut stale = Vec::new();\\n    for kind in [EdgeKind::Implements, EdgeKind::Exposes, EdgeKind::Exercises] {\\n        for edge in store.edges_with(Some(kind), None, None)? {\\n            if kind == EdgeKind::Implements && store.edge_superseded(&edge.id)? {\\n                continue;\\n            }\\n            let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n                continue;\\n            };\\n            if !crate::locator::is_anchor_locator(&locator) {\\n                continue;\\n            }\\n            let Some(codefile) = store.get_node(&edge.to_id)? else {\\n                continue;\\n            };\\n            if codefile.node_type != NodeType::CodeFile {\\n                continue;\\n            }\\n            if let Err(error) = crate::locator::validate_for_codefile(store, &codefile, &locator) {\\n                stale.push(AnchorStaleness {\\n                    edge_id: edge.id,\\n                    edge_kind: kind,\\n                    codefile_id: codefile.id,\\n                    path: codefile.name,\\n                    locator,\\n                    cause: error.to_string(),\\n                });\\n            }\\n        }\\n    }\\n    stale.sort_by(|a, b| a.edge_id.cmp(&b.edge_id));\\n    Ok(stale)\\n}\\n\\nfn apply_anchor_staleness(\\n    store: &Store,\\n    stale: &[AnchorStaleness],\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    let mut reset_validations = BTreeSet::new();\\n    for anchor in stale {\\n        if store.stale_edge(&anchor.edge_id, &anchor.cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(anchor.edge_id.clone());\\n        }\\n        match anchor.edge_kind {\\n            EdgeKind::Exercises => {\\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\\n                    continue;\\n                };\\n                // A broken anchor on never-inspected provenance was invisible:\\n                // the closure reset below re-fires every sync while the edge\\n                // carrying the actual defect stayed uninspected and unqueued.\\n                // Surface it as the analyze work it is; compiler-owned Journey\\n                // topology keeps its own door.\\n                if edge.status == InspectionStatus::Uninspected\\n                    && crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_none()\\n                    && store.stale_uninspected_edge(&edge.id, &anchor.cause)?\\n                {\\n                    report.edges_staled += 1;\\n                    report.staled_edges.insert(edge.id.clone());\\n                }\\n                if reset_validations.insert(edge.from_id.clone()) {\\n                    stale_validation_closure(store, &edge.from_id, &anchor.cause, false, report)?;\\n                }\\n            }\\n            EdgeKind::Exposes => {\\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\\n                    continue;\\n                };\\n                for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&edge.from_id))? {\\n                    if reset_validations.insert(call.from_id.clone()) {\\n                        stale_validation_closure(\\n                            store,\\n                            &call.from_id,\\n                            &anchor.cause,\\n                            true,\\n                            report,\\n                        )?;\\n                        report.contracts_reset += 1;\\n                    }\\n                }\\n            }\\n            EdgeKind::Implements => {}\\n            _ => unreachable!(\\\"anchor staleness is planned only for locator-bearing edges\\\"),\\n        }\\n    }\\n    Ok(())\\n}\\n\\nfn ripple_wiki_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for page in store.list_nodes(Some(NodeType::WikiPage), usize::MAX)? {\\n        if page.status == \\\"draft\\\" || page.status == \\\"stale\\\" {\\n            continue;\\n        }\\n        let current = wiki_scope_hash(store, &page.id)?;\\n        let stored = page\\n            .body\\n            .get(\\\"scope_hash\\\")\\n            .and_then(|v| v.as_str())\\n            .unwrap_or_default();\\n        if current != stored {\\n            // loom-stability-exempt: marks a wiki page stale\\n            store.set_node_status(&page.id, \\\"stale\\\")?;\\n            report.wiki_staled += 1;\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Pass 3b: materialize structural smells as derived Finding nodes. Smells\\n/// stay computed-on-read for `loom smells`, but the materialized finding gives\\n/// the triage queue a servable item and `loom finding verdict` a stable id\\n/// whose asserted adjudication survives every rebuild — the same wipe/re-derive\\n/// convergence cycle as the other structural findings.\\nfn rebuild_smell_findings(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for s in crate::signal::smells(store)? {\\n        store.add_derived_node(\\n            NodeType::Finding,\\n            &crate::signal::smell_det_key(&s.identity),\\n            &s.message,\\n            &s.remedy,\\n            &s.kind,\\n            serde_json::json!({ \\\"kind\\\": s.kind, \\\"category\\\": \\\"smell\\\", \\\"identity\\\": s.identity }),\\n        )?;\\n        report.findings += 1;\\n    }\\n    Ok(())\\n}\\n\",\"expected_hash\":\"84de9c7246aec257\",\"path\":\"src/sync.rs\"}]},\"graph\":\"local_snapshot\",\"operations\":[]}",
+      "truth_class": "asserted"
+    },
     {
       "target_id": "00705a774be6be29f50a3bc004407840",
       "target_kind": "node",
@@ -73657,34 +73685,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "324442338ba594b86b9cb6836c8b4bf5",
-      "target_kind": "edge",
-      "key": "binding_hashes",
-      "value": "{\"edit-grounded-content\":\"995c64bf3ab0e472\",\"synchronize-changed-file\":\"2bec2d6e32546b69\",\"synchronize-unchanged-file\":\"4f91140e28a7ffa2\"}",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "324442338ba594b86b9cb6836c8b4bf5",
-      "target_kind": "edge",
-      "key": "journey_hash",
-      "value": "4c1411a69c0ba64b",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "324442338ba594b86b9cb6836c8b4bf5",
-      "target_kind": "edge",
-      "key": "operation_bindings",
-      "value": "[{\"operation_id\":\"sync-unchanged-snapshot\",\"step_id\":\"synchronize-unchanged-file\"},{\"operation_id\":\"observe-temporally-edited-run\",\"step_id\":\"edit-grounded-content\"},{\"operation_id\":\"sync-changed-snapshot\",\"step_id\":\"synchronize-changed-file\"}]",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "324442338ba594b86b9cb6836c8b4bf5",
-      "target_kind": "edge",
-      "key": "setup",
-      "value": "{\"before_steps\":{\"edit-grounded-content\":[{\"content\":\"//! Sync — the structural recompute and ripple engine.\\n//!\\n//! Plane: orchestration over the store. Sync is content-hash based:\\n//! - re-extracts derived facets for files whose content changed,\\n//! - ripples staleness to asserted edges that depended on a *real* change\\n//!   (a file with a PRIOR hash that now differs — a missing prior hash is a\\n//!   rebuild/first-extract, not a change, so it never falsely stales),\\n//! - rebuilds the derived finding plane deterministically every run.\\n//!\\n//! This is the second half of INV-2: `store.wipe_derived()` then `sync` yields a\\n//! byte-identical derived plane (deterministic ids + sentinel timestamps + a\\n//! pure extraction), and ripples nothing because no prior hashes remain.\\n\\nuse crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};\\nuse crate::store::Store;\\nuse crate::Result;\\nuse serde::Serialize;\\nuse std::collections::BTreeSet;\\nuse std::path::Path;\\n\\n/// Summary of one sync run.\\n#[derive(Debug, Default, Clone)]\\npub struct SyncReport {\\n    pub files_scanned: usize,\\n    pub files_changed: usize,\\n    /// Registered files that previously had content and have now disappeared.\\n    pub files_deleted: usize,\\n    pub edges_staled: usize,\\n    /// The grounding-plane share of [`Self::edges_staled`]: how many\\n    /// `implements` edges this run re-opened. `edges_staled` is a union across\\n    /// every plane, so its value depends on how much of the validation plane\\n    /// happens to be settled in the graph at hand — the same source change\\n    /// re-opens one grounding in a locally proven graph and a hundred-odd\\n    /// edges in a freshly imported one, where every imported proof is still\\n    /// prose. Anything asserting \\\"this change moved exactly N groundings\\\" —\\n    /// a Journey fixture, a release gate — has to read this instead.\\n    pub groundings_staled: usize,\\n    /// Realizing groundings NOT re-opened by a file change because the change\\n    /// did not touch the symbol their locator names (and no cited evidence in\\n    /// the file was rewritten) — the payoff of symbol-scoped staleness.\\n    pub edges_spared: usize,\\n    pub validations_reset: usize,\\n    /// Evidence spans re-anchored to new coordinates (a move, not a rewrite) —\\n    /// journaled as `evidence_reanchor`, no re-verdict demanded.\\n    pub evidence_reanchored: usize,\\n    /// Interface surfaces whose backing code changed this run (integration monitoring).\\n    pub surfaces_affected: usize,\\n    /// Contracts (validations exercising an affected surface) reset to `not_run`.\\n    pub contracts_reset: usize,\\n    pub findings: usize,\\n    /// Wiki pages marked stale because a documented intent's meaning, code, or\\n    /// proof drifted since the page was last recorded.\\n    pub wiki_staled: usize,\\n    pub missing: Vec<String>,\\n    /// The exact edges this run re-opened, in deterministic id order. The count\\n    /// alone is not actionable: anything that asserts on `edges_staled` — a\\n    /// Journey fixture, a release gate, an operator reading `sync --json` — has\\n    /// to know WHICH claim moved before it can decide whether the ripple was\\n    /// the expected one.\\n    pub staled_edges: BTreeSet<String>,\\n}\\n\\n/// One strict source-anchor locator that a read-only sync preview can no\\n/// longer resolve. The locator module owns syntax and cardinality policy; sync\\n/// carries only the affected graph edge and the exact resolver error.\\n#[derive(Debug, Clone, Serialize)]\\npub struct AnchorStaleness {\\n    pub edge_id: String,\\n    pub edge_kind: EdgeKind,\\n    pub codefile_id: String,\\n    pub path: String,\\n    pub locator: String,\\n    pub cause: String,\\n}\\n\\n/// Read-only answer to “would structural sync observe different repository\\n/// state?”. It deliberately does not run derivers or write a freshness stamp.\\n#[derive(Debug, Clone, Default, Serialize)]\\npub struct SyncPreview {\\n    pub fresh: bool,\\n    pub changed_files: Vec<String>,\\n    pub missing_files: Vec<String>,\\n    pub unregistered_glob_matches: Vec<String>,\\n    pub invalid_anchors: Vec<AnchorStaleness>,\\n}\\n\\nimpl SyncPreview {\\n    pub fn affected_paths(&self) -> Vec<String> {\\n        let mut paths = self.changed_files.clone();\\n        paths.extend(self.missing_files.iter().cloned());\\n        paths.extend(self.unregistered_glob_matches.iter().cloned());\\n        paths.extend(\\n            self.invalid_anchors\\n                .iter()\\n                .map(|anchor| anchor.path.clone()),\\n        );\\n        paths.sort();\\n        paths.dedup();\\n        paths\\n    }\\n\\n    pub fn evidence_lines(&self) -> Vec<String> {\\n        if self.fresh {\\n            return vec![\\\"registered repository content matches the synchronized graph\\\".into()];\\n        }\\n        let mut evidence = Vec::new();\\n        evidence.extend(\\n            self.changed_files\\n                .iter()\\n                .map(|path| format!(\\\"content changed since sync: {path}\\\")),\\n        );\\n        evidence.extend(\\n            self.missing_files\\n                .iter()\\n                .map(|path| format!(\\\"registered file missing: {path}\\\")),\\n        );\\n        evidence.extend(\\n            self.unregistered_glob_matches\\n                .iter()\\n                .map(|path| format!(\\\"remembered glob has unregistered file: {path}\\\")),\\n        );\\n        evidence.extend(self.invalid_anchors.iter().map(|anchor| {\\n            format!(\\n                \\\"anchor invalid on {} edge {} at {}: {}\\\",\\n                anchor.edge_kind, anchor.edge_id, anchor.path, anchor.cause\\n            )\\n        }));\\n        evidence.sort();\\n        evidence\\n    }\\n}\\n\\n/// Inspect repository/sync drift without mutating graph or filesystem state.\\n/// Both this preview and [`run`] consume the same strict anchor plan, keeping\\n/// the definition of anchor freshness local to one implementation.\\npub fn preview(store: &Store, root: &Path) -> Result<SyncPreview> {\\n    let codefiles = store.codefiles()?;\\n    let mut changed_files = Vec::new();\\n    let mut missing_files = Vec::new();\\n    let existing: BTreeSet<String> = codefiles.iter().map(|file| file.name.clone()).collect();\\n\\n    for file in &codefiles {\\n        let path = root.join(&file.name);\\n        let content = match std::fs::read_to_string(&path) {\\n            Ok(content) if crate::fsglob::contains(root, &path) => content,\\n            _ => {\\n                missing_files.push(file.name.clone());\\n                continue;\\n            }\\n        };\\n        let current = crate::extract::fnv1a(&content);\\n        let stored = store.get_facet(&file.id, TargetKind::Node, \\\"content_hash\\\")?;\\n        if stored.as_deref() != Some(current.as_str()) {\\n            changed_files.push(file.name.clone());\\n        }\\n    }\\n\\n    let ignored = crate::fsglob::matcher(store.ignore_globs()?)?;\\n    let globs: Vec<String> = store\\n        .get_meta(\\\"codefile_globs\\\")?\\n        .map(|raw| serde_json::from_str(&raw))\\n        .transpose()?\\n        .unwrap_or_default();\\n    let mut unregistered_glob_matches = Vec::new();\\n    for glob in globs {\\n        for path in crate::fsglob::expand(root, &glob)? {\\n            if !existing.contains(&path) && !ignored.is_match(&path) {\\n                unregistered_glob_matches.push(path);\\n            }\\n        }\\n    }\\n\\n    changed_files.sort();\\n    changed_files.dedup();\\n    missing_files.sort();\\n    missing_files.dedup();\\n    unregistered_glob_matches.sort();\\n    unregistered_glob_matches.dedup();\\n    let invalid_anchors = plan_anchor_staleness(store)?;\\n    let fresh = changed_files.is_empty()\\n        && missing_files.is_empty()\\n        && unregistered_glob_matches.is_empty()\\n        && invalid_anchors.is_empty();\\n    Ok(SyncPreview {\\n        fresh,\\n        changed_files,\\n        missing_files,\\n        unregistered_glob_matches,\\n        invalid_anchors,\\n    })\\n}\\n\\n/// Run a full sync against the graph rooted at `root`. Orchestrates the\\n/// registered code-seed derivers to recompute the derived plane, then ripples\\n/// the artifact changes they report — the engine names no extraction type, so\\n/// unplugging a deriver leaves this loop intact and rippling correctly.\\npub fn run(store: &Store, root: &Path) -> Result<SyncReport> {\\n    let _journey_sync_ripple_change = ();\\n    let mut report = SyncReport::default();\\n    let mut changed_paths: BTreeSet<String> = BTreeSet::new();\\n    let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();\\n    for deriver in crate::seed::sync_derivers() {\\n        for change in deriver.derive(store, root, &mut report)? {\\n            if let Some(node) = store.get_node(&change.artifact_id)? {\\n                changed_paths.insert(node.name);\\n            }\\n            ripple_surface_contracts(\\n                store,\\n                &change.artifact_id,\\n                &change.cause,\\n                &mut seen_surfaces,\\n                &mut report,\\n            )?;\\n        }\\n    }\\n    report.surfaces_affected = seen_surfaces.len();\\n    ripple_compiled_journey_drift(store, &mut report)?;\\n    // The re-verification pass. One question — \\\"does the thing this fact points\\n    // at still say what it said?\\\" — asked of every anchor in the graph.\\n    //\\n    // This replaced a ~470-line decision table that asked a DIFFERENT question\\n    // per edge kind: does a realizing grounding ripple to its intent, does that\\n    // intent ripple to its relates edges, do those ripple one-sidedly or only\\n    // when both endpoints moved, and so on. Every row of it was a hand-written\\n    // guess at what a change could invalidate. Anchors make the guess\\n    // unnecessary: a fact points at something, and either that thing still\\n    // holds or it does not. Nothing has to know WHY it might not.\\n    //\\n    // Symbol-scoped sparing survives the deletion because it was never really\\n    // about the ripple: a locator Run re-resolves its symbol, so an unrelated\\n    // edit in the same file leaves it standing on its own.\\n    //\\n    // ORDER: this runs BEFORE the derived recomputes below (proof strength,\\n    // ratification, wiki freshness, smell findings). Each of those READS edge\\n    // and validation status — the very state this pass settles by re-opening a\\n    // proof whose anchor broke. Grading first and re-opening after left the\\n    // derived plane one sync stale (a proof graded S3 this run, demoted next),\\n    // so a second sync produced a different graph — a fixpoint violation of\\n    // INV-2. Settling status first makes one sync converge.\\n    // Explicit dependency ripples above may already have moved an edge to\\n    // `needs_reverification` before its evidence fact is rechecked here. The\\n    // re-verifier reports demoted facts, so adding that raw count would count\\n    // the same edge twice. Snapshot the settled boundary and count only edge\\n    // IDs whose status actually transitions during this pass.\\n    let stale_before_reverify: BTreeSet<String> = store\\n        .list_edges(None, usize::MAX)?\\n        .into_iter()\\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\\n        .map(|edge| edge.id)\\n        .collect();\\n    let pass = store.reverify_all(&changed_paths)?;\\n    let stale_after_reverify: BTreeSet<String> = store\\n        .list_edges(None, usize::MAX)?\\n        .into_iter()\\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\\n        .map(|edge| edge.id)\\n        .collect();\\n    let newly_stale = stale_after_reverify.difference(&stale_before_reverify);\\n    for edge_id in newly_stale {\\n        report.edges_staled += 1;\\n        report.staled_edges.insert(edge_id.clone());\\n    }\\n    report.edges_spared += pass.spared;\\n    report.validations_reset += pass.validations_reset;\\n    report.evidence_reanchored += pass.reanchored;\\n    ripple_validation_evidence_drift(store, &changed_paths, &mut report)?;\\n    let anchor_staleness = plan_anchor_staleness(store)?;\\n    apply_anchor_staleness(store, &anchor_staleness, &mut report)?;\\n    // AFTER the pass, deliberately. The anchor machinery is more precise —\\n    // it distinguishes a redefined symbol from a missing one and spares\\n    // untouched groundings — so it gets first say, and this is the backstop\\n    // for anchors it never re-checks at all: a locator whose verdict was\\n    // settled on a cited span, which carries no locator Run to re-resolve.\\n    // Running it first double-counted an edge both mechanisms would stale.\\n    ripple_locator_drift(store, root, &mut report)?;\\n    ripple_wiki_drift(store, &mut report)?;\\n    // Grade every proof from its own shape. Derived, so it is recomputed here\\n    // rather than trusted from whoever registered the validation — the string\\n    // this replaced was supplied by the caller, and `loom journey add`\\n    // hardcoded the top of the scale.\\n    crate::proofstrength::recompute(store, root)?;\\n    // Wantedness earned from evidence. Recomputed AFTER proof strength, which\\n    // one of its three conjuncts reads.\\n    crate::ratification::recompute(store)?;\\n    rebuild_smell_findings(store, &mut report)?;\\n    // Derived from the recorded set rather than counted at each staling site:\\n    // every pass above reaches `staled_edges` through a different door, and a\\n    // plane counter maintained per-door is one door away from being wrong.\\n    report.groundings_staled = grounding_share(store, &report.staled_edges)?;\\n    Ok(report)\\n}\\n\\n/// How many of `staled` are grounding-plane (`implements`) edges. An edge that\\n/// vanished between staling and here simply does not count.\\nfn grounding_share(store: &Store, staled: &BTreeSet<String>) -> Result<usize> {\\n    let mut groundings = 0;\\n    for edge_id in staled {\\n        if store\\n            .get_edge(edge_id)?\\n            .is_some_and(|edge| edge.kind == EdgeKind::Implements)\\n        {\\n            groundings += 1;\\n        }\\n    }\\n    Ok(groundings)\\n}\\n\\n/// Reset validations whose explicit Validation→CodeFile S3 entry surface\\n/// changed. `exercises` is evidence provenance, not a verdict-bearing claim, so\\n/// the validation itself is the state that expires.\\nfn ripple_validation_evidence_drift(\\n    store: &Store,\\n    changed_paths: &BTreeSet<String>,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    let mut reset = BTreeSet::new();\\n    let files_by_path: std::collections::BTreeMap<String, String> = store\\n        .list_nodes(Some(NodeType::CodeFile), usize::MAX)?\\n        .into_iter()\\n        .map(|node| (node.name, node.id))\\n        .collect();\\n    for path in changed_paths {\\n        let Some(file_id) = files_by_path.get(path) else {\\n            continue;\\n        };\\n        for edge in store.edges_with(Some(EdgeKind::Exercises), None, Some(file_id))? {\\n            if !reset.insert(edge.from_id.clone()) {\\n                continue;\\n            }\\n            let was_run = store\\n                .get_node(&edge.from_id)?\\n                .is_some_and(|validation| validation.status != \\\"not_run\\\");\\n            if was_run {\\n                stale_validation_closure(\\n                    store,\\n                    &edge.from_id,\\n                    &format!(\\\"validation evidence file '{}' changed\\\", path),\\n                    false,\\n                    report,\\n                )?;\\n            }\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Reset the contracts that exercise an interface surface this file backs.\\n///\\n/// The one dependency in the graph that is NOT evidence: a contract does not\\n/// cite the surface's backing code, it reaches it at run time through a `calls`\\n/// edge. No anchor points there, so re-verification cannot see it, and it stays\\n/// an explicit walk. Idempotent — a contract already at `not_run` is neither\\n/// reset nor counted.\\nfn ripple_surface_contracts(\\n    store: &Store,\\n    cf_id: &str,\\n    cause: &str,\\n    seen_surfaces: &mut BTreeSet<String>,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    // Integration-monitoring ripple: cf is the `to` of an `exposes` edge; the\\n    // surface is its `from`. Reset the contracts that `call` each surface.\\n    for ex_edge in store.edges_with(Some(EdgeKind::Exposes), None, Some(cf_id))? {\\n        let surface_id = ex_edge.from_id;\\n        if !seen_surfaces.insert(surface_id.clone()) {\\n            continue; // already rippled via another changed file this run\\n        }\\n        for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&surface_id))? {\\n            // Only a contract that was actually proven needs re-checking; one\\n            // already at `not_run` is unchanged, so it is neither reset nor\\n            // counted (avoids overstating \\\"need re-verification\\\").\\n            let was_proven = store\\n                .get_node(&call.from_id)?\\n                .map(|n| n.status != \\\"not_run\\\")\\n                .unwrap_or(false);\\n            if !was_proven {\\n                continue;\\n            }\\n            stale_validation_closure(store, &call.from_id, cause, true, report)?;\\n            report.contracts_reset += 1;\\n        }\\n    }\\n    Ok(())\\n}\\n\\nfn stale_validation_closure(\\n    store: &Store,\\n    validation_id: &str,\\n    cause: &str,\\n    stale_calls: bool,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    for kind in [EdgeKind::Proves, EdgeKind::Validates] {\\n        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {\\n            if store.stale_edge(&edge.id, cause)? {\\n                report.edges_staled += 1;\\n                report.staled_edges.insert(edge.id.clone());\\n            }\\n        }\\n    }\\n    if stale_calls {\\n        for edge in store.edges_with(Some(EdgeKind::Calls), Some(validation_id), None)? {\\n            if store.stale_edge(&edge.id, cause)? {\\n                report.edges_staled += 1;\\n                report.staled_edges.insert(edge.id.clone());\\n            }\\n        }\\n    }\\n    if store\\n        .get_node(validation_id)?\\n        .is_some_and(|validation| validation.status != \\\"not_run\\\")\\n    {\\n        store.reset_validation_status_for_sync(validation_id)?;\\n        report.validations_reset += 1;\\n    }\\n    Ok(())\\n}\\n\\n/// Invalidate compiler output when its semantic or reusable-surface inputs no\\n/// longer match the graph. Raw authored artifact paths are intentionally absent:\\n/// the compiler contract is the Proves+Calls+Exercises closure and its hashes.\\nfn ripple_compiled_journey_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for proves in store.edges_with(Some(EdgeKind::Proves), None, None)? {\\n        let Some(validation) = store.get_node(&proves.from_id)? else {\\n            continue;\\n        };\\n        let Some(journey) = store.get_node(&proves.to_id)? else {\\n            continue;\\n        };\\n        if validation.body.get(\\\"type\\\").and_then(|value| value.as_str()) != Some(\\\"journey\\\") {\\n            continue;\\n        }\\n        let journey_hash = journey\\n            .body\\n            .get(\\\"semantic_hash\\\")\\n            .and_then(|value| value.as_str());\\n        let surface_hash = crate::journey::surface_projection_hash(store, &journey)?;\\n        let body_current = journey_hash.is_some()\\n            && validation\\n                .body\\n                .get(\\\"journey_hash\\\")\\n                .and_then(|value| value.as_str())\\n                == journey_hash\\n            && surface_hash.is_some()\\n            && validation\\n                .body\\n                .get(\\\"surface_hash\\\")\\n                .and_then(|value| value.as_str())\\n                == surface_hash.as_deref()\\n            && validation\\n                .body\\n                .get(\\\"profile\\\")\\n                .and_then(|value| value.as_str())\\n                == Some(\\\"proof\\\")\\n            && validation\\n                .body\\n                .get(\\\"compiler_version\\\")\\n                .and_then(|value| value.as_str())\\n                == Some(crate::journey::JOURNEY_COMPILER_VERSION);\\n        // The compiled Exercises topology and its provenance facets must agree\\n        // exactly with the canonical projection of the accepted surface.\\n        // A missing/stale projection or any semantic disagreement — forged,\\n        // malformed, or obsolete provenance — stales the closure through the\\n        // normal compiler-owned mechanism instead of letting grading carry a\\n        // topology nobody accepted.\\n        let topology_current = match crate::journey_exercises::expected_projection(store, &journey)\\n        {\\n            Ok(projection) => {\\n                crate::journey_exercises::topology_problems(store, &validation.id, &projection)?\\n                    .is_empty()\\n            }\\n            Err(_) => false,\\n        };\\n\\n        let mut accepted_surfaces = BTreeSet::new();\\n        if let Some(hash) = journey_hash {\\n            for surface in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {\\n                if matches!(\\n                    surface.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                ) && store\\n                    .get_facet(&surface.id, TargetKind::Edge, \\\"journey_hash\\\")?\\n                    .as_deref()\\n                    == Some(hash)\\n                {\\n                    accepted_surfaces.insert(surface.to_id);\\n                }\\n            }\\n        }\\n        let calls_current = store\\n            .edges_with(Some(EdgeKind::Calls), Some(&validation.id), None)?\\n            .into_iter()\\n            .any(|call| {\\n                matches!(\\n                    call.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                ) && accepted_surfaces.contains(&call.to_id)\\n            });\\n        let exercises_current = store\\n            .edges_with(Some(EdgeKind::Exercises), Some(&validation.id), None)?\\n            .into_iter()\\n            .any(|edge| {\\n                matches!(\\n                    edge.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                )\\n            });\\n        if body_current && calls_current && exercises_current && topology_current {\\n            continue;\\n        }\\n        stale_validation_closure(\\n            store,\\n            &validation.id,\\n            \\\"compiled Journey inputs or proof topology drifted\\\",\\n            true,\\n            report,\\n        )?;\\n    }\\n    Ok(())\\n}\\n\\n/// The freshness fingerprint of a wiki page's scope: a hash over every intent\\n/// the page `documents` — the intent's meaning (lifecycle + updated_at), the\\n/// content of the files that realize it, and whether it is proven. It changes\\n/// iff something the page describes changed, so a recorded page stays fresh\\n/// exactly until its subject drifts. The page's prose/layout is never hashed —\\n/// the graph governs freshness, not form.\\npub fn wiki_scope_hash(store: &Store, page_id: &str) -> Result<String> {\\n    let mut parts: Vec<String> = Vec::new();\\n    let mut docs = store.edges_with(Some(EdgeKind::Documents), Some(page_id), None)?;\\n    docs.sort_by(|a, b| a.to_id.cmp(&b.to_id));\\n    for d in docs {\\n        let Some(intent) = store.get_node(&d.to_id)? else {\\n            continue;\\n        };\\n        parts.push(format!(\\n            \\\"i:{}:{}:{}\\\",\\n            intent.id, intent.status, intent.updated_at\\n        ));\\n        let mut files: Vec<String> = Vec::new();\\n        for g in store.realizing_groundings(&intent.id)? {\\n            let hash = store\\n                .get_facet(&g.to_id, TargetKind::Node, \\\"content_hash\\\")?\\n                .unwrap_or_default();\\n            files.push(format!(\\\"{}={hash}\\\", g.to_id));\\n        }\\n        files.sort();\\n        parts.push(format!(\\\"f:[{}]\\\", files.join(\\\",\\\")));\\n        let proven = store\\n            .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?\\n            .iter()\\n            .any(|v| v.status == InspectionStatus::Passing);\\n        parts.push(format!(\\\"p:{proven}\\\"));\\n    }\\n    Ok(crate::artifact::fingerprint(&parts.join(\\\"|\\\")))\\n}\\n\\n/// Pass 2d: mark a wiki page stale when its documented scope drifted since it was\\n/// recorded. Mirrors the artifact/runner drift gates — a recorded page's stored\\n/// `scope_hash` is compared to the live one; a `draft` page (never recorded\\n/// fresh) is left alone. loom curates freshness; an agent rewrites the prose.\\n/// Re-open a grounding whose locator names nothing.\\n///\\n/// A locator is the promise \\\"this behavior lives at this symbol\\\". Nothing was\\n/// checking it. `recheck` expires a LOCATOR run when its symbol stops\\n/// resolving, but a verdict recorded with a cited span carries no such run —\\n/// so a grounding could name a deleted symbol and stay `passing` forever. On\\n/// this repository that was 13 live claims at confidence 0.95 pointing at\\n/// symbols that no longer existed, including four left by a hard-cut, while\\n/// `doctor` reported clean and the ladder showed `grounded` met.\\n///\\n/// A locator that opens with `module` is a WHOLE-FILE scope, not a symbol —\\n/// the long-standing convention here for \\\"the behavior is this file\\\". Those\\n/// are left alone; requiring them to resolve would reject 39 legitimate\\n/// groundings to catch 13 broken ones.\\nfn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {\\n    for edge in store.edges_with(Some(EdgeKind::Implements), None, None)? {\\n        if store.edge_superseded(&edge.id)? {\\n            continue;\\n        }\\n        // Only a REALIZES grounding promises a symbol. A `consumes` locator\\n        // names a seam — an interface string the consumer calls, which is not a\\n        // definition and will never resolve as one; `recheck` re-runs those\\n        // through their own Seam arm. `configures` and `verifies` make no\\n        // symbol claim either. Judging them here would stale every seam\\n        // grounding on every sync, which ring11 catches.\\n        if store.grounding_role(&edge.id)? != crate::model::GroundingRole::Realizes {\\n            continue;\\n        }\\n        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n            continue;\\n        };\\n        let locator = locator.trim();\\n        if locator.is_empty()\\n            || crate::locator::is_module_scope(locator)\\n            || crate::locator::is_anchor_locator(locator)\\n        {\\n            continue;\\n        }\\n        let Some(file) = store.get_node(&edge.to_id)? else {\\n            continue;\\n        };\\n        // A missing FILE is already someone else's ripple; only judge the\\n        // symbol when the file is there to look in.\\n        if !root.join(&file.name).exists() {\\n            continue;\\n        }\\n        // `resolve_locator` returns Some whenever the FILE is readable — the\\n        // cardinality is carried separately, which is why `unique_locator_probe`\\n        // reads match_count rather than the Option. A locator that matched\\n        // nothing is the broken case; matching several is ambiguous but still\\n        // points at real code, and the ripple already spares those.\\n        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))\\n            .map(|r| r.match_count)\\n            .unwrap_or(0);\\n        if matched > 0 {\\n            continue;\\n        }\\n        // Name the anchor that fell: a cause that says only \\\"a locator broke\\\"\\n        // leaves the reader to work out which one, and ring13 requires the\\n        // symbol or the file by name.\\n        let cause = format!(\\\"locator '{locator}' names no symbol in {}\\\", file.name);\\n        if store.stale_edge(&edge.id, &cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(edge.id.clone());\\n        }\\n    }\\n    // `exercises` provenance makes the same symbol promise a realizing\\n    // grounding does, and nothing else re-checks it: the anchor machinery\\n    // covers only anchor-form locators, and intact-looking provenance is\\n    // deliberately not queue work — so this ripple must fire even on a\\n    // never-inspected edge or the repair reaches no lane. Compiler-owned\\n    // Journey topology is excepted: its provenance is policed against the\\n    // accepted surface's canonical projection, and its door is journey\\n    // compile/run.\\n    for edge in store.edges_with(Some(EdgeKind::Exercises), None, None)? {\\n        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n            continue;\\n        };\\n        let locator = locator.trim();\\n        if locator.is_empty()\\n            || crate::locator::is_module_scope(locator)\\n            || crate::locator::is_anchor_locator(locator)\\n        {\\n            continue;\\n        }\\n        if crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_some() {\\n            continue;\\n        }\\n        let Some(file) = store.get_node(&edge.to_id)? else {\\n            continue;\\n        };\\n        if !root.join(&file.name).exists() {\\n            continue;\\n        }\\n        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))\\n            .map(|r| r.match_count)\\n            .unwrap_or(0);\\n        if matched > 0 {\\n            continue;\\n        }\\n        let cause = format!(\\\"locator '{locator}' names no symbol in {}\\\", file.name);\\n        if store.stale_edge(&edge.id, &cause)? || store.stale_uninspected_edge(&edge.id, &cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(edge.id.clone());\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Resolve every anchor-form locator through the locator module. Sync never\\n/// parses marker syntax or guesses cardinality itself.\\nfn plan_anchor_staleness(store: &Store) -> Result<Vec<AnchorStaleness>> {\\n    let mut stale = Vec::new();\\n    for kind in [EdgeKind::Implements, EdgeKind::Exposes, EdgeKind::Exercises] {\\n        for edge in store.edges_with(Some(kind), None, None)? {\\n            if kind == EdgeKind::Implements && store.edge_superseded(&edge.id)? {\\n                continue;\\n            }\\n            let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n                continue;\\n            };\\n            if !crate::locator::is_anchor_locator(&locator) {\\n                continue;\\n            }\\n            let Some(codefile) = store.get_node(&edge.to_id)? else {\\n                continue;\\n            };\\n            if codefile.node_type != NodeType::CodeFile {\\n                continue;\\n            }\\n            if let Err(error) = crate::locator::validate_for_codefile(store, &codefile, &locator) {\\n                stale.push(AnchorStaleness {\\n                    edge_id: edge.id,\\n                    edge_kind: kind,\\n                    codefile_id: codefile.id,\\n                    path: codefile.name,\\n                    locator,\\n                    cause: error.to_string(),\\n                });\\n            }\\n        }\\n    }\\n    stale.sort_by(|a, b| a.edge_id.cmp(&b.edge_id));\\n    Ok(stale)\\n}\\n\\nfn apply_anchor_staleness(\\n    store: &Store,\\n    stale: &[AnchorStaleness],\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    let mut reset_validations = BTreeSet::new();\\n    for anchor in stale {\\n        if store.stale_edge(&anchor.edge_id, &anchor.cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(anchor.edge_id.clone());\\n        }\\n        match anchor.edge_kind {\\n            EdgeKind::Exercises => {\\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\\n                    continue;\\n                };\\n                // A broken anchor on never-inspected provenance was invisible:\\n                // the closure reset below re-fires every sync while the edge\\n                // carrying the actual defect stayed uninspected and unqueued.\\n                // Surface it as the analyze work it is; compiler-owned Journey\\n                // topology keeps its own door.\\n                if edge.status == InspectionStatus::Uninspected\\n                    && crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_none()\\n                    && store.stale_uninspected_edge(&edge.id, &anchor.cause)?\\n                {\\n                    report.edges_staled += 1;\\n                    report.staled_edges.insert(edge.id.clone());\\n                }\\n                if reset_validations.insert(edge.from_id.clone()) {\\n                    stale_validation_closure(store, &edge.from_id, &anchor.cause, false, report)?;\\n                }\\n            }\\n            EdgeKind::Exposes => {\\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\\n                    continue;\\n                };\\n                for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&edge.from_id))? {\\n                    if reset_validations.insert(call.from_id.clone()) {\\n                        stale_validation_closure(\\n                            store,\\n                            &call.from_id,\\n                            &anchor.cause,\\n                            true,\\n                            report,\\n                        )?;\\n                        report.contracts_reset += 1;\\n                    }\\n                }\\n            }\\n            EdgeKind::Implements => {}\\n            _ => unreachable!(\\\"anchor staleness is planned only for locator-bearing edges\\\"),\\n        }\\n    }\\n    Ok(())\\n}\\n\\nfn ripple_wiki_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for page in store.list_nodes(Some(NodeType::WikiPage), usize::MAX)? {\\n        if page.status == \\\"draft\\\" || page.status == \\\"stale\\\" {\\n            continue;\\n        }\\n        let current = wiki_scope_hash(store, &page.id)?;\\n        let stored = page\\n            .body\\n            .get(\\\"scope_hash\\\")\\n            .and_then(|v| v.as_str())\\n            .unwrap_or_default();\\n        if current != stored {\\n            // loom-stability-exempt: marks a wiki page stale\\n            store.set_node_status(&page.id, \\\"stale\\\")?;\\n            report.wiki_staled += 1;\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Pass 3b: materialize structural smells as derived Finding nodes. Smells\\n/// stay computed-on-read for `loom smells`, but the materialized finding gives\\n/// the triage queue a servable item and `loom finding verdict` a stable id\\n/// whose asserted adjudication survives every rebuild — the same wipe/re-derive\\n/// convergence cycle as the other structural findings.\\nfn rebuild_smell_findings(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for s in crate::signal::smells(store)? {\\n        store.add_derived_node(\\n            NodeType::Finding,\\n            &crate::signal::smell_det_key(&s.identity),\\n            &s.message,\\n            &s.remedy,\\n            &s.kind,\\n            serde_json::json!({ \\\"kind\\\": s.kind, \\\"category\\\": \\\"smell\\\", \\\"identity\\\": s.identity }),\\n        )?;\\n        report.findings += 1;\\n    }\\n    Ok(())\\n}\\n\",\"expected_hash\":\"84de9c7246aec257\",\"path\":\"src/sync.rs\"}]},\"graph\":\"local_snapshot\",\"operations\":[]}",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "32d79ae1b9bcb3969655ea17d9a03959",
       "target_kind": "node",
       "key": "calls",
@@ -75505,6 +75505,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "4ed0130d11b42ab7055aaf8cdc645f1e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "run",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "4f04b26bbfd5d2531ed4312cc51dfd2d",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -76131,7 +76138,7 @@
       "target_id": "57a8e53668837b2ce790aabfd6489381",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"15\",\"call_witness\":\"ripple_surface_contracts\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands.rs\",\"entry_symbol\":\"run\",\"grounded_symbol\":\"ripple_surface_contracts\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"15\",\"call_witness\":\"run\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands.rs\",\"entry_symbol\":\"run\",\"grounded_symbol\":\"run\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
     },
     {
@@ -78646,6 +78653,20 @@
       "key": "test_symbols",
       "value": "[]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "7b4e66651eb0d2cd84944ad918fd1946",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "run",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "7b4e66651eb0d2cd84944ad918fd1946",
+      "target_kind": "edge",
+      "key": "surface_locator",
+      "value": "run",
+      "truth_class": "asserted"
     },
     {
       "target_id": "7b58ea1846460aba840d095d9a38fe33",
@@ -85361,13 +85382,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "d98e9504995c7e9a7fa41bcae8f413d1",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "run",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "d99392196826dd4e14476c5d213eceb8",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -86373,20 +86387,6 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "user_visible",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "e4ada62ee3bbdb4a178b8dec114a5a18",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "run",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "e4ada62ee3bbdb4a178b8dec114a5a18",
-      "target_kind": "edge",
-      "key": "surface_locator",
-      "value": "run",
       "truth_class": "asserted"
     },
     {

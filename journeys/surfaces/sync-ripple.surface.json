@@ -144,7 +144,7 @@
             {
               "equals": 0,
               "id": "unchanged-sync-stales-no-edge",
-              "pointer": "/edges_staled",
+              "pointer": "/groundings_staled",
               "type": "integer"
             },
             {
