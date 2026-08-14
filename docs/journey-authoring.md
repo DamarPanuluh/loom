@@ -279,3 +279,42 @@ Changing a pointer changes the surface definition, so the surface must be
 removed with `--reason` and re-accepted, then recompiled. Judge the result on
 `loom journey run` rather than `diagnose`: a fixture can diagnose green and
 still refuse settlement, because settling mutates the state it asserts on.
+
+### Choosing the key
+
+A selector is only as durable as the field it keys on. Three kinds of value
+look unique and are not:
+
+- **A status.** `[git_status= M]`, `[state=met]`, `[outcome=passed]` — the
+  settling proof changes exactly these, so the selector stops matching the
+  element it was written for. A status is usually what the assertion is
+  *about*; it is never the handle.
+- **A graph-local id.** `[id=ac90e7f1f929166f00bde397ffe734b9]` is the identity
+  `graph-local-identity` exists to refuse. Converting a positional index into
+  one trades a fragile pin for a forbidden one.
+- **A graph id wrapped in prose.** `[name=452e448c… implements 3f2e24ad…]` and
+  `[reason=grounded to selected Intent(s): 1303800…]` carry the same ids inside
+  a sentence and rot the same way.
+
+Key on what names the thing regardless of its state: `[locator=effective]`,
+`[command=loom doctor]`, `[name=derived]`, `[landing=new_journey]`. If the only
+unique value in an element is a status or an id, keep the index and say why.
+
+### The residue this leaves, and why it is not debt
+
+After conversion, `journey lint` still reports positional findings that are
+correct as written. Each has a reason, and a reason is what separates a
+classified pin from a liability:
+
+| Kind | Why the index stays |
+|---|---|
+| append-only history | position *is* recency, and settling appends |
+| human-gated fixture | conversion resets a proof that needs a human resume |
+| no usable identity | every unique field is a status or a graph id |
+| nested identity | the identity is one level down; `[key=value]` reaches one |
+| indistinguishable members | two queue items differing only in a nested target |
+| invariant counts | `tombstone_count == 0` is an invariant, not a census |
+
+When you leave one, leave it deliberately. An advisory nobody can explain is
+debt; an advisory with a written cause is a design decision that happens to be
+visible.
