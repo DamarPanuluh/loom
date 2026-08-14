@@ -1,12 +1,27 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "proof-strength",
+  "bindings": [
+    {
+      "operation_id": "run-liveness-only-proof",
+      "step_id": "run-liveness-proof"
+    },
+    {
+      "operation_id": "inspect-derived-proof-strength",
+      "step_id": "inspect-derived-strength"
+    }
+  ],
   "journey_hash": "f63b04309c995783",
+  "journey_id": "proof-strength",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "register-liveness-only-proof"
+    ]
+  },
   "surface": {
-    "id": "proof-strength-validation-cli",
-    "title": "Observed proof-strength grading",
-    "identity": "loom validation",
     "codefile": "src/commands/proof_cmd.rs",
+    "id": "proof-strength-validation-cli",
+    "identity": "loom validation",
     "locator": "validation",
     "operations": [
       {
@@ -48,7 +63,7 @@
             {
               "equals": "d5d5f7c3f72ea9c1175ee6b21b42f499",
               "id": "inspect-target-intent",
-              "pointer": "/validates/0/id",
+              "pointer": "/validates/[id=d5d5f7c3f72ea9c1175ee6b21b42f499]/id",
               "type": "string"
             },
             {
@@ -234,22 +249,7 @@
         "read_only": false,
         "summary": "Run the registered liveness-only proof and record the observed passing outcome"
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "register-liveness-only-proof"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "run-liveness-only-proof",
-      "step_id": "run-liveness-proof"
-    },
-    {
-      "operation_id": "inspect-derived-proof-strength",
-      "step_id": "inspect-derived-strength"
-    }
-  ]
+    ],
+    "title": "Observed proof-strength grading"
+  }
 }

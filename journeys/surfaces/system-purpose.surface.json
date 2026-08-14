@@ -1,12 +1,31 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "system-purpose",
+  "bindings": [
+    {
+      "operation_id": "inspect-living-graph",
+      "step_id": "inspect-living-graph"
+    },
+    {
+      "operation_id": "recover-product-purpose",
+      "step_id": "recover-product-purpose"
+    },
+    {
+      "operation_id": "audit-graph-integrity",
+      "step_id": "audit-graph-integrity"
+    }
+  ],
   "journey_hash": "284361f2fdb1b67b",
+  "journey_id": "system-purpose",
+  "schema": "loom.journey.surface/v1",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": [
+      "prepare-owned-snapshot"
+    ]
+  },
   "surface": {
-    "id": "system-purpose-cli",
-    "title": "Living graph purpose and integrity",
-    "identity": "loom",
     "codefile": "src/commands.rs",
+    "id": "system-purpose-cli",
+    "identity": "loom",
     "locator": "run",
     "operations": [
       {
@@ -80,37 +99,37 @@
             {
               "equals": "seeded",
               "id": "first-rung-name",
-              "pointer": "/maturity/rungs/0/name",
+              "pointer": "/maturity/rungs/[name=seeded]/name",
               "type": "string"
             },
             {
               "equals": "seed",
               "id": "first-rung-lane",
-              "pointer": "/maturity/rungs/0/lane",
+              "pointer": "/maturity/rungs/[name=seeded]/lane",
               "type": "string"
             },
             {
               "id": "first-rung-state",
               "matches": "^(met|unmet|open)$",
-              "pointer": "/maturity/rungs/0/state",
+              "pointer": "/maturity/rungs/[name=seeded]/state",
               "type": "string"
             },
             {
               "equals": "deepening",
               "id": "last-rung-name",
-              "pointer": "/maturity/rungs/17/name",
+              "pointer": "/maturity/rungs/[name=deepening]/name",
               "type": "string"
             },
             {
               "equals": "deepen",
               "id": "last-rung-lane",
-              "pointer": "/maturity/rungs/17/lane",
+              "pointer": "/maturity/rungs/[name=deepening]/lane",
               "type": "string"
             },
             {
               "id": "last-rung-state",
               "matches": "^(met|unmet|open)$",
-              "pointer": "/maturity/rungs/17/state",
+              "pointer": "/maturity/rungs/[name=deepening]/state",
               "type": "string"
             },
             {
@@ -381,26 +400,7 @@
         "read_only": false,
         "summary": "Return the authored falsifiable-graph purpose and its exact current realizing code grounding together."
       }
-    ]
-  },
-  "setup": {
-    "graph": "local_snapshot",
-    "operations": [
-      "prepare-owned-snapshot"
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "inspect-living-graph",
-      "step_id": "inspect-living-graph"
-    },
-    {
-      "operation_id": "recover-product-purpose",
-      "step_id": "recover-product-purpose"
-    },
-    {
-      "operation_id": "audit-graph-integrity",
-      "step_id": "audit-graph-integrity"
-    }
-  ]
+    ],
+    "title": "Living graph purpose and integrity"
+  }
 }

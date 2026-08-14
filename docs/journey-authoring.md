@@ -223,3 +223,59 @@ successfully, including an advisory-only report.
   temporally transitioned registered file from current repository content.
 - Run targeted lint during editing and all-project lint before acceptance or
   review.
+
+## Selecting array members: identity vs position
+
+A JSON pointer segment may be `[key=value]` instead of an index. It selects the
+one array element whose `key` field equals `value`:
+
+```
+/responses/1/result/tools/[name=loom_context]/inputSchema/type
+```
+
+This is the assertion-plane counterpart of `loom codefile anchor --at-symbol`.
+An index records where something sat when the fixture was written; add or
+reorder an element and the assertion checks a *different* one, confidently and
+silently. A selector names what it means and cannot drift.
+
+Selectors fail closed. No match fails; **two** matches fail rather than
+silently taking the first, because a selector that names two elements has
+identified nothing; a selector applied to a non-array fails; and a key or value
+containing `[`, `]`, `=`, `/` or `~` is refused at authoring time rather than
+guessed at — select on a field whose value is free of pointer syntax. A pointer
+with no selector is resolved by `serde_json` verbatim, so existing proofs are
+unaffected, and `OutputAssertion` is unchanged, so the compiler version does not
+move.
+
+### When a numeric index is correct
+
+`positional-census-pointer` is advisory because three kinds of index are not
+census positions at all. Converting these is wrong, not merely unnecessary:
+
+- **Append-only history — the index *is* the identity.** `/ran/0` means "the
+  most recent run"; `/execution_ledger/0` means "the first command this
+  operation ran". Worse, settling the proof appends another entry, so a name
+  that is unique while diagnosing duplicates immediately afterwards and the
+  selector correctly refuses as ambiguous. Keep the index.
+- **A transcript the operation authored.** An operation carrying its own
+  `--requests-json` decides both how many requests exist and the order of the
+  replies, so `/request_count`, `/response_count` and `/responses/N` are
+  arithmetic on its own input. The lint computes this and stays silent.
+- **The MCP tool-reply envelope.** `mcp::tool_content` is the sole builder of a
+  tool result and always emits exactly one content element, so
+  `/result/content/0` is protocol shape. A *different* content index is a real
+  mistake and still reports.
+
+The rule of thumb: **select by identity in a keyed collection, keep the index in
+an ordered one.** If you cannot name the element without describing where it
+sits, the position is the meaning.
+
+### Converting an existing fixture
+
+Read identities from what the Journey actually produced
+(`loom journey diagnose <id> --json`), never from memory, and rewrite an index
+only where the real element carries a string identity unique within its array.
+Changing a pointer changes the surface definition, so the surface must be
+removed with `--reason` and re-accepted, then recompiled. Judge the result on
+`loom journey run` rather than `diagnose`: a fixture can diagnose green and
+still refuse settlement, because settling mutates the state it asserts on.
