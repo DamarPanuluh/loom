@@ -26,6 +26,15 @@ pub struct SyncReport {
     /// Registered files that previously had content and have now disappeared.
     pub files_deleted: usize,
     pub edges_staled: usize,
+    /// The grounding-plane share of [`Self::edges_staled`]: how many
+    /// `implements` edges this run re-opened. `edges_staled` is a union across
+    /// every plane, so its value depends on how much of the validation plane
+    /// happens to be settled in the graph at hand — the same source change
+    /// re-opens one grounding in a locally proven graph and a hundred-odd
+    /// edges in a freshly imported one, where every imported proof is still
+    /// prose. Anything asserting "this change moved exactly N groundings" —
+    /// a Journey fixture, a release gate — has to read this instead.
+    pub groundings_staled: usize,
     /// Realizing groundings NOT re-opened by a file change because the change
     /// did not touch the symbol their locator names (and no cited evidence in
     /// the file was rewritten) — the payoff of symbol-scoped staleness.
@@ -273,7 +282,26 @@ pub fn run(store: &Store, root: &Path) -> Result<SyncReport> {
     // one of its three conjuncts reads.
     crate::ratification::recompute(store)?;
     rebuild_smell_findings(store, &mut report)?;
+    // Derived from the recorded set rather than counted at each staling site:
+    // every pass above reaches `staled_edges` through a different door, and a
+    // plane counter maintained per-door is one door away from being wrong.
+    report.groundings_staled = grounding_share(store, &report.staled_edges)?;
     Ok(report)
+}
+
+/// How many of `staled` are grounding-plane (`implements`) edges. An edge that
+/// vanished between staling and here simply does not count.
+fn grounding_share(store: &Store, staled: &BTreeSet<String>) -> Result<usize> {
+    let mut groundings = 0;
+    for edge_id in staled {
+        if store
+            .get_edge(edge_id)?
+            .is_some_and(|edge| edge.kind == EdgeKind::Implements)
+        {
+            groundings += 1;
+        }
+    }
+    Ok(groundings)
 }
 
 /// Reset validations whose explicit Validation→CodeFile S3 entry surface

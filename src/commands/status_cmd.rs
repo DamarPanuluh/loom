@@ -189,6 +189,7 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: b
                 "files_scanned": report.files_scanned,
                 "files_changed": report.files_changed,
                 "edges_staled": report.edges_staled,
+                "groundings_staled": report.groundings_staled,
                 "staled_edges": report.staled_edges,
                 "edges_spared": report.edges_spared,
                 "evidence_reanchored": report.evidence_reanchored,
