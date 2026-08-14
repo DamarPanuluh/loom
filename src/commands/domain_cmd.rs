@@ -414,6 +414,13 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
             codefile,
         } => {
             let s = store.resolve_node(&key, Some(NodeType::InterfaceSurface))?;
+            // Resolve EVERY endpoint before the first mutation: a bad
+            // `--codefile` used to land the body edit and then fail, leaving a
+            // rejected write half-committed.
+            let resolved_codefile = codefile
+                .as_ref()
+                .map(|cf| store.resolve_node(cf, Some(NodeType::CodeFile)))
+                .transpose()?;
             let mut body = s.body.clone();
             if let Some(k) = &kind {
                 body["kind"] = serde_json::json!(k);
@@ -422,8 +429,7 @@ pub(crate) fn surface(graph: Option<&Path>, cmd: SurfaceCmd, json: bool) -> Resu
                 body["identity"] = serde_json::json!(id);
             }
             store.set_node_body(&s.id, &body)?;
-            let exposes_edge = if let Some(cf) = codefile {
-                let c = store.resolve_node(&cf, Some(NodeType::CodeFile))?;
+            let exposes_edge = if let Some(c) = resolved_codefile {
                 // re-bind: drop the old exposes edge(s) from this surface, add the new one.
                 for e in store.edges_with(Some(EdgeKind::Exposes), Some(&s.id), None)? {
                     store.delete_edge(&e.id)?;

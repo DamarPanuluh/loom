@@ -280,8 +280,12 @@ impl Lane {
                 c.stale_governs, c.uninspected_governs, c.unmeasured_quality_pairs
             ),
             Lane::Analyze => format!(
-                "{} stale, {} uninspected relationship claim(s)",
-                c.stale_relationships, c.uninspected_relationships
+                "{} stale, {} uninspected relationship claim(s), \
+                 {} failing exemplar(s), {} open research question(s)",
+                c.stale_relationships,
+                c.uninspected_relationships,
+                c.failing_exemplars,
+                c.open_research
             ),
             Lane::Review => format!("{} verdict(s) below the review floor", c.low_confidence),
             Lane::Triage => format!(
