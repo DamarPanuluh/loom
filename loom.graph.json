@@ -8842,11 +8842,11 @@
         "compiler_version": "6",
         "journey_hash": "2662e55df8bfbc05",
         "profile": "proof",
-        "surface_hash": "ddcc72088dc267df",
+        "surface_hash": "79579f9c6bae0dc8",
         "type": "journey"
       },
       "created_at": "2026-08-11T16:48:42.999Z",
-      "updated_at": "2026-08-13T13:41:04.118Z"
+      "updated_at": "2026-08-14T10:55:33.218Z"
     },
     {
       "id": "7ff20b538f860ce58e2534ed407e2874",
@@ -25591,13 +25591,13 @@
       "to_id": "32d79ae1b9bcb3969655ea17d9a03959",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "needs_reverification",
+      "status": "passing",
       "criterion": "src/commands/codefile_cmd.rs realizes stable source anchor identifier issuance",
       "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T14:09:05.403Z",
-      "updated_at": "2026-08-14T10:17:41.978Z"
+      "updated_at": "2026-08-14T10:54:59.641Z"
     },
     {
       "id": "3019bc4ec1eee2600d5e70978e8249f7",
@@ -25754,20 +25754,6 @@
       "updated_at": "2026-08-14T10:21:18.621Z"
     },
     {
-      "id": "33def59333f5bbec7dfa0856032912ce",
-      "from_id": "7fab89811b3359661edbbebd6954c731",
-      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
-      "kind": "exercises",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-13T13:40:51.145Z",
-      "updated_at": "2026-08-14T04:21:57.152Z"
-    },
-    {
       "id": "33e5064412936af8c6e710427f256591",
       "from_id": "d5bea5201b443f0556a6f0f66b040096",
       "to_id": "bb2c0e270aa9b602f84459ebc78932fb",
@@ -25794,20 +25780,6 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T10:21:21.008Z",
       "updated_at": "2026-08-14T10:21:40.874Z"
-    },
-    {
-      "id": "3483e3060cfa8ac294f9bfe9576d4d8b",
-      "from_id": "7fab89811b3359661edbbebd6954c731",
-      "to_id": "0e9bc23ae6a0d3c4ecb2e8983ea3a09a",
-      "kind": "proves",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-13T13:40:51.142Z",
-      "updated_at": "2026-08-13T13:41:04.108Z"
     },
     {
       "id": "34847b2dd83523648dbb26b633b43c9b",
@@ -26216,6 +26188,20 @@
       "updated_at": "2026-08-14T07:36:25.066Z"
     },
     {
+      "id": "4280e6c6542ab663ca309de29496ae33",
+      "from_id": "7fab89811b3359661edbbebd6954c731",
+      "to_id": "f5a874346179b5742587ce283a9dcf9b",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T10:51:24.124Z",
+      "updated_at": "2026-08-14T10:55:33.211Z"
+    },
+    {
       "id": "429c606f5cc65b7c10be5fdaf1fb40e5",
       "from_id": "6e7e39f32da1628063fa9cdbdfbaebfb",
       "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
@@ -26298,6 +26284,20 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:19.897Z",
       "updated_at": "2026-08-09T12:54:19.897Z"
+    },
+    {
+      "id": "478e487340c4b7fa77961529b0888165",
+      "from_id": "7fab89811b3359661edbbebd6954c731",
+      "to_id": "dece3f2b94c9e1254329a509e044a867",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T10:51:24.124Z",
+      "updated_at": "2026-08-14T10:55:33.213Z"
     },
     {
       "id": "4880ae053e8b43466ea10486f71ed04e",
@@ -27462,20 +27462,6 @@
       "updated_at": "2026-08-10T03:58:49.021Z"
     },
     {
-      "id": "7374a3b98850f110dfb840ee90d3c250",
-      "from_id": "7fab89811b3359661edbbebd6954c731",
-      "to_id": "802bcc52dc2e01fae5a58c378987a5e3",
-      "kind": "calls",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-13T13:40:51.143Z",
-      "updated_at": "2026-08-14T04:21:57.152Z"
-    },
-    {
       "id": "73bcf3fd55233da305fb28a41ecdbc05",
       "from_id": "802bcc52dc2e01fae5a58c378987a5e3",
       "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
@@ -27572,20 +27558,6 @@
       "inspected_by": "loom",
       "created_at": "2026-08-11T18:18:00.239Z",
       "updated_at": "2026-08-13T13:46:25.846Z"
-    },
-    {
-      "id": "7778712f96ee66216667af390906a1fb",
-      "from_id": "7fab89811b3359661edbbebd6954c731",
-      "to_id": "09fc9f9cbbf5c81f5b08bf3c8f755673",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-13T13:40:51.142Z",
-      "updated_at": "2026-08-13T13:41:04.105Z"
     },
     {
       "id": "77f875b4568607500335d3a179e3b48b",
@@ -27712,6 +27684,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-09T16:40:04.769Z",
       "updated_at": "2026-08-14T07:16:40.239Z"
+    },
+    {
+      "id": "7c6962ee3a5dbc1fd3af46cb4e149636",
+      "from_id": "7fab89811b3359661edbbebd6954c731",
+      "to_id": "09fc9f9cbbf5c81f5b08bf3c8f755673",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T10:51:24.124Z",
+      "updated_at": "2026-08-14T10:55:33.213Z"
     },
     {
       "id": "7c6dc55b6e33cb3bfb36cc3a4367a886",
@@ -28580,6 +28566,20 @@
       "inspected_by": "",
       "created_at": "2026-08-11T11:32:45.071Z",
       "updated_at": "2026-08-11T11:32:45.071Z"
+    },
+    {
+      "id": "97272fe965743599ec219ba2b3da031f",
+      "from_id": "7fab89811b3359661edbbebd6954c731",
+      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
+      "kind": "exercises",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T10:51:24.125Z",
+      "updated_at": "2026-08-14T10:55:33.216Z"
     },
     {
       "id": "976ba15a6c1c5979301c402bfd97a87b",
@@ -32880,6 +32880,20 @@
       "updated_at": ""
     },
     {
+      "id": "d8681dc699ddaacc77fc9479b6b1274d",
+      "from_id": "7fab89811b3359661edbbebd6954c731",
+      "to_id": "802bcc52dc2e01fae5a58c378987a5e3",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T10:51:24.125Z",
+      "updated_at": "2026-08-14T10:55:33.215Z"
+    },
+    {
       "id": "d8b2263faa02454e1",
       "from_id": "dd05ede04a10b28b5",
       "to_id": "8a537a52adc9adbd8488111f7b2939fb",
@@ -34306,20 +34320,6 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
-    },
-    {
-      "id": "dc76c455c06c3c10653fca208242bd3c",
-      "from_id": "7fab89811b3359661edbbebd6954c731",
-      "to_id": "dece3f2b94c9e1254329a509e044a867",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-13T13:40:51.143Z",
-      "updated_at": "2026-08-13T13:41:04.106Z"
     },
     {
       "id": "dc7a6d6bbf6a97dd1",
@@ -35876,6 +35876,20 @@
       "updated_at": "2026-08-14T07:16:41.143Z"
     },
     {
+      "id": "ed93d056527770c0d7023aab57ba0338",
+      "from_id": "7fab89811b3359661edbbebd6954c731",
+      "to_id": "0e9bc23ae6a0d3c4ecb2e8983ea3a09a",
+      "kind": "proves",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-14T10:51:24.123Z",
+      "updated_at": "2026-08-14T10:55:33.214Z"
+    },
+    {
       "id": "eeb953c2a22a86d8e8e424c601fe6023",
       "from_id": "06265c58361431f69de3bf70060c7c44",
       "to_id": "3863810118a155785d8c6e040eb89a67",
@@ -36084,20 +36098,6 @@
       "inspected_by": "",
       "created_at": "2026-08-11T01:16:57.702Z",
       "updated_at": "2026-08-11T01:16:57.702Z"
-    },
-    {
-      "id": "f69de469c52835c3aac732d2eec8f4a2",
-      "from_id": "7fab89811b3359661edbbebd6954c731",
-      "to_id": "f5a874346179b5742587ce283a9dcf9b",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-13T13:40:51.143Z",
-      "updated_at": "2026-08-13T13:41:04.107Z"
     },
     {
       "id": "f6f5b364ec31c5c1d629a088de00a6be",
@@ -36997,19 +36997,6 @@
       "decision_mode": "individual"
     },
     {
-      "id": "f27c5894107b97919",
-      "subject_kind": "edge",
-      "subject_id": "7778712f96ee66216667af390906a1fb",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-13T13:41:04.103Z",
-      "decision_mode": "individual"
-    },
-    {
       "id": "f27d04fe2cb88200a",
       "subject_kind": "node",
       "subject_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
@@ -37554,19 +37541,6 @@
       "decision_mode": "individual"
     },
     {
-      "id": "f40c6546193dea008",
-      "subject_kind": "edge",
-      "subject_id": "7374a3b98850f110dfb840ee90d3c250",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-14T04:21:57.152Z",
-      "decision_mode": "individual"
-    },
-    {
       "id": "f410a1484df290da3",
       "subject_kind": "edge",
       "subject_id": "3b37ce37d55f6373d4ff6bbf25bfa695",
@@ -37806,6 +37780,19 @@
       "batch_id": "1786627637130-7908-1"
     },
     {
+      "id": "f486a9b5a85426fba",
+      "subject_kind": "edge",
+      "subject_id": "7c6962ee3a5dbc1fd3af46cb4e149636",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T10:55:33.213Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f488c3c5351cef979",
       "subject_kind": "edge",
       "subject_id": "235fcd9d06d9e31bd8a1943d9992ef35",
@@ -37829,19 +37816,6 @@
       "confidence": 0.72,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T06:58:20.268Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "f4cd0439ea0ab9df1",
-      "subject_kind": "edge",
-      "subject_id": "f69de469c52835c3aac732d2eec8f4a2",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-13T13:41:04.107Z",
       "decision_mode": "individual"
     },
     {
@@ -37964,19 +37938,6 @@
       "asserted_at": "2026-08-13T13:27:17.500Z",
       "decision_mode": "batch",
       "batch_id": "1786627637130-7908-1"
-    },
-    {
-      "id": "f52f0efbc374c530f",
-      "subject_kind": "edge",
-      "subject_id": "3483e3060cfa8ac294f9bfe9576d4d8b",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-13T13:41:04.108Z",
-      "decision_mode": "individual"
     },
     {
       "id": "f54b5e3fb05a59bf5",
@@ -38531,6 +38492,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f69eed0625d052138",
+      "subject_kind": "edge",
+      "subject_id": "478e487340c4b7fa77961529b0888165",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T10:55:33.212Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f6ab6a438e540a844",
       "subject_kind": "edge",
       "subject_id": "f858fa4c45a62bf68edf7df1a3cb10d9",
@@ -38954,6 +38928,19 @@
       "asserted_at": "2026-08-13T13:27:17.453Z",
       "decision_mode": "batch",
       "batch_id": "1786627637130-7908-1"
+    },
+    {
+      "id": "f7ba9b7f94ae75833",
+      "subject_kind": "edge",
+      "subject_id": "ed93d056527770c0d7023aab57ba0338",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T10:55:33.214Z",
+      "decision_mode": "individual"
     },
     {
       "id": "f7bc82c8be4af0806",
@@ -39693,6 +39680,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f9becafd967b148c9",
+      "subject_kind": "edge",
+      "subject_id": "d8681dc699ddaacc77fc9479b6b1274d",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T10:55:33.215Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f9c8f9a1b950fcf25",
       "subject_kind": "edge",
       "subject_id": "592357d6c1a95d3b34800b73163b029c",
@@ -39815,6 +39815,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fa183da1215960dd7",
+      "subject_kind": "edge",
+      "subject_id": "4280e6c6542ab663ca309de29496ae33",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T10:55:33.210Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fa289ba5b2b767786",
       "subject_kind": "edge",
       "subject_id": "25581fa5705c7cef0c8fc8e08ca0edf4",
@@ -39921,6 +39934,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fa6861fa2f5cbcbcd",
+      "subject_kind": "edge",
+      "subject_id": "97272fe965743599ec219ba2b3da031f",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-14T10:55:33.216Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fa6d26f242c1503ad",
       "subject_kind": "node",
       "subject_id": "7b58ea1846460aba840d095d9a38fe33",
@@ -39933,19 +39959,6 @@
       "asserted_at": "2026-08-13T13:27:17.173Z",
       "decision_mode": "batch",
       "batch_id": "1786627637130-7908-1"
-    },
-    {
-      "id": "faa4f700887022dda",
-      "subject_kind": "edge",
-      "subject_id": "33def59333f5bbec7dfa0856032912ce",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-14T04:21:57.152Z",
-      "decision_mode": "individual"
     },
     {
       "id": "fab3554c3faf2b687",
@@ -40549,19 +40562,6 @@
       "confidence": 0.85,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T07:16:39.437Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "fc384ec30f9cd3f6b",
-      "subject_kind": "edge",
-      "subject_id": "dc76c455c06c3c10653fca208242bd3c",
-      "claim": "verdict",
-      "state": "passing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-13T13:41:04.106Z",
       "decision_mode": "individual"
     },
     {
@@ -41641,10 +41641,10 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "src/commands/codefile_cmd.rs realizes stable source anchor identifier issuance",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-11T01:28:05.803Z",
+      "asserted_at": "2026-08-14T10:54:59.612Z",
       "decision_mode": "individual"
     },
     {
@@ -45369,120 +45369,6 @@
       "recorded_at": "2026-08-14T07:16:39.470Z"
     },
     {
-      "id": "e0de25701ef9e9f2d",
-      "fact_id": "f27c5894107b97919",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run source-anchor-tracing --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "fe4a6da969801ed2",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 20,
-        "observed_assertions": [
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-id-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-locator-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-marker-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-file-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-entry-is-exact"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-id-is-preserved"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-remains-settled"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "attached-anchor-locator-is-accepted"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "navigation-only-lint-is-explicit"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-issued-anchor-id"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-canonical-locator"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-codefile"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-entry-name"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-callable"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-anchor-owner"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-blast-radius"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-source-change-is-detected"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-reopens-state"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-deletes-no-file"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-guesses-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786628464100",
-        "loom_version": "0.31.4"
-      },
-      "recorded_at": "2026-08-13T13:41:04.103Z"
-    },
-    {
-      "id": "e6a3919bdb2dd09b9",
-      "fact_id": "f27c5894107b97919",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-13T13:41:04.103Z"
-    },
-    {
       "id": "e4cb22804de657933",
       "fact_id": "f27d04fe2cb88200a",
       "payload": {
@@ -47788,120 +47674,6 @@
       "recorded_at": "2026-08-14T04:21:57.040Z"
     },
     {
-      "id": "e356e3ad651d652c3",
-      "fact_id": "f40c6546193dea008",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run source-anchor-tracing --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "fe4a6da969801ed2",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 20,
-        "observed_assertions": [
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-id-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-locator-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-marker-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-file-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-entry-is-exact"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-id-is-preserved"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-remains-settled"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "attached-anchor-locator-is-accepted"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "navigation-only-lint-is-explicit"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-issued-anchor-id"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-canonical-locator"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-codefile"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-entry-name"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-callable"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-anchor-owner"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-blast-radius"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-source-change-is-detected"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-reopens-state"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-deletes-no-file"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-guesses-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786628464100",
-        "loom_version": "0.31.4"
-      },
-      "recorded_at": "2026-08-14T04:21:57.152Z"
-    },
-    {
-      "id": "ea20654fff2e6393a",
-      "fact_id": "f40c6546193dea008",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'journey:source-anchor-tracing:proof' already passed; copied locally-minted observation onto uninspected compiler topology"
-      },
-      "recorded_at": "2026-08-14T04:21:57.152Z"
-    },
-    {
       "id": "e4d859372bfb363b8",
       "fact_id": "f410a1484df290da3",
       "payload": {
@@ -49034,6 +48806,120 @@
       "recorded_at": "2026-08-13T13:27:17.163Z"
     },
     {
+      "id": "e0d27a8a837065898",
+      "fact_id": "f486a9b5a85426fba",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run source-anchor-tracing --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "fe4a6da969801ed2",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-id-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-locator-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-marker-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-file-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-entry-is-exact"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-id-is-preserved"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-remains-settled"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "attached-anchor-locator-is-accepted"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "navigation-only-lint-is-explicit"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-issued-anchor-id"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-canonical-locator"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-codefile"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-entry-name"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-callable"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-anchor-owner"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-blast-radius"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-source-change-is-detected"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-reopens-state"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-deletes-no-file"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-guesses-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786704933207",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T10:55:33.213Z"
+    },
+    {
+      "id": "ed945b85215201a20",
+      "fact_id": "f486a9b5a85426fba",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T10:55:33.213Z"
+    },
+    {
       "id": "e150fd0f380a1e0e2",
       "fact_id": "f488c3c5351cef979",
       "payload": {
@@ -49184,120 +49070,6 @@
         "text": "src/limits.rs:23-90 `pub fn all() -> Vec<Limit>` builds each entry by referencing the real enforcing constant, e.g. line 27 `value: crate::runner::DEFAULT_TIMEOUT_SECS`, line 34 `crate::scan::SCAN_TIMEOUT_SECS`, line 41 `crate::subprocess::KEEP_BYTES`, line 55 `crate::evidence::MAX_SPANS`; module doc lines 1-7 states the registry 'cannot drift from enforcement' since each entry cites the constant its enforcing module uses. This is purely numeric/structural data (no prose or ranking settled as truth), matching the 'limits' item of the compound 'Context, limits, orientation, pulse, wiki, and risk views' intent."
       },
       "recorded_at": "2026-08-14T06:58:20.268Z"
-    },
-    {
-      "id": "e4c393a9f545fe95c",
-      "fact_id": "f4cd0439ea0ab9df1",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run source-anchor-tracing --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "fe4a6da969801ed2",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 20,
-        "observed_assertions": [
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-id-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-locator-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-marker-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-file-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-entry-is-exact"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-id-is-preserved"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-remains-settled"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "attached-anchor-locator-is-accepted"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "navigation-only-lint-is-explicit"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-issued-anchor-id"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-canonical-locator"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-codefile"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-entry-name"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-callable"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-anchor-owner"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-blast-radius"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-source-change-is-detected"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-reopens-state"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-deletes-no-file"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-guesses-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786628464100",
-        "loom_version": "0.31.4"
-      },
-      "recorded_at": "2026-08-13T13:41:04.107Z"
-    },
-    {
-      "id": "ee1d2eeca0332886c",
-      "fact_id": "f4cd0439ea0ab9df1",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-13T13:41:04.107Z"
     },
     {
       "id": "e02c02e56d6fdbf43",
@@ -49675,120 +49447,6 @@
         "text": "re-establish local standing for imported wantedness; meaning is unchanged"
       },
       "recorded_at": "2026-08-13T13:27:17.500Z"
-    },
-    {
-      "id": "e5d4c129439966fb8",
-      "fact_id": "f52f0efbc374c530f",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-13T13:41:04.108Z"
-    },
-    {
-      "id": "e840dadeeedf6f070",
-      "fact_id": "f52f0efbc374c530f",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run source-anchor-tracing --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "fe4a6da969801ed2",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 20,
-        "observed_assertions": [
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-id-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-locator-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-marker-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-file-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-entry-is-exact"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-id-is-preserved"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-remains-settled"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "attached-anchor-locator-is-accepted"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "navigation-only-lint-is-explicit"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-issued-anchor-id"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-canonical-locator"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-codefile"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-entry-name"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-callable"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-anchor-owner"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-blast-radius"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-source-change-is-detected"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-reopens-state"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-deletes-no-file"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-guesses-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786628464100",
-        "loom_version": "0.31.4"
-      },
-      "recorded_at": "2026-08-13T13:41:04.108Z"
     },
     {
       "id": "e20979848f2da586f",
@@ -52908,6 +52566,120 @@
       "recorded_at": "2026-08-14T07:29:18.876Z"
     },
     {
+      "id": "e72efce5ef611c97b",
+      "fact_id": "f69eed0625d052138",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T10:55:33.212Z"
+    },
+    {
+      "id": "efc72ec517f1a6c07",
+      "fact_id": "f69eed0625d052138",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run source-anchor-tracing --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "fe4a6da969801ed2",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-id-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-locator-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-marker-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-file-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-entry-is-exact"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-id-is-preserved"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-remains-settled"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "attached-anchor-locator-is-accepted"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "navigation-only-lint-is-explicit"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-issued-anchor-id"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-canonical-locator"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-codefile"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-entry-name"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-callable"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-anchor-owner"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-blast-radius"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-source-change-is-detected"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-reopens-state"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-deletes-no-file"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-guesses-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786704933207",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T10:55:33.212Z"
+    },
+    {
       "id": "e349e97fe785bdcad",
       "fact_id": "f6ab6a438e540a844",
       "payload": {
@@ -54976,6 +54748,120 @@
         "text": "re-establish local standing for imported wantedness; meaning is unchanged"
       },
       "recorded_at": "2026-08-13T13:27:17.453Z"
+    },
+    {
+      "id": "e540e657c1d26d4e1",
+      "fact_id": "f7ba9b7f94ae75833",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T10:55:33.214Z"
+    },
+    {
+      "id": "ee15868227c185f75",
+      "fact_id": "f7ba9b7f94ae75833",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run source-anchor-tracing --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "fe4a6da969801ed2",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-id-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-locator-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-marker-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-file-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-entry-is-exact"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-id-is-preserved"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-remains-settled"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "attached-anchor-locator-is-accepted"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "navigation-only-lint-is-explicit"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-issued-anchor-id"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-canonical-locator"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-codefile"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-entry-name"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-callable"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-anchor-owner"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-blast-radius"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-source-change-is-detected"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-reopens-state"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-deletes-no-file"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-guesses-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786704933207",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T10:55:33.214Z"
     },
     {
       "id": "e3d50cace52b03f78",
@@ -59516,6 +59402,120 @@
       "recorded_at": "2026-08-14T07:16:41.136Z"
     },
     {
+      "id": "eb8b33f62ad543771",
+      "fact_id": "f9becafd967b148c9",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run source-anchor-tracing --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "fe4a6da969801ed2",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-id-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-locator-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-marker-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-file-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-entry-is-exact"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-id-is-preserved"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-remains-settled"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "attached-anchor-locator-is-accepted"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "navigation-only-lint-is-explicit"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-issued-anchor-id"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-canonical-locator"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-codefile"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-entry-name"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-callable"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-anchor-owner"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-blast-radius"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-source-change-is-detected"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-reopens-state"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-deletes-no-file"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-guesses-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786704933207",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T10:55:33.215Z"
+    },
+    {
+      "id": "ec1bf28bfee082be5",
+      "fact_id": "f9becafd967b148c9",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T10:55:33.215Z"
+    },
+    {
       "id": "e2444f276733dec9a",
       "fact_id": "f9c8f9a1b950fcf25",
       "payload": {
@@ -59952,6 +59952,120 @@
         "text": "`cargo test --test ring1` exit 0"
       },
       "recorded_at": "2026-08-13T13:45:47.522Z"
+    },
+    {
+      "id": "e490eaf10c29e2cdf",
+      "fact_id": "fa183da1215960dd7",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-14T10:55:33.210Z"
+    },
+    {
+      "id": "ed9fc414e2e49de43",
+      "fact_id": "fa183da1215960dd7",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run source-anchor-tracing --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "fe4a6da969801ed2",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "2a74bc5bddbf803a"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-id-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-locator-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-marker-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-file-is-exact"
+          },
+          {
+            "group": "request-codefile-command-anchor",
+            "assertion": "issued-anchor-entry-is-exact"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-id-is-preserved"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "existing-edge-remains-settled"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "attached-anchor-locator-is-accepted"
+          },
+          {
+            "group": "bind-existing-grounding-to-attached-anchor",
+            "assertion": "navigation-only-lint-is-explicit"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-issued-anchor-id"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-canonical-locator"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-keeps-codefile"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-entry-name"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-resolves-current-callable"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-anchor-owner"
+          },
+          {
+            "group": "trace-renamed-entry-by-anchor",
+            "assertion": "trace-projects-blast-radius"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-source-change-is-detected"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-reopens-state"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-deletes-no-file"
+          },
+          {
+            "group": "reject-duplicated-anchor-on-sync",
+            "assertion": "invalid-anchor-guesses-no-missing-file"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786704933207",
+        "loom_version": "0.32.0"
+      },
+      "recorded_at": "2026-08-14T10:55:33.210Z"
     },
     {
       "id": "ebda90016a9da53a3",
@@ -60444,26 +60558,8 @@
       "recorded_at": "2026-08-14T06:58:20.838Z"
     },
     {
-      "id": "e23d5c848f813bfaf",
-      "fact_id": "fa6d26f242c1503ad",
-      "payload": {
-        "kind": "claim",
-        "text": "re-establish local standing for imported wantedness; meaning is unchanged"
-      },
-      "recorded_at": "2026-08-13T13:27:17.173Z"
-    },
-    {
-      "id": "e9eb50ac065d8cce2",
-      "fact_id": "fa6d26f242c1503ad",
-      "payload": {
-        "kind": "journal",
-        "ref": "1786627637169-7908-9"
-      },
-      "recorded_at": "2026-08-13T13:27:17.173Z"
-    },
-    {
-      "id": "e3963472ade089da1",
-      "fact_id": "faa4f700887022dda",
+      "id": "ea0391dadcdc18eff",
+      "fact_id": "fa6861fa2f5cbcbcd",
       "payload": {
         "kind": "run",
         "producer": "journey",
@@ -60561,19 +60657,37 @@
         ],
         "locally_minted": true,
         "duration_ms": 0,
-        "ran_at": "1786628464100",
-        "loom_version": "0.31.4"
+        "ran_at": "1786704933207",
+        "loom_version": "0.32.0"
       },
-      "recorded_at": "2026-08-14T04:21:57.152Z"
+      "recorded_at": "2026-08-14T10:55:33.216Z"
     },
     {
-      "id": "e563ed52a80d27838",
-      "fact_id": "faa4f700887022dda",
+      "id": "ea966844504509773",
+      "fact_id": "fa6861fa2f5cbcbcd",
       "payload": {
         "kind": "claim",
-        "text": "compiled Journey 'journey:source-anchor-tracing:proof' already passed; copied locally-minted observation onto uninspected compiler topology"
+        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
       },
-      "recorded_at": "2026-08-14T04:21:57.152Z"
+      "recorded_at": "2026-08-14T10:55:33.216Z"
+    },
+    {
+      "id": "e23d5c848f813bfaf",
+      "fact_id": "fa6d26f242c1503ad",
+      "payload": {
+        "kind": "claim",
+        "text": "re-establish local standing for imported wantedness; meaning is unchanged"
+      },
+      "recorded_at": "2026-08-13T13:27:17.173Z"
+    },
+    {
+      "id": "e9eb50ac065d8cce2",
+      "fact_id": "fa6d26f242c1503ad",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786627637169-7908-9"
+      },
+      "recorded_at": "2026-08-13T13:27:17.173Z"
     },
     {
       "id": "e231297e9254da2c0",
@@ -63770,120 +63884,6 @@
         "text": "src/workitem/contracts.rs:1131-1189 defines ratify_contract returning a PromptContract with mindset 'The LLM summarizes the evidence, recommends one option with reasons, asks the human, waits, then records the human's answer' (1135-1136), a human_gate (1164-1188) with a question and exactly three options (ratify/reject/revise, 1166-1185), each carrying a description and a write_back command constructed by the LLM (not typed by the human), a mandatory recommendation field (1186), and forbidden_actions explicitly barring paraphrasing silence as approval or choosing on the human's behalf (1146-1148)."
       },
       "recorded_at": "2026-08-14T07:16:39.437Z"
-    },
-    {
-      "id": "ea8bfecf6ddac9712",
-      "fact_id": "fc384ec30f9cd3f6b",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run source-anchor-tracing --profile proof",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "fe4a6da969801ed2",
-        "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"journey\":\"source-anchor-tracing\",\"passed_assertions\":[{\"assertion_id\":\"issued-anchor-id-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-locator-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-marker-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-file-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"issued-anchor-entry-is-exact\",\"operation_id\":\"request-codefile-command-anchor\"},{\"assertion_id\":\"existing-edge-id-is-preserved\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"existing-edge-remains-settled\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"attached-anchor-locator-is-accepted\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"navigation-only-lint-is-explicit\",\"operation_id\":\"bind-existing-grounding-to-attached-anchor\"},{\"assertion_id\":\"trace-keeps-issued-anchor-id\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-canonical-locator\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-keeps-codefile\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-entry-name\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-resolves-current-callable\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-anchor-owner\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"trace-projects-blast-radius\",\"operation_id\":\"trace-renamed-entry-by-anchor\"},{\"assertion_id\":\"invalid-anchor-source-change-is-detected\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-reopens-state\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-deletes-no-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"},{\"assertion_id\":\"invalid-anchor-guesses-no-missing-file\",\"operation_id\":\"reject-duplicated-anchor-on-sync\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
-        "covered": {
-          "src/commands.rs": "2a74bc5bddbf803a"
-        },
-        "assertions": 20,
-        "observed_assertions": [
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-id-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-locator-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-marker-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-file-is-exact"
-          },
-          {
-            "group": "request-codefile-command-anchor",
-            "assertion": "issued-anchor-entry-is-exact"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-id-is-preserved"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "existing-edge-remains-settled"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "attached-anchor-locator-is-accepted"
-          },
-          {
-            "group": "bind-existing-grounding-to-attached-anchor",
-            "assertion": "navigation-only-lint-is-explicit"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-issued-anchor-id"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-canonical-locator"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-keeps-codefile"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-entry-name"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-resolves-current-callable"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-anchor-owner"
-          },
-          {
-            "group": "trace-renamed-entry-by-anchor",
-            "assertion": "trace-projects-blast-radius"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-source-change-is-detected"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-reopens-state"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-deletes-no-file"
-          },
-          {
-            "group": "reject-duplicated-anchor-on-sync",
-            "assertion": "invalid-anchor-guesses-no-missing-file"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786628464100",
-        "loom_version": "0.31.4"
-      },
-      "recorded_at": "2026-08-13T13:41:04.106Z"
-    },
-    {
-      "id": "ed93b8f61fb30b5ba",
-      "fact_id": "fc384ec30f9cd3f6b",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'source-anchor-tracing:proof' observed passed with 20 typed assertion(s)"
-      },
-      "recorded_at": "2026-08-13T13:41:04.106Z"
     },
     {
       "id": "e60492217ef2f118e",
@@ -69582,15 +69582,6 @@
       "recorded_at": "2026-08-13T13:27:17.341Z"
     },
     {
-      "id": "e3fbdb5a5c85d9fed",
-      "fact_id": "ffa3afff673730a50",
-      "payload": {
-        "kind": "claim",
-        "text": "pub(crate) fn codefile_anchor at src/commands/codefile_cmd.rs:455 mints loom:anchor identifiers; symbol present and unique"
-      },
-      "recorded_at": "2026-08-11T01:28:05.803Z"
-    },
-    {
       "id": "ea812da59b97b0caf",
       "fact_id": "ffa3afff673730a50",
       "payload": {
@@ -69600,12 +69591,12 @@
         "end": 466,
         "hash": "d8106e64b13bd5b5",
         "symbol": "codefile_anchor",
-        "symbol_hash": "f15538a3daef6d61"
+        "symbol_hash": "9860064ee20428a4"
       },
-      "recorded_at": "2026-08-11T01:28:05.803Z"
+      "recorded_at": "2026-08-14T10:54:59.612Z"
     },
     {
-      "id": "ee8d345b05e1f5e9e",
+      "id": "eaef96381df1701e1",
       "fact_id": "ffa3afff673730a50",
       "payload": {
         "kind": "run",
@@ -69613,19 +69604,28 @@
         "command": "resolve 'fn codefile_anchor' in src/commands/codefile_cmd.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "7b42fbe5a7d3abce",
+        "stdout_hash": "f74c206852acf925",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'codefile_anchor' in src/commands/codefile_cmd.rs (1 match) [f15538a3daef6d61]",
+        "stdout_excerpt": "function 'codefile_anchor' in src/commands/codefile_cmd.rs (1 match) [9860064ee20428a4]",
         "covered": {
-          "src/commands/codefile_cmd.rs": "251718910273bdb6"
+          "src/commands/codefile_cmd.rs": "2b4de1145d650a07"
         },
         "assertions": 1,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786411685826",
-        "loom_version": "0.29.2"
+        "ran_at": "1786704899637",
+        "loom_version": "0.32.0"
       },
-      "recorded_at": "2026-08-11T01:28:05.803Z"
+      "recorded_at": "2026-08-14T10:54:59.612Z"
+    },
+    {
+      "id": "ede8664add31573d0",
+      "fact_id": "ffa3afff673730a50",
+      "payload": {
+        "kind": "claim",
+        "text": "pub(crate) fn codefile_anchor at src/commands/codefile_cmd.rs:466 mints loom:anchor identifiers; still read-only (creates no graph object, relationship, proof, journal event, or export change) and now resolves a declaration by --at-line or --at-symbol; symbol present and unique"
+      },
+      "recorded_at": "2026-08-14T10:54:59.612Z"
     },
     {
       "id": "e26cc5c1d0e9bcba6",
@@ -73532,7 +73532,7 @@
       "target_id": "2eff56f5be59f1e6fd4b3ae8dcd07903",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/codefile_cmd.rs\",\"start\":455,\"end\":455,\"hash\":\"d8106e64b13bd5b5\",\"symbol\":\"codefile_anchor\",\"symbol_hash\":\"f15538a3daef6d61\"}]",
+      "value": "[{\"file\":\"src/commands/codefile_cmd.rs\",\"start\":466,\"end\":466,\"hash\":\"d8106e64b13bd5b5\",\"symbol\":\"codefile_anchor\",\"symbol_hash\":\"9860064ee20428a4\"}]",
       "truth_class": "asserted"
     },
     {
@@ -73541,13 +73541,6 @@
       "key": "locator",
       "value": "fn codefile_anchor",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "2eff56f5be59f1e6fd4b3ae8dcd07903",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "resolve 'fn codefile_anchor' in src/commands/codefile_cmd.rs no longer holds (subject_redefined)",
-      "truth_class": "derived"
     },
     {
       "target_id": "3019bc4ec1eee2600d5e70978e8249f7",
@@ -73806,20 +73799,6 @@
       "target_kind": "edge",
       "key": "setup",
       "value": "{\"before_steps\":{\"change-one-grounded-symbol\":[{\"content\":\"//! Sync — the structural recompute and ripple engine.\\n//!\\n//! Plane: orchestration over the store. Sync is content-hash based:\\n//! - re-extracts derived facets for files whose content changed,\\n//! - ripples staleness to asserted edges that depended on a *real* change\\n//!   (a file with a PRIOR hash that now differs — a missing prior hash is a\\n//!   rebuild/first-extract, not a change, so it never falsely stales),\\n//! - rebuilds the derived finding plane deterministically every run.\\n//!\\n//! This is the second half of INV-2: `store.wipe_derived()` then `sync` yields a\\n//! byte-identical derived plane (deterministic ids + sentinel timestamps + a\\n//! pure extraction), and ripples nothing because no prior hashes remain.\\n\\nuse crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind};\\nuse crate::store::Store;\\nuse crate::Result;\\nuse serde::Serialize;\\nuse std::collections::BTreeSet;\\nuse std::path::Path;\\n\\n/// Summary of one sync run.\\n#[derive(Debug, Default, Clone)]\\npub struct SyncReport {\\n    pub files_scanned: usize,\\n    pub files_changed: usize,\\n    /// Registered files that previously had content and have now disappeared.\\n    pub files_deleted: usize,\\n    pub edges_staled: usize,\\n    /// Realizing groundings NOT re-opened by a file change because the change\\n    /// did not touch the symbol their locator names (and no cited evidence in\\n    /// the file was rewritten) — the payoff of symbol-scoped staleness.\\n    pub edges_spared: usize,\\n    pub validations_reset: usize,\\n    /// Evidence spans re-anchored to new coordinates (a move, not a rewrite) —\\n    /// journaled as `evidence_reanchor`, no re-verdict demanded.\\n    pub evidence_reanchored: usize,\\n    /// Interface surfaces whose backing code changed this run (integration monitoring).\\n    pub surfaces_affected: usize,\\n    /// Contracts (validations exercising an affected surface) reset to `not_run`.\\n    pub contracts_reset: usize,\\n    pub findings: usize,\\n    /// Wiki pages marked stale because a documented intent's meaning, code, or\\n    /// proof drifted since the page was last recorded.\\n    pub wiki_staled: usize,\\n    pub missing: Vec<String>,\\n    /// The exact edges this run re-opened, in deterministic id order. The count\\n    /// alone is not actionable: anything that asserts on `edges_staled` — a\\n    /// Journey fixture, a release gate, an operator reading `sync --json` — has\\n    /// to know WHICH claim moved before it can decide whether the ripple was\\n    /// the expected one.\\n    pub staled_edges: BTreeSet<String>,\\n}\\n\\n/// One strict source-anchor locator that a read-only sync preview can no\\n/// longer resolve. The locator module owns syntax and cardinality policy; sync\\n/// carries only the affected graph edge and the exact resolver error.\\n#[derive(Debug, Clone, Serialize)]\\npub struct AnchorStaleness {\\n    pub edge_id: String,\\n    pub edge_kind: EdgeKind,\\n    pub codefile_id: String,\\n    pub path: String,\\n    pub locator: String,\\n    pub cause: String,\\n}\\n\\n/// Read-only answer to “would structural sync observe different repository\\n/// state?”. It deliberately does not run derivers or write a freshness stamp.\\n#[derive(Debug, Clone, Default, Serialize)]\\npub struct SyncPreview {\\n    pub fresh: bool,\\n    pub changed_files: Vec<String>,\\n    pub missing_files: Vec<String>,\\n    pub unregistered_glob_matches: Vec<String>,\\n    pub invalid_anchors: Vec<AnchorStaleness>,\\n}\\n\\nimpl SyncPreview {\\n    pub fn affected_paths(&self) -> Vec<String> {\\n        let mut paths = self.changed_files.clone();\\n        paths.extend(self.missing_files.iter().cloned());\\n        paths.extend(self.unregistered_glob_matches.iter().cloned());\\n        paths.extend(\\n            self.invalid_anchors\\n                .iter()\\n                .map(|anchor| anchor.path.clone()),\\n        );\\n        paths.sort();\\n        paths.dedup();\\n        paths\\n    }\\n\\n    pub fn evidence_lines(&self) -> Vec<String> {\\n        if self.fresh {\\n            return vec![\\\"registered repository content matches the synchronized graph\\\".into()];\\n        }\\n        let mut evidence = Vec::new();\\n        evidence.extend(\\n            self.changed_files\\n                .iter()\\n                .map(|path| format!(\\\"content changed since sync: {path}\\\")),\\n        );\\n        evidence.extend(\\n            self.missing_files\\n                .iter()\\n                .map(|path| format!(\\\"registered file missing: {path}\\\")),\\n        );\\n        evidence.extend(\\n            self.unregistered_glob_matches\\n                .iter()\\n                .map(|path| format!(\\\"remembered glob has unregistered file: {path}\\\")),\\n        );\\n        evidence.extend(self.invalid_anchors.iter().map(|anchor| {\\n            format!(\\n                \\\"anchor invalid on {} edge {} at {}: {}\\\",\\n                anchor.edge_kind, anchor.edge_id, anchor.path, anchor.cause\\n            )\\n        }));\\n        evidence.sort();\\n        evidence\\n    }\\n}\\n\\n/// Inspect repository/sync drift without mutating graph or filesystem state.\\n/// Both this preview and [`run`] consume the same strict anchor plan, keeping\\n/// the definition of anchor freshness local to one implementation.\\npub fn preview(store: &Store, root: &Path) -> Result<SyncPreview> {\\n    let codefiles = store.codefiles()?;\\n    let mut changed_files = Vec::new();\\n    let mut missing_files = Vec::new();\\n    let existing: BTreeSet<String> = codefiles.iter().map(|file| file.name.clone()).collect();\\n\\n    for file in &codefiles {\\n        let path = root.join(&file.name);\\n        let content = match std::fs::read_to_string(&path) {\\n            Ok(content) if crate::fsglob::contains(root, &path) => content,\\n            _ => {\\n                missing_files.push(file.name.clone());\\n                continue;\\n            }\\n        };\\n        let current = crate::extract::fnv1a(&content);\\n        let stored = store.get_facet(&file.id, TargetKind::Node, \\\"content_hash\\\")?;\\n        if stored.as_deref() != Some(current.as_str()) {\\n            changed_files.push(file.name.clone());\\n        }\\n    }\\n\\n    let ignored = crate::fsglob::matcher(store.ignore_globs()?)?;\\n    let globs: Vec<String> = store\\n        .get_meta(\\\"codefile_globs\\\")?\\n        .map(|raw| serde_json::from_str(&raw))\\n        .transpose()?\\n        .unwrap_or_default();\\n    let mut unregistered_glob_matches = Vec::new();\\n    for glob in globs {\\n        for path in crate::fsglob::expand(root, &glob)? {\\n            if !existing.contains(&path) && !ignored.is_match(&path) {\\n                unregistered_glob_matches.push(path);\\n            }\\n        }\\n    }\\n\\n    changed_files.sort();\\n    changed_files.dedup();\\n    missing_files.sort();\\n    missing_files.dedup();\\n    unregistered_glob_matches.sort();\\n    unregistered_glob_matches.dedup();\\n    let invalid_anchors = plan_anchor_staleness(store)?;\\n    let fresh = changed_files.is_empty()\\n        && missing_files.is_empty()\\n        && unregistered_glob_matches.is_empty()\\n        && invalid_anchors.is_empty();\\n    Ok(SyncPreview {\\n        fresh,\\n        changed_files,\\n        missing_files,\\n        unregistered_glob_matches,\\n        invalid_anchors,\\n    })\\n}\\n\\n/// Run a full sync against the graph rooted at `root`. Orchestrates the\\n/// registered code-seed derivers to recompute the derived plane, then ripples\\n/// the artifact changes they report — the engine names no extraction type, so\\n/// unplugging a deriver leaves this loop intact and rippling correctly.\\npub fn run(store: &Store, root: &Path) -> Result<SyncReport> {\\n    let _journey_reopens_anchor_change = ();\\n    let mut report = SyncReport::default();\\n    let mut changed_paths: BTreeSet<String> = BTreeSet::new();\\n    let mut seen_surfaces: BTreeSet<String> = BTreeSet::new();\\n    for deriver in crate::seed::sync_derivers() {\\n        for change in deriver.derive(store, root, &mut report)? {\\n            if let Some(node) = store.get_node(&change.artifact_id)? {\\n                changed_paths.insert(node.name);\\n            }\\n            ripple_surface_contracts(\\n                store,\\n                &change.artifact_id,\\n                &change.cause,\\n                &mut seen_surfaces,\\n                &mut report,\\n            )?;\\n        }\\n    }\\n    report.surfaces_affected = seen_surfaces.len();\\n    ripple_compiled_journey_drift(store, &mut report)?;\\n    // The re-verification pass. One question — \\\"does the thing this fact points\\n    // at still say what it said?\\\" — asked of every anchor in the graph.\\n    //\\n    // This replaced a ~470-line decision table that asked a DIFFERENT question\\n    // per edge kind: does a realizing grounding ripple to its intent, does that\\n    // intent ripple to its relates edges, do those ripple one-sidedly or only\\n    // when both endpoints moved, and so on. Every row of it was a hand-written\\n    // guess at what a change could invalidate. Anchors make the guess\\n    // unnecessary: a fact points at something, and either that thing still\\n    // holds or it does not. Nothing has to know WHY it might not.\\n    //\\n    // Symbol-scoped sparing survives the deletion because it was never really\\n    // about the ripple: a locator Run re-resolves its symbol, so an unrelated\\n    // edit in the same file leaves it standing on its own.\\n    //\\n    // ORDER: this runs BEFORE the derived recomputes below (proof strength,\\n    // ratification, wiki freshness, smell findings). Each of those READS edge\\n    // and validation status — the very state this pass settles by re-opening a\\n    // proof whose anchor broke. Grading first and re-opening after left the\\n    // derived plane one sync stale (a proof graded S3 this run, demoted next),\\n    // so a second sync produced a different graph — a fixpoint violation of\\n    // INV-2. Settling status first makes one sync converge.\\n    // Explicit dependency ripples above may already have moved an edge to\\n    // `needs_reverification` before its evidence fact is rechecked here. The\\n    // re-verifier reports demoted facts, so adding that raw count would count\\n    // the same edge twice. Snapshot the settled boundary and count only edge\\n    // IDs whose status actually transitions during this pass.\\n    let stale_before_reverify: BTreeSet<String> = store\\n        .list_edges(None, usize::MAX)?\\n        .into_iter()\\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\\n        .map(|edge| edge.id)\\n        .collect();\\n    let pass = store.reverify_all(&changed_paths)?;\\n    let stale_after_reverify: BTreeSet<String> = store\\n        .list_edges(None, usize::MAX)?\\n        .into_iter()\\n        .filter(|edge| edge.status == InspectionStatus::NeedsReverification)\\n        .map(|edge| edge.id)\\n        .collect();\\n    let newly_stale = stale_after_reverify.difference(&stale_before_reverify);\\n    for edge_id in newly_stale {\\n        report.edges_staled += 1;\\n        report.staled_edges.insert(edge_id.clone());\\n    }\\n    report.edges_spared += pass.spared;\\n    report.validations_reset += pass.validations_reset;\\n    report.evidence_reanchored += pass.reanchored;\\n    ripple_validation_evidence_drift(store, &changed_paths, &mut report)?;\\n    let anchor_staleness = plan_anchor_staleness(store)?;\\n    apply_anchor_staleness(store, &anchor_staleness, &mut report)?;\\n    // AFTER the pass, deliberately. The anchor machinery is more precise —\\n    // it distinguishes a redefined symbol from a missing one and spares\\n    // untouched groundings — so it gets first say, and this is the backstop\\n    // for anchors it never re-checks at all: a locator whose verdict was\\n    // settled on a cited span, which carries no locator Run to re-resolve.\\n    // Running it first double-counted an edge both mechanisms would stale.\\n    ripple_locator_drift(store, root, &mut report)?;\\n    ripple_wiki_drift(store, &mut report)?;\\n    // Grade every proof from its own shape. Derived, so it is recomputed here\\n    // rather than trusted from whoever registered the validation — the string\\n    // this replaced was supplied by the caller, and `loom journey add`\\n    // hardcoded the top of the scale.\\n    crate::proofstrength::recompute(store, root)?;\\n    // Wantedness earned from evidence. Recomputed AFTER proof strength, which\\n    // one of its three conjuncts reads.\\n    crate::ratification::recompute(store)?;\\n    rebuild_smell_findings(store, &mut report)?;\\n    Ok(report)\\n}\\n\\n/// Reset validations whose explicit Validation→CodeFile S3 entry surface\\n/// changed. `exercises` is evidence provenance, not a verdict-bearing claim, so\\n/// the validation itself is the state that expires.\\nfn ripple_validation_evidence_drift(\\n    store: &Store,\\n    changed_paths: &BTreeSet<String>,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    let mut reset = BTreeSet::new();\\n    let files_by_path: std::collections::BTreeMap<String, String> = store\\n        .list_nodes(Some(NodeType::CodeFile), usize::MAX)?\\n        .into_iter()\\n        .map(|node| (node.name, node.id))\\n        .collect();\\n    for path in changed_paths {\\n        let Some(file_id) = files_by_path.get(path) else {\\n            continue;\\n        };\\n        for edge in store.edges_with(Some(EdgeKind::Exercises), None, Some(file_id))? {\\n            if !reset.insert(edge.from_id.clone()) {\\n                continue;\\n            }\\n            let was_run = store\\n                .get_node(&edge.from_id)?\\n                .is_some_and(|validation| validation.status != \\\"not_run\\\");\\n            if was_run {\\n                stale_validation_closure(\\n                    store,\\n                    &edge.from_id,\\n                    &format!(\\\"validation evidence file '{}' changed\\\", path),\\n                    false,\\n                    report,\\n                )?;\\n            }\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Reset the contracts that exercise an interface surface this file backs.\\n///\\n/// The one dependency in the graph that is NOT evidence: a contract does not\\n/// cite the surface's backing code, it reaches it at run time through a `calls`\\n/// edge. No anchor points there, so re-verification cannot see it, and it stays\\n/// an explicit walk. Idempotent — a contract already at `not_run` is neither\\n/// reset nor counted.\\nfn ripple_surface_contracts(\\n    store: &Store,\\n    cf_id: &str,\\n    cause: &str,\\n    seen_surfaces: &mut BTreeSet<String>,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    // Integration-monitoring ripple: cf is the `to` of an `exposes` edge; the\\n    // surface is its `from`. Reset the contracts that `call` each surface.\\n    for ex_edge in store.edges_with(Some(EdgeKind::Exposes), None, Some(cf_id))? {\\n        let surface_id = ex_edge.from_id;\\n        if !seen_surfaces.insert(surface_id.clone()) {\\n            continue; // already rippled via another changed file this run\\n        }\\n        for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&surface_id))? {\\n            // Only a contract that was actually proven needs re-checking; one\\n            // already at `not_run` is unchanged, so it is neither reset nor\\n            // counted (avoids overstating \\\"need re-verification\\\").\\n            let was_proven = store\\n                .get_node(&call.from_id)?\\n                .map(|n| n.status != \\\"not_run\\\")\\n                .unwrap_or(false);\\n            if !was_proven {\\n                continue;\\n            }\\n            stale_validation_closure(store, &call.from_id, cause, true, report)?;\\n            report.contracts_reset += 1;\\n        }\\n    }\\n    Ok(())\\n}\\n\\nfn stale_validation_closure(\\n    store: &Store,\\n    validation_id: &str,\\n    cause: &str,\\n    stale_calls: bool,\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    for kind in [EdgeKind::Proves, EdgeKind::Validates] {\\n        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {\\n            if store.stale_edge(&edge.id, cause)? {\\n                report.edges_staled += 1;\\n                report.staled_edges.insert(edge.id.clone());\\n            }\\n        }\\n    }\\n    if stale_calls {\\n        for edge in store.edges_with(Some(EdgeKind::Calls), Some(validation_id), None)? {\\n            if store.stale_edge(&edge.id, cause)? {\\n                report.edges_staled += 1;\\n                report.staled_edges.insert(edge.id.clone());\\n            }\\n        }\\n    }\\n    if store\\n        .get_node(validation_id)?\\n        .is_some_and(|validation| validation.status != \\\"not_run\\\")\\n    {\\n        store.reset_validation_status_for_sync(validation_id)?;\\n        report.validations_reset += 1;\\n    }\\n    Ok(())\\n}\\n\\n/// Invalidate compiler output when its semantic or reusable-surface inputs no\\n/// longer match the graph. Raw authored artifact paths are intentionally absent:\\n/// the compiler contract is the Proves+Calls+Exercises closure and its hashes.\\nfn ripple_compiled_journey_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for proves in store.edges_with(Some(EdgeKind::Proves), None, None)? {\\n        let Some(validation) = store.get_node(&proves.from_id)? else {\\n            continue;\\n        };\\n        let Some(journey) = store.get_node(&proves.to_id)? else {\\n            continue;\\n        };\\n        if validation.body.get(\\\"type\\\").and_then(|value| value.as_str()) != Some(\\\"journey\\\") {\\n            continue;\\n        }\\n        let journey_hash = journey\\n            .body\\n            .get(\\\"semantic_hash\\\")\\n            .and_then(|value| value.as_str());\\n        let surface_hash = crate::journey::surface_projection_hash(store, &journey)?;\\n        let body_current = journey_hash.is_some()\\n            && validation\\n                .body\\n                .get(\\\"journey_hash\\\")\\n                .and_then(|value| value.as_str())\\n                == journey_hash\\n            && surface_hash.is_some()\\n            && validation\\n                .body\\n                .get(\\\"surface_hash\\\")\\n                .and_then(|value| value.as_str())\\n                == surface_hash.as_deref()\\n            && validation\\n                .body\\n                .get(\\\"profile\\\")\\n                .and_then(|value| value.as_str())\\n                == Some(\\\"proof\\\")\\n            && validation\\n                .body\\n                .get(\\\"compiler_version\\\")\\n                .and_then(|value| value.as_str())\\n                == Some(crate::journey::JOURNEY_COMPILER_VERSION);\\n        // The compiled Exercises topology and its provenance facets must agree\\n        // exactly with the canonical projection of the accepted surface.\\n        // A missing/stale projection or any semantic disagreement — forged,\\n        // malformed, or obsolete provenance — stales the closure through the\\n        // normal compiler-owned mechanism instead of letting grading carry a\\n        // topology nobody accepted.\\n        let topology_current = match crate::journey_exercises::expected_projection(store, &journey)\\n        {\\n            Ok(projection) => {\\n                crate::journey_exercises::topology_problems(store, &validation.id, &projection)?\\n                    .is_empty()\\n            }\\n            Err(_) => false,\\n        };\\n\\n        let mut accepted_surfaces = BTreeSet::new();\\n        if let Some(hash) = journey_hash {\\n            for surface in store.edges_with(Some(EdgeKind::Surfaces), Some(&journey.id), None)? {\\n                if matches!(\\n                    surface.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                ) && store\\n                    .get_facet(&surface.id, TargetKind::Edge, \\\"journey_hash\\\")?\\n                    .as_deref()\\n                    == Some(hash)\\n                {\\n                    accepted_surfaces.insert(surface.to_id);\\n                }\\n            }\\n        }\\n        let calls_current = store\\n            .edges_with(Some(EdgeKind::Calls), Some(&validation.id), None)?\\n            .into_iter()\\n            .any(|call| {\\n                matches!(\\n                    call.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                ) && accepted_surfaces.contains(&call.to_id)\\n            });\\n        let exercises_current = store\\n            .edges_with(Some(EdgeKind::Exercises), Some(&validation.id), None)?\\n            .into_iter()\\n            .any(|edge| {\\n                matches!(\\n                    edge.status,\\n                    InspectionStatus::Uninspected | InspectionStatus::Passing\\n                )\\n            });\\n        if body_current && calls_current && exercises_current && topology_current {\\n            continue;\\n        }\\n        stale_validation_closure(\\n            store,\\n            &validation.id,\\n            \\\"compiled Journey inputs or proof topology drifted\\\",\\n            true,\\n            report,\\n        )?;\\n    }\\n    Ok(())\\n}\\n\\n/// The freshness fingerprint of a wiki page's scope: a hash over every intent\\n/// the page `documents` — the intent's meaning (lifecycle + updated_at), the\\n/// content of the files that realize it, and whether it is proven. It changes\\n/// iff something the page describes changed, so a recorded page stays fresh\\n/// exactly until its subject drifts. The page's prose/layout is never hashed —\\n/// the graph governs freshness, not form.\\npub fn wiki_scope_hash(store: &Store, page_id: &str) -> Result<String> {\\n    let mut parts: Vec<String> = Vec::new();\\n    let mut docs = store.edges_with(Some(EdgeKind::Documents), Some(page_id), None)?;\\n    docs.sort_by(|a, b| a.to_id.cmp(&b.to_id));\\n    for d in docs {\\n        let Some(intent) = store.get_node(&d.to_id)? else {\\n            continue;\\n        };\\n        parts.push(format!(\\n            \\\"i:{}:{}:{}\\\",\\n            intent.id, intent.status, intent.updated_at\\n        ));\\n        let mut files: Vec<String> = Vec::new();\\n        for g in store.realizing_groundings(&intent.id)? {\\n            let hash = store\\n                .get_facet(&g.to_id, TargetKind::Node, \\\"content_hash\\\")?\\n                .unwrap_or_default();\\n            files.push(format!(\\\"{}={hash}\\\", g.to_id));\\n        }\\n        files.sort();\\n        parts.push(format!(\\\"f:[{}]\\\", files.join(\\\",\\\")));\\n        let proven = store\\n            .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?\\n            .iter()\\n            .any(|v| v.status == InspectionStatus::Passing);\\n        parts.push(format!(\\\"p:{proven}\\\"));\\n    }\\n    Ok(crate::artifact::fingerprint(&parts.join(\\\"|\\\")))\\n}\\n\\n/// Pass 2d: mark a wiki page stale when its documented scope drifted since it was\\n/// recorded. Mirrors the artifact/runner drift gates — a recorded page's stored\\n/// `scope_hash` is compared to the live one; a `draft` page (never recorded\\n/// fresh) is left alone. loom curates freshness; an agent rewrites the prose.\\n/// Re-open a grounding whose locator names nothing.\\n///\\n/// A locator is the promise \\\"this behavior lives at this symbol\\\". Nothing was\\n/// checking it. `recheck` expires a LOCATOR run when its symbol stops\\n/// resolving, but a verdict recorded with a cited span carries no such run —\\n/// so a grounding could name a deleted symbol and stay `passing` forever. On\\n/// this repository that was 13 live claims at confidence 0.95 pointing at\\n/// symbols that no longer existed, including four left by a hard-cut, while\\n/// `doctor` reported clean and the ladder showed `grounded` met.\\n///\\n/// A locator that opens with `module` is a WHOLE-FILE scope, not a symbol —\\n/// the long-standing convention here for \\\"the behavior is this file\\\". Those\\n/// are left alone; requiring them to resolve would reject 39 legitimate\\n/// groundings to catch 13 broken ones.\\nfn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> Result<()> {\\n    for edge in store.edges_with(Some(EdgeKind::Implements), None, None)? {\\n        if store.edge_superseded(&edge.id)? {\\n            continue;\\n        }\\n        // Only a REALIZES grounding promises a symbol. A `consumes` locator\\n        // names a seam — an interface string the consumer calls, which is not a\\n        // definition and will never resolve as one; `recheck` re-runs those\\n        // through their own Seam arm. `configures` and `verifies` make no\\n        // symbol claim either. Judging them here would stale every seam\\n        // grounding on every sync, which ring11 catches.\\n        if store.grounding_role(&edge.id)? != crate::model::GroundingRole::Realizes {\\n            continue;\\n        }\\n        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n            continue;\\n        };\\n        let locator = locator.trim();\\n        if locator.is_empty()\\n            || crate::locator::is_module_scope(locator)\\n            || crate::locator::is_anchor_locator(locator)\\n        {\\n            continue;\\n        }\\n        let Some(file) = store.get_node(&edge.to_id)? else {\\n            continue;\\n        };\\n        // A missing FILE is already someone else's ripple; only judge the\\n        // symbol when the file is there to look in.\\n        if !root.join(&file.name).exists() {\\n            continue;\\n        }\\n        // `resolve_locator` returns Some whenever the FILE is readable — the\\n        // cardinality is carried separately, which is why `unique_locator_probe`\\n        // reads match_count rather than the Option. A locator that matched\\n        // nothing is the broken case; matching several is ambiguous but still\\n        // points at real code, and the ripple already spares those.\\n        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))\\n            .map(|r| r.match_count)\\n            .unwrap_or(0);\\n        if matched > 0 {\\n            continue;\\n        }\\n        // Name the anchor that fell: a cause that says only \\\"a locator broke\\\"\\n        // leaves the reader to work out which one, and ring13 requires the\\n        // symbol or the file by name.\\n        let cause = format!(\\\"locator '{locator}' names no symbol in {}\\\", file.name);\\n        if store.stale_edge(&edge.id, &cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(edge.id.clone());\\n        }\\n    }\\n    // `exercises` provenance makes the same symbol promise a realizing\\n    // grounding does, and nothing else re-checks it: the anchor machinery\\n    // covers only anchor-form locators, and intact-looking provenance is\\n    // deliberately not queue work — so this ripple must fire even on a\\n    // never-inspected edge or the repair reaches no lane. Compiler-owned\\n    // Journey topology is excepted: its provenance is policed against the\\n    // accepted surface's canonical projection, and its door is journey\\n    // compile/run.\\n    for edge in store.edges_with(Some(EdgeKind::Exercises), None, None)? {\\n        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n            continue;\\n        };\\n        let locator = locator.trim();\\n        if locator.is_empty()\\n            || crate::locator::is_module_scope(locator)\\n            || crate::locator::is_anchor_locator(locator)\\n        {\\n            continue;\\n        }\\n        if crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_some() {\\n            continue;\\n        }\\n        let Some(file) = store.get_node(&edge.to_id)? else {\\n            continue;\\n        };\\n        if !root.join(&file.name).exists() {\\n            continue;\\n        }\\n        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))\\n            .map(|r| r.match_count)\\n            .unwrap_or(0);\\n        if matched > 0 {\\n            continue;\\n        }\\n        let cause = format!(\\\"locator '{locator}' names no symbol in {}\\\", file.name);\\n        if store.stale_edge(&edge.id, &cause)? || store.stale_uninspected_edge(&edge.id, &cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(edge.id.clone());\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Resolve every anchor-form locator through the locator module. Sync never\\n/// parses marker syntax or guesses cardinality itself.\\nfn plan_anchor_staleness(store: &Store) -> Result<Vec<AnchorStaleness>> {\\n    let mut stale = Vec::new();\\n    for kind in [EdgeKind::Implements, EdgeKind::Exposes, EdgeKind::Exercises] {\\n        for edge in store.edges_with(Some(kind), None, None)? {\\n            if kind == EdgeKind::Implements && store.edge_superseded(&edge.id)? {\\n                continue;\\n            }\\n            let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, \\\"locator\\\")? else {\\n                continue;\\n            };\\n            if !crate::locator::is_anchor_locator(&locator) {\\n                continue;\\n            }\\n            let Some(codefile) = store.get_node(&edge.to_id)? else {\\n                continue;\\n            };\\n            if codefile.node_type != NodeType::CodeFile {\\n                continue;\\n            }\\n            if let Err(error) = crate::locator::validate_for_codefile(store, &codefile, &locator) {\\n                stale.push(AnchorStaleness {\\n                    edge_id: edge.id,\\n                    edge_kind: kind,\\n                    codefile_id: codefile.id,\\n                    path: codefile.name,\\n                    locator,\\n                    cause: error.to_string(),\\n                });\\n            }\\n        }\\n    }\\n    stale.sort_by(|a, b| a.edge_id.cmp(&b.edge_id));\\n    Ok(stale)\\n}\\n\\nfn apply_anchor_staleness(\\n    store: &Store,\\n    stale: &[AnchorStaleness],\\n    report: &mut SyncReport,\\n) -> Result<()> {\\n    let mut reset_validations = BTreeSet::new();\\n    for anchor in stale {\\n        if store.stale_edge(&anchor.edge_id, &anchor.cause)? {\\n            report.edges_staled += 1;\\n            report.staled_edges.insert(anchor.edge_id.clone());\\n        }\\n        match anchor.edge_kind {\\n            EdgeKind::Exercises => {\\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\\n                    continue;\\n                };\\n                // A broken anchor on never-inspected provenance was invisible:\\n                // the closure reset below re-fires every sync while the edge\\n                // carrying the actual defect stayed uninspected and unqueued.\\n                // Surface it as the analyze work it is; compiler-owned Journey\\n                // topology keeps its own door.\\n                if edge.status == InspectionStatus::Uninspected\\n                    && crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_none()\\n                    && store.stale_uninspected_edge(&edge.id, &anchor.cause)?\\n                {\\n                    report.edges_staled += 1;\\n                    report.staled_edges.insert(edge.id.clone());\\n                }\\n                if reset_validations.insert(edge.from_id.clone()) {\\n                    stale_validation_closure(store, &edge.from_id, &anchor.cause, false, report)?;\\n                }\\n            }\\n            EdgeKind::Exposes => {\\n                let Some(edge) = store.get_edge(&anchor.edge_id)? else {\\n                    continue;\\n                };\\n                for call in store.edges_with(Some(EdgeKind::Calls), None, Some(&edge.from_id))? {\\n                    if reset_validations.insert(call.from_id.clone()) {\\n                        stale_validation_closure(\\n                            store,\\n                            &call.from_id,\\n                            &anchor.cause,\\n                            true,\\n                            report,\\n                        )?;\\n                        report.contracts_reset += 1;\\n                    }\\n                }\\n            }\\n            EdgeKind::Implements => {}\\n            _ => unreachable!(\\\"anchor staleness is planned only for locator-bearing edges\\\"),\\n        }\\n    }\\n    Ok(())\\n}\\n\\nfn ripple_wiki_drift(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for page in store.list_nodes(Some(NodeType::WikiPage), usize::MAX)? {\\n        if page.status == \\\"draft\\\" || page.status == \\\"stale\\\" {\\n            continue;\\n        }\\n        let current = wiki_scope_hash(store, &page.id)?;\\n        let stored = page\\n            .body\\n            .get(\\\"scope_hash\\\")\\n            .and_then(|v| v.as_str())\\n            .unwrap_or_default();\\n        if current != stored {\\n            // loom-stability-exempt: marks a wiki page stale\\n            store.set_node_status(&page.id, \\\"stale\\\")?;\\n            report.wiki_staled += 1;\\n        }\\n    }\\n    Ok(())\\n}\\n\\n/// Pass 3b: materialize structural smells as derived Finding nodes. Smells\\n/// stay computed-on-read for `loom smells`, but the materialized finding gives\\n/// the triage queue a servable item and `loom finding verdict` a stable id\\n/// whose asserted adjudication survives every rebuild — the same wipe/re-derive\\n/// convergence cycle as the other structural findings.\\nfn rebuild_smell_findings(store: &Store, report: &mut SyncReport) -> Result<()> {\\n    for s in crate::signal::smells(store)? {\\n        store.add_derived_node(\\n            NodeType::Finding,\\n            &crate::signal::smell_det_key(&s.identity),\\n            &s.message,\\n            &s.remedy,\\n            &s.kind,\\n            serde_json::json!({ \\\"kind\\\": s.kind, \\\"category\\\": \\\"smell\\\", \\\"identity\\\": s.identity }),\\n        )?;\\n        report.findings += 1;\\n    }\\n    Ok(())\\n}\\n\",\"expected_hash\":\"aa7da765ae931f32\",\"path\":\"src/sync.rs\"}]},\"graph\":\"local_snapshot\",\"operations\":[]}",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "33def59333f5bbec7dfa0856032912ce",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "run",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "33def59333f5bbec7dfa0856032912ce",
-      "target_kind": "edge",
-      "key": "surface_locator",
-      "value": "run",
       "truth_class": "asserted"
     },
     {
@@ -78971,7 +78950,7 @@
       "target_id": "7fab89811b3359661edbbebd6954c731",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"09fc9f9cbbf5c81f5b08bf3c8f755673\":\"src/locator.rs=4706194d3c652252\",\"dece3f2b94c9e1254329a509e044a867\":\"src/commands/codefile_cmd.rs=4dedc4780ca2c5e0\",\"f5a874346179b5742587ce283a9dcf9b\":\"src/locator.rs=4706194d3c652252\"}",
+      "value": "{\"09fc9f9cbbf5c81f5b08bf3c8f755673\":\"src/locator.rs=9448650875fa5c38\",\"dece3f2b94c9e1254329a509e044a867\":\"src/commands/codefile_cmd.rs=2b4de1145d650a07\",\"f5a874346179b5742587ce283a9dcf9b\":\"src/locator.rs=9448650875fa5c38\"}",
       "truth_class": "derived"
     },
     {
@@ -78985,7 +78964,7 @@
       "target_id": "7fab89811b3359661edbbebd6954c731",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"20\",\"call_witness\":\"validate_for_codefile\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands.rs\",\"entry_symbol\":\"run\",\"grounded_symbol\":\"validate_for_codefile\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"20\",\"call_witness\":\"resolve_anchor\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands.rs\",\"entry_symbol\":\"run\",\"grounded_symbol\":\"resolve_anchor\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
     },
     {
@@ -80904,6 +80883,20 @@
       "target_kind": "edge",
       "key": "operation_bindings",
       "value": "[{\"operation_id\":\"inspect-change-impact\",\"step_id\":\"inspect-change-impact\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "97272fe965743599ec219ba2b3da031f",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "run",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "97272fe965743599ec219ba2b3da031f",
+      "target_kind": "edge",
+      "key": "surface_locator",
+      "value": "run",
       "truth_class": "asserted"
     },
     {
@@ -86650,7 +86643,7 @@
       "target_id": "e637e57af8e7035a030d974bbafdae3c",
       "target_kind": "edge",
       "key": "setup",
-      "value": "{\"before_steps\":{\"attach-anchor\":[{\"expected_hash\":\"4dedc4780ca2c5e0\",\"path\":\"src/commands/codefile_cmd.rs\",\"template\":\"// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\npub(crate) fn codefile_anchor() {}\\n\"}],\"reject-invalid-anchor\":[{\"expected_hash\":\"e030df467a994f2c\",\"path\":\"src/commands/codefile_cmd.rs\",\"template\":\"// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\n// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\npub(crate) fn codefile_anchor_renamed() {}\\n\"}],\"trace-anchor\":[{\"expected_hash\":\"beae001daf92c4d1\",\"path\":\"src/commands/codefile_cmd.rs\",\"template\":\"// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\npub(crate) fn codefile_anchor_renamed() {}\\n\"}]},\"graph\":\"local_snapshot\",\"operations\":[]}",
+      "value": "{\"before_steps\":{\"attach-anchor\":[{\"expected_hash\":\"2b4de1145d650a07\",\"path\":\"src/commands/codefile_cmd.rs\",\"template\":\"// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\npub(crate) fn codefile_anchor() {}\\n\"}],\"reject-invalid-anchor\":[{\"expected_hash\":\"e030df467a994f2c\",\"path\":\"src/commands/codefile_cmd.rs\",\"template\":\"// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\n// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\npub(crate) fn codefile_anchor_renamed() {}\\n\"}],\"trace-anchor\":[{\"expected_hash\":\"beae001daf92c4d1\",\"path\":\"src/commands/codefile_cmd.rs\",\"template\":\"// loom:anchor {{ steps.request-anchor.outputs.anchor-id }}\\npub(crate) fn codefile_anchor_renamed() {}\\n\"}]},\"graph\":\"local_snapshot\",\"operations\":[]}",
       "truth_class": "asserted"
     },
     {
