@@ -708,6 +708,11 @@ LLM proposes missing surroundings
   → for a true product decision, record and directly ask ONE plain-language question:
        loom question add "<one crisp product question>" --intent <intent>
   → offer a recommended default and consequences when useful, then WAIT
+LLM notices evidence of unnamed wantedness
+  → a sad path, a missing human gate, or a rule the code already enforces that nobody authored
+  → do not mint an unratified intent as the offer
+  → ask ONE Keep / Decline / Revise question in product language, then WAIT
+  → mint or ratify only after the human answers; silence is not wantedness
 human answers in the conversation
   → record the answer: loom question answer <question> --answer "<human answer>"
 LLM continues elaboration
@@ -720,6 +725,8 @@ if no human is present, questions remain batched
 ```
 
 The LLM must not answer product questions for the human or offload safely inferable implementation choices onto them. It either creates the missing graph artifact, records a non-question waiver with a reason, or raises one crisp linked question, asks it directly in ordinary product language, and waits.
+
+Unnamed wantedness is offered, never presumed. Completeness surroundings of an already-wanted idea may still be minted as planned unratified intents. An important behavior the human has not named — evidenced by a journey gap, a missing gate, or code that already enforces an unauthored rule — is a product offer: one Keep / Decline / Revise question, then wait. Minting first to force a ratify packet, treating a finding as wantedness, or brainstorming features is forbidden.
 
 ### coverage / missing-file contract
 

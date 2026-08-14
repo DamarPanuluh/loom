@@ -33,7 +33,10 @@ pub(super) fn elaborator_contract(
                   it for a real reason, or, for a product decision, record and directly \
                   ask ONE plain-language question. Never answer for the user or treat \
                   silence as consent. Proposed scenarios are planned intents; the human-only \
-                  ratify queue presents them for product authority before they count as wanted."
+                  ratify queue presents them for product authority before they count as wanted. \
+                  When evidence shows an important unnamed behavior, offer Keep / Decline / Revise \
+                  in product language and wait; mint or ratify only after the human answers. \
+                  Silence is not wantedness."
             .into(),
         why_now: format!(
             "{} of {} completeness axes are open around this user-visible idea",
@@ -52,6 +55,9 @@ pub(super) fn elaborator_contract(
             format!(
                 "product decision: loom question add \"<one crisp product question>\" --intent {name}; ask that question directly in plain language, offer a recommended default with consequences when useful, WAIT for the reply, then loom question answer <question> --answer '<the user’s answer>'"
             ),
+            format!(
+                "unnamed wantedness: if evidence shows an important behavior the human has not named (a sad path, a missing gate, or a rule the code already enforces that nobody authored), loom question add \"<one Keep / Decline / Revise question>\" --intent {name}; ask it in product language; WAIT; mint or ratify only after their answer"
+            ),
             format!("waive: loom intent waive {name} <axis> --reason '<why it deliberately does not apply>'"),
             format!("only when a current external fact blocks elaboration: loom task add '<bounded question>' --kind research --why-external '<why current external knowledge is needed>' --preferred-source '<authoritative source guidance>' --target {name}"),
         ],
@@ -61,6 +67,8 @@ pub(super) fn elaborator_contract(
             "assuming the user knows Loom commands, scorecards, axes, or graph terminology; translate the gap into ordinary product language".into(),
             "asking multiple product questions in one turn".into(),
             "proposing scenarios that restate the happy path".into(),
+            "minting an unratified intent as a way to offer unnamed wantedness — ask Keep / Decline / Revise first, then mint only after the human answers".into(),
+            "treating a finding, smell, or brainstormed feature as wantedness".into(),
             "waiving an axis just to close it (a waiver needs a real reason)".into(),
         ],
         evidence_clauses: Vec::new(),
@@ -70,11 +78,11 @@ pub(super) fn elaborator_contract(
         pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
-            "autonomous gap: one command per open axis (see the scorecard); product decision: \
-             loom question add \"<one crisp question>\" --intent {name}, ask the user, then \
-             loom question answer <question> --answer '<their reply>'; finally loom status"
+            "autonomous gap: one command per open axis (see the scorecard); product decision or unnamed wantedness: \
+             loom question add \"<one crisp Keep / Decline / Revise question>\" --intent {name}, ask the user, then \
+             loom question answer <question> --answer '<their reply>'; mint or ratify only after that answer; finally loom status"
         ),
-        stop_condition: "if a product decision is needed, record it, ask ONE question, and wait for the user; otherwise, after addressing every open axis, return to loom status".into(),
+        stop_condition: "if a product decision or unnamed wantedness offer is needed, record it, ask ONE Keep / Decline / Revise question, and wait for the user; no answer means no mint; otherwise, after addressing every open axis, return to loom status".into(),
         human_gate: None,
     }
 }

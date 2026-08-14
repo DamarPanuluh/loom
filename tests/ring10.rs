@@ -794,7 +794,7 @@ fn elaborate_serves_incomplete_user_visible_feature_intent() {
         "contract 4: the LLM must proactively introduce intent-completion help without assuming Loom knowledge"
     );
     assert!(
-        item.prompt_contract.stop_condition.contains("ask ONE question")
+        item.prompt_contract.stop_condition.contains("ask ONE")
             && item.prompt_contract.stop_condition.contains("wait for the user")
             && item.prompt_contract.write_back.contains("loom question answer"),
         "contract 4: a product decision must become one conversational question followed by a recorded human answer"
@@ -804,6 +804,53 @@ fn elaborate_serves_incomplete_user_visible_feature_intent() {
             rule.contains("implementation details") && rule.contains("engineering judgment")
         }),
         "contract 4: elaboration must not burden the user with safely inferable technical choices"
+    );
+}
+
+#[test]
+fn elaborate_contract_offers_unnamed_wantedness_without_minting_first() {
+    // Contract 4: unnamed wantedness is offered as Keep / Decline / Revise,
+    // then the LLM waits. Minting an unratified intent is not the offer.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let _intent = feature_intent(&store, "user can log in", Some("user_visible"));
+
+    let item = workitem::next(&store, Some(Lane::Elaborate))
+        .unwrap()
+        .expect("contract 4: elaborate serves an incomplete user-visible feature intent");
+    let contract = &item.prompt_contract;
+    assert!(
+        contract.mindset.contains("Keep / Decline / Revise")
+            && contract.mindset.contains("unnamed")
+            && contract.mindset.contains("Silence is not wantedness"),
+        "contract 4: the elaborate mindset must tell the LLM to offer unnamed wantedness and wait"
+    );
+    assert!(
+        contract.allowed_actions.iter().any(|action| {
+            action.contains("unnamed wantedness")
+                && action.contains("Keep / Decline / Revise")
+                && action.contains("WAIT")
+                && action.contains("mint or ratify only after")
+        }),
+        "contract 4: unnamed wantedness is an allowed offer, not a silent mint"
+    );
+    assert!(
+        contract.forbidden_actions.iter().any(|rule| {
+            rule.contains("minting an unratified intent as a way to offer unnamed wantedness")
+        }),
+        "contract 4: minting first must not be the way to offer unnamed wantedness"
+    );
+    assert!(
+        contract
+            .forbidden_actions
+            .iter()
+            .any(|rule| rule.contains("finding") && rule.contains("brainstormed feature")),
+        "contract 4: a finding or brainstorm is not wantedness"
+    );
+    assert!(
+        contract.stop_condition.contains("Keep / Decline / Revise")
+            && contract.stop_condition.contains("no answer means no mint"),
+        "contract 4: silence after an unnamed-wantedness offer must not mint"
     );
 }
 
