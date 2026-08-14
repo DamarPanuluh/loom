@@ -418,6 +418,24 @@
       "updated_at": "2026-08-13T13:27:17.364Z"
     },
     {
+      "id": "05343ff8e62450d7eb89b50424d94f1c",
+      "type": "finding",
+      "name": "semantic-commit-recommendation proof fixture asserts edges_staled==0 in a snapshot it deliberately dirties, and reports only a count when it fails",
+      "description": "This journey is one of two proofs holding the proven rung. The assertion is sensitive to how many settled claims cite src/fsglob.rs, so settling unrelated groundings can break it without any checkpoint regression. The fixture reports only a count on failure — surfacing the staled edge id would make this diagnosable.",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.7,
+        "evidence": "journeys/surfaces/semantic-commit-recommendation.surface.json:503-541 — setup operation verify-isolated-checkpoint-fixture runs `loom sync --json` and asserts /edges_staled==0, /validations_reset==0, /files_changed==0; setup.git declares dirty_paths [\"src/fsglob.rs\"] (:544-550). Observed this session: the fixture failed first on validations_reset=1 (while journey:release-workflow:proof was blocked), then after that cleared, on edges_staled=1 with files_changed=0. Three reproductions in copied graphs — plain sync; sync with a dirtied src/fsglob.rs; and a full replay of the setup ops (validation remove x2, validation add, validation run, then sync) — all returned edges_staled=0, so the staling edge cannot be identified from outside the journey runtime. A dirtied src/fsglob.rs alone stales ace00d914d (validates: contract: root-confined paths to Root-confined paths, evidence `cargo test --lib fsglob::tests`), which the fixture normally isolates by removing that validation.",
+        "file": "src/checkpoint.rs",
+        "impact": "This journey is one of two proofs holding the proven rung. The assertion is sensitive to how many settled claims cite src/fsglob.rs, so settling unrelated groundings can break it without any checkpoint regression. The fixture reports only a count on failure — surfacing the staled edge id would make this diagnosable.",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-14T07:54:40.486Z",
+      "updated_at": "2026-08-14T07:54:40.486Z"
+    },
+    {
       "id": "057bc2ec51dde77864587a258a3c3bd6",
       "type": "intent",
       "name": "the LLM decides whether to create a semantic checkpoint",
@@ -17703,7 +17721,7 @@
       "type": "validation",
       "name": "journey:semantic-commit-recommendation:proof",
       "description": "compiler-owned Journey proof profile",
-      "status": "not_run",
+      "status": "blocked",
       "truth_class": "asserted",
       "body": {
         "compiler_version": "6",
@@ -17713,7 +17731,7 @@
         "type": "journey"
       },
       "created_at": "2026-08-11T16:48:42.761Z",
-      "updated_at": ""
+      "updated_at": "2026-08-14T07:52:35.208Z"
     },
     {
       "id": "d72eca0d3e450759b",
@@ -24154,6 +24172,20 @@
       "updated_at": "2026-08-14T04:21:57.421Z"
     },
     {
+      "id": "05706ca773e1b028a0bb094965d38ad7",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "a0c67e4b689e9f31f477cb6cdd894535",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.981Z",
+      "updated_at": "2026-08-14T07:54:26.981Z"
+    },
+    {
       "id": "05825115a290819e442f87a9f0f48350",
       "from_id": "b2a369193313752bee520e8b6183d5cf",
       "to_id": "02d66b7b5d4eabc067845e10c794a750",
@@ -24824,6 +24856,20 @@
       "inspected_by": "",
       "created_at": "2026-08-13T15:59:28.625Z",
       "updated_at": "2026-08-13T15:59:28.625Z"
+    },
+    {
+      "id": "158106b262d4a3dbc369c2dab54ca4b0",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "8eb58e388d9b999f62666a0582c1b893",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.981Z",
+      "updated_at": "2026-08-14T07:54:26.981Z"
     },
     {
       "id": "15993d30a48aa436e337488e9d344d5a",
@@ -25904,6 +25950,20 @@
       "updated_at": "2026-08-14T04:22:36.323Z"
     },
     {
+      "id": "390e97f2338d2fb9b89a9fa2875a4f86",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "bbd0126142a517757982cc9ba1d27a0d",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.981Z",
+      "updated_at": "2026-08-14T07:54:26.981Z"
+    },
+    {
       "id": "394f3f8ff879ed0e109fd20706e99417",
       "from_id": "47934b4b783f39cb8f9b475353d669a1",
       "to_id": "5de4a7d9d91461db77ecc726f95cf79a",
@@ -25944,20 +26004,6 @@
       "inspected_by": "loom",
       "created_at": "2026-08-13T05:07:41.264Z",
       "updated_at": "2026-08-13T13:33:52.313Z"
-    },
-    {
-      "id": "3abb380518c4966a7883a317a8ce4f83",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "bbd0126142a517757982cc9ba1d27a0d",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.851Z",
-      "updated_at": "2026-08-14T07:45:32.851Z"
     },
     {
       "id": "3ac193fbe72de5a24626ba108f9fbe41",
@@ -26156,20 +26202,6 @@
       "updated_at": "2026-08-14T04:22:39.894Z"
     },
     {
-      "id": "42510d6263367f6b015ebdc79edd03a9",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "0d40306d9479b9a428a843a37b22b156",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.850Z",
-      "updated_at": "2026-08-14T07:45:32.850Z"
-    },
-    {
       "id": "427c4de8f81d60b68f12fb06318cdc4d",
       "from_id": "130380027f0e1102581bb31f303ee2f0",
       "to_id": "86e5d4217e0617539229fbcb04fdf88b",
@@ -26350,6 +26382,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-13T05:07:40.872Z",
       "updated_at": "2026-08-13T13:33:14.768Z"
+    },
+    {
+      "id": "495fe2274587f21800797a04d2650a99",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.981Z",
+      "updated_at": "2026-08-14T07:54:26.981Z"
     },
     {
       "id": "49908970b7a68d1a09fc6b9d43d91edf",
@@ -27038,20 +27084,6 @@
       "updated_at": "2026-08-13T13:32:44.725Z"
     },
     {
-      "id": "6057e35bd360be17cba1d24ef88cf244",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "998eb146c4c794c94594acc451a04c30",
-      "kind": "proves",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.850Z",
-      "updated_at": "2026-08-14T07:45:32.850Z"
-    },
-    {
       "id": "622377e8c56d265075f4ea3adcfed58d",
       "from_id": "a227e7708e7b910a7121228f57366a72",
       "to_id": "bc066d0e05028293bce9636148005be9",
@@ -27218,6 +27250,20 @@
       "inspected_by": "",
       "created_at": "2026-08-11T18:11:43.182Z",
       "updated_at": "2026-08-11T18:11:43.182Z"
+    },
+    {
+      "id": "6ab65d9b7fd1942a8422851000ab6836",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "0d40306d9479b9a428a843a37b22b156",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.981Z",
+      "updated_at": "2026-08-14T07:54:26.981Z"
     },
     {
       "id": "6b426bb89a34899a7e05f33c238041a8",
@@ -27794,20 +27840,6 @@
       "updated_at": "2026-08-10T19:42:54.367Z"
     },
     {
-      "id": "7c88853302b0b64affff2041705ed15e",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.850Z",
-      "updated_at": "2026-08-14T07:45:32.850Z"
-    },
-    {
       "id": "7cf8fe3e87ae087b4f101b2cbe7f329a",
       "from_id": "998eb146c4c794c94594acc451a04c30",
       "to_id": "057bc2ec51dde77864587a258a3c3bd6",
@@ -27960,20 +27992,6 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:19.841Z",
       "updated_at": "2026-08-09T12:54:19.841Z"
-    },
-    {
-      "id": "80de6c33395626d9099b2ddc820dc4ca",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "4b57916015b6dcb9c2ad67404f6c1fac",
-      "kind": "calls",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.851Z",
-      "updated_at": "2026-08-14T07:45:32.851Z"
     },
     {
       "id": "810e9d6a3f03a3a2a5de8ef3553bc3e9",
@@ -28648,20 +28666,6 @@
       "updated_at": "2026-08-09T12:54:20.920Z"
     },
     {
-      "id": "949d216302a3e0d618d82d58d3959704",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "ecd01554eaee1e917013d3e24b4e76b1",
-      "kind": "exercises",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.851Z",
-      "updated_at": "2026-08-14T07:45:32.851Z"
-    },
-    {
       "id": "9599772cb091911cd19abd33072356ee",
       "from_id": "446461b0934051287d6a06b241c64c88",
       "to_id": "e5eed888950f90b61724ccaee944ae27",
@@ -28716,20 +28720,6 @@
       "inspected_by": "",
       "created_at": "2026-08-11T11:32:45.071Z",
       "updated_at": "2026-08-11T11:32:45.071Z"
-    },
-    {
-      "id": "97215bc00456493871965ed9aaa4a00d",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "a0c67e4b689e9f31f477cb6cdd894535",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.851Z",
-      "updated_at": "2026-08-14T07:45:32.851Z"
     },
     {
       "id": "976ba15a6c1c5979301c402bfd97a87b",
@@ -29278,6 +29268,20 @@
       "updated_at": "2026-08-14T04:21:57.087Z"
     },
     {
+      "id": "aa85aa93a2780c137e2480222fa8f86b",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "4b57916015b6dcb9c2ad67404f6c1fac",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.982Z",
+      "updated_at": "2026-08-14T07:54:26.982Z"
+    },
+    {
       "id": "aae0acbfe8082ebaaf946d0a389df4c7",
       "from_id": "c58d0663c95b8bdd7583e7d16726934c",
       "to_id": "2d16cabcf844b5d7f9dbd929c7da0f5c",
@@ -29530,6 +29534,20 @@
       "updated_at": "2026-08-14T04:22:35.903Z"
     },
     {
+      "id": "b402f66b85cb541d6112048179046232",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "998eb146c4c794c94594acc451a04c30",
+      "kind": "proves",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.980Z",
+      "updated_at": "2026-08-14T07:54:26.980Z"
+    },
+    {
       "id": "b4c56f7e54f9c4a154001836f9d950f1",
       "from_id": "f4a5a1175fec0fa52f4baea6fafb099d",
       "to_id": "ba48ee7d3a59cba3cca83ddefcc9ec50",
@@ -29738,6 +29756,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-13T05:07:40.744Z",
       "updated_at": "2026-08-13T13:32:44.724Z"
+    },
+    {
+      "id": "bc7ac84e78c010b12baf21c717e64a75",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "057bc2ec51dde77864587a258a3c3bd6",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.981Z",
+      "updated_at": "2026-08-14T07:54:26.981Z"
     },
     {
       "id": "bcd5ce2efd897b1ddf1098dbb44702e1",
@@ -30172,6 +30204,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:49.580Z",
       "updated_at": "2026-08-14T07:16:41.017Z"
+    },
+    {
+      "id": "cdbb007dd7a106b82cd520627b9862ce",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "ecd01554eaee1e917013d3e24b4e76b1",
+      "kind": "exercises",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T07:54:26.982Z",
+      "updated_at": "2026-08-14T07:54:26.982Z"
     },
     {
       "id": "ce27ed05172bcaf255069500dd915894",
@@ -31306,20 +31352,6 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
-    },
-    {
-      "id": "d40fce15bc48658b0788fd7103bd47a5",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "8eb58e388d9b999f62666a0582c1b893",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.850Z",
-      "updated_at": "2026-08-14T07:45:32.850Z"
     },
     {
       "id": "d42da8c84a9a8c24e1946cf8aba75e21",
@@ -34750,20 +34782,6 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
-    },
-    {
-      "id": "de0ae5da9733e9416be370666fa9ca5e",
-      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
-      "to_id": "057bc2ec51dde77864587a258a3c3bd6",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T07:45:32.850Z",
-      "updated_at": "2026-08-14T07:45:32.850Z"
     },
     {
       "id": "de0f51e90abb65713",
@@ -78831,20 +78849,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "949d216302a3e0d618d82d58d3959704",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "dispatch",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "949d216302a3e0d618d82d58d3959704",
-      "target_kind": "edge",
-      "key": "surface_locator",
-      "value": "dispatch",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "94ec00f2120b0d2077af48a5ae1cc204",
       "target_kind": "node",
       "key": "de_facto",
@@ -82448,6 +82452,20 @@
       "key": "test_symbols",
       "value": "[]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "cdbb007dd7a106b82cd520627b9862ce",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "dispatch",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cdbb007dd7a106b82cd520627b9862ce",
+      "target_kind": "edge",
+      "key": "surface_locator",
+      "value": "dispatch",
+      "truth_class": "asserted"
     },
     {
       "target_id": "ce27ed05172bcaf255069500dd915894",
