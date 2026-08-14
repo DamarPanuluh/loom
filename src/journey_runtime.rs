@@ -1953,7 +1953,9 @@ fn run_steps(
             }
         }
         for capture in &step.captures {
-            let Some(value) = output.pointer(&capture.pointer).cloned() else {
+            let crate::journey::Resolved::Unique(value) =
+                crate::journey::resolve_pointer(&output, &capture.pointer)
+            else {
                 step_failed += 1;
                 active.failed_assertions.push(FailedAssertion {
                     operation_id: step.operation_id.clone(),
@@ -1963,7 +1965,7 @@ fn run_steps(
                 });
                 continue;
             };
-            if !capture.value_type.accepts(&value) {
+            if !capture.value_type.accepts(value) {
                 step_failed += 1;
                 active.failed_assertions.push(FailedAssertion {
                     operation_id: step.operation_id.clone(),
@@ -1975,12 +1977,12 @@ fn run_steps(
             }
             let capture_key = format!("steps.{}.outputs.{}", step.step_id, capture.id);
             if capture.redact {
-                if let Some(secret) = scalar_text(&value) {
+                if let Some(secret) = scalar_text(value) {
                     active.secrets.push(secret);
                 }
                 active.redacted_captures.insert(capture_key.clone());
             }
-            active.captures.insert(capture_key, value);
+            active.captures.insert(capture_key, value.clone());
         }
         for pointer in &step.redact {
             redact_pointer(&mut output, pointer);
@@ -3304,10 +3306,19 @@ fn assertion_holds(
     captures: &BTreeMap<String, Value>,
     run_id: &str,
 ) -> bool {
+    use crate::journey::Resolved;
+    // Ambiguity is not absence: a selector matching two elements fails an
+    // `exists: true` and an `exists: false` alike, because it has identified
+    // nothing either way.
     if let Some(expected) = assertion.exists_value() {
-        return output.pointer(&assertion.pointer).is_some() == expected;
+        return match crate::journey::resolve_pointer(output, &assertion.pointer) {
+            Resolved::Unique(_) => expected,
+            Resolved::Missing => !expected,
+            Resolved::Ambiguous(_) => false,
+        };
     }
-    let Some(actual) = output.pointer(&assertion.pointer) else {
+    let Resolved::Unique(actual) = crate::journey::resolve_pointer(output, &assertion.pointer)
+    else {
         return false;
     };
     if assertion

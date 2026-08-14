@@ -1,12 +1,29 @@
 {
-  "schema": "loom.journey.surface/v1",
-  "journey_id": "mcp-in-band",
+  "bindings": [
+    {
+      "operation_id": "discover-mcp-tools",
+      "step_id": "discover-tools"
+    },
+    {
+      "operation_id": "inspect-live-impact-session",
+      "step_id": "inspect-live-impact"
+    },
+    {
+      "operation_id": "classify-unknown-tool-session",
+      "step_id": "request-unknown-tool"
+    },
+    {
+      "operation_id": "classify-known-failure-and-recover",
+      "step_id": "invoke-failing-tool"
+    }
+  ],
   "journey_hash": "edbe81e359d5ad43",
+  "journey_id": "mcp-in-band",
+  "schema": "loom.journey.surface/v1",
   "surface": {
-    "id": "mcp-transcript-cli",
-    "title": "Live MCP session transcript",
-    "identity": "loom mcp transcript --requests-json",
     "codefile": "src/mcp.rs",
+    "id": "mcp-transcript-cli",
+    "identity": "loom mcp transcript --requests-json",
     "locator": "transcript",
     "operations": [
       {
@@ -61,13 +78,13 @@
             {
               "equals": "loom_context",
               "id": "recovery-context-listed",
-              "pointer": "/responses/1/result/tools/2/name",
+              "pointer": "/responses/1/result/tools/[name=loom_context]/name",
               "type": "string"
             },
             {
               "equals": "target",
               "id": "recovery-context-target-required",
-              "pointer": "/responses/1/result/tools/2/inputSchema/required/0",
+              "pointer": "/responses/1/result/tools/[name=loom_context]/inputSchema/required/0",
               "type": "string"
             },
             {
@@ -180,7 +197,7 @@
             {
               "equals": "loom_impact",
               "id": "unknown-listed-impact",
-              "pointer": "/responses/1/result/tools/3/name",
+              "pointer": "/responses/1/result/tools/[name=loom_impact]/name",
               "type": "string"
             },
             {
@@ -288,25 +305,25 @@
             {
               "equals": "loom_status",
               "id": "discover-read-tool",
-              "pointer": "/responses/1/result/tools/0/name",
+              "pointer": "/responses/1/result/tools/[name=loom_status]/name",
               "type": "string"
             },
             {
               "equals": "object",
               "id": "discover-read-schema",
-              "pointer": "/responses/1/result/tools/0/inputSchema/type",
+              "pointer": "/responses/1/result/tools/[name=loom_status]/inputSchema/type",
               "type": "string"
             },
             {
               "equals": "loom_apply",
               "id": "discover-write-tool",
-              "pointer": "/responses/1/result/tools/7/name",
+              "pointer": "/responses/1/result/tools/[name=loom_apply]/name",
               "type": "string"
             },
             {
               "equals": "object",
               "id": "discover-write-schema",
-              "pointer": "/responses/1/result/tools/7/inputSchema/type",
+              "pointer": "/responses/1/result/tools/[name=loom_apply]/inputSchema/type",
               "type": "string"
             }
           ],
@@ -349,13 +366,13 @@
             {
               "equals": "loom_impact",
               "id": "impact-listed-tool",
-              "pointer": "/responses/1/result/tools/3/name",
+              "pointer": "/responses/1/result/tools/[name=loom_impact]/name",
               "type": "string"
             },
             {
               "equals": "target",
               "id": "impact-target-required",
-              "pointer": "/responses/1/result/tools/3/inputSchema/required/0",
+              "pointer": "/responses/1/result/tools/[name=loom_impact]/inputSchema/required/0",
               "type": "string"
             },
             {
@@ -412,24 +429,7 @@
         "read_only": true,
         "summary": "Negotiate a live session and invoke Loom impact for the existing serve symbol"
       }
-    ]
-  },
-  "bindings": [
-    {
-      "operation_id": "discover-mcp-tools",
-      "step_id": "discover-tools"
-    },
-    {
-      "operation_id": "inspect-live-impact-session",
-      "step_id": "inspect-live-impact"
-    },
-    {
-      "operation_id": "classify-unknown-tool-session",
-      "step_id": "request-unknown-tool"
-    },
-    {
-      "operation_id": "classify-known-failure-and-recover",
-      "step_id": "invoke-failing-tool"
-    }
-  ]
+    ],
+    "title": "Live MCP session transcript"
+  }
 }

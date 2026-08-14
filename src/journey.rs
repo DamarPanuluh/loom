@@ -2150,10 +2150,45 @@ fn value_contains_undeclared_graph_identity(
     }
 }
 
-fn exact_census_pin(assertion: &OutputAssertion) -> bool {
+/// How many requests this operation authored, if it drives an MCP transcript.
+///
+/// An operation that carries its own `--requests-json` decides both the number
+/// of requests and the order of the replies. Counts and indices derived from
+/// that list are fixed by the fixture, not observed from the graph, so flagging
+/// them is a false positive — and these were the overwhelming majority. A rule
+/// that cries wolf 326 times is a rule nobody reads, which is how the one pin
+/// that actually mattered (a release inventory pinned to the repository's exact
+/// file count) sat unnoticed until it cost a sealed authority token.
+fn authored_transcript_len(operation: &CliOperation) -> Option<usize> {
+    let mut argv = operation.argv.iter();
+    while let Some(arg) = argv.next() {
+        if arg == "--requests-json" {
+            let raw = argv.next()?;
+            return crate::mcp::inspect_transcript_requests(raw)
+                .ok()
+                .map(|r| r.len());
+        }
+    }
+    None
+}
+
+fn exact_census_pin(assertion: &OutputAssertion, operation: &CliOperation) -> bool {
     let Some(value) = &assertion.equals else {
         return false;
     };
+    // `request_count`/`response_count` over a transcript the fixture wrote is
+    // arithmetic on its own input, not a census of the graph.
+    if matches!(
+        assertion.pointer.as_str(),
+        "/request_count" | "/response_count"
+    ) {
+        if let (Some(authored), Some(pinned)) = (authored_transcript_len(operation), value.as_u64())
+        {
+            if authored as u64 == pinned {
+                return false;
+            }
+        }
+    }
     let census_name = assertion
         .pointer
         .split('/')
@@ -2169,11 +2204,28 @@ fn exact_census_pin(assertion: &OutputAssertion) -> bool {
     census_name && (value.is_number() || value.is_array() || value.is_object())
 }
 
-fn positional_census_pointer(pointer: &str) -> bool {
-    pointer
-        .split('/')
-        .skip(1)
-        .any(|segment| !segment.is_empty() && segment.bytes().all(|byte| byte.is_ascii_digit()))
+fn positional_census_pointer(pointer: &str, operation: &CliOperation) -> bool {
+    let segments: Vec<&str> = pointer.split('/').skip(1).collect();
+    // `/responses/N/...` indexes the replies to the fixture's own authored
+    // requests, one for one. That index is as fixed as the request list itself,
+    // so long as it addresses a request that was actually authored.
+    if let (Some(&"responses"), Some(index), Some(authored)) = (
+        segments.first(),
+        segments.get(1).and_then(|s| s.parse::<usize>().ok()),
+        authored_transcript_len(operation),
+    ) {
+        if index < authored {
+            // Anything deeper is still positional into whatever the reply
+            // contained, which the fixture does not author.
+            return segments
+                .iter()
+                .skip(2)
+                .any(|segment| !segment.is_empty() && segment.bytes().all(|b| b.is_ascii_digit()));
+        }
+    }
+    segments
+        .iter()
+        .any(|segment| !segment.is_empty() && segment.bytes().all(|b| b.is_ascii_digit()))
 }
 
 fn relies_on_real_clock_minute_bucket(operation: &CliOperation) -> bool {
@@ -2261,10 +2313,10 @@ impl SurfaceManifest {
                 if undeclared_equals || undeclared_pointer {
                     add("graph-local-identity", JourneyLintSeverity::Blocking, Some(&operation.id), Some(&assertion.id), "replace the undeclared 32-hex identity with a repository-declared identity, stable name, or captured value".into());
                 }
-                if exact_census_pin(assertion) {
+                if exact_census_pin(assertion, operation) {
                     add("exact-census-pin", JourneyLintSeverity::Advisory, Some(&operation.id), Some(&assertion.id), "assert an invariant or bounded relationship instead of an exact whole-graph count or total".into());
                 }
-                if positional_census_pointer(&assertion.pointer) {
+                if positional_census_pointer(&assertion.pointer, operation) {
                     add("positional-census-pointer", JourneyLintSeverity::Advisory, Some(&operation.id), Some(&assertion.id), "select census data by stable identity instead of a numeric JSON-pointer position".into());
                 }
                 if assertion.not_equals_value() == Some(Value::String(String::new())) {
@@ -3695,9 +3747,101 @@ fn validate_operation_references(
     Ok(())
 }
 
+/// Parse a selector segment, or `None` if this is an ordinary segment.
+pub(crate) fn parse_selector(segment: &str) -> Option<(&str, &str)> {
+    let inner = segment.strip_prefix('[')?.strip_suffix(']')?;
+    let (key, value) = inner.split_once('=')?;
+    Some((key, value))
+}
+
+/// What a pointer addressed in one document.
+///
+/// Ambiguity is its own answer rather than a silent first-match: a selector
+/// that names two elements has not identified anything, and letting it read as
+/// "found" would settle a proof on whichever element happened to be first.
+#[derive(Debug, PartialEq)]
+pub(crate) enum Resolved<'a> {
+    Unique(&'a Value),
+    Missing,
+    Ambiguous(usize),
+}
+
+/// Resolve a pointer that may carry `[key=value]` selector segments.
+///
+/// A pointer with no selector is delegated verbatim to `serde_json`, so every
+/// proof authored before selectors existed resolves through exactly the code it
+/// always did.
+pub(crate) fn resolve_pointer<'a>(document: &'a Value, pointer: &str) -> Resolved<'a> {
+    if !pointer.contains('[') {
+        return match document.pointer(pointer) {
+            Some(value) => Resolved::Unique(value),
+            None => Resolved::Missing,
+        };
+    }
+    let mut current = document;
+    for segment in pointer.split('/').skip(1) {
+        if let Some((key, value)) = parse_selector(segment) {
+            let Some(array) = current.as_array() else {
+                return Resolved::Missing;
+            };
+            let mut hits = array.iter().filter(|element| {
+                element
+                    .get(key)
+                    .and_then(Value::as_str)
+                    .is_some_and(|found| found == value)
+            });
+            let Some(first) = hits.next() else {
+                return Resolved::Missing;
+            };
+            let extra = hits.count();
+            if extra > 0 {
+                return Resolved::Ambiguous(extra + 1);
+            }
+            current = first;
+            continue;
+        }
+        let unescaped = segment.replace("~1", "/").replace("~0", "~");
+        let next = match current {
+            Value::Object(map) => map.get(&unescaped),
+            Value::Array(items) => unescaped.parse::<usize>().ok().and_then(|i| items.get(i)),
+            _ => None,
+        };
+        match next {
+            Some(value) => current = value,
+            None => return Resolved::Missing,
+        }
+    }
+    Resolved::Unique(current)
+}
+
+/// Selector values are matched literally, so a value carrying pointer syntax is
+/// ambiguous. Loom refuses ambiguity rather than inventing a quoting grammar.
+fn validate_selector(label: &str, id: &str, segment: &str) -> Result<()> {
+    let Some((key, value)) = parse_selector(segment) else {
+        bail!("{label} '{id}' selector segment '{segment}' must read [key=value]");
+    };
+    if key.is_empty() {
+        bail!("{label} '{id}' selector segment '{segment}' names no key");
+    }
+    for (what, text) in [("key", key), ("value", value)] {
+        if text.contains([']', '[', '=', '/', '~']) {
+            bail!(
+                "{label} '{id}' selector {what} '{text}' must not contain ']', '[', '=', '/' or '~' — \
+                 select on a field whose value is free of pointer syntax"
+            );
+        }
+    }
+    Ok(())
+}
+
 fn validate_json_pointer(label: &str, id: &str, pointer: &str) -> Result<()> {
     if !pointer.is_empty() && !pointer.starts_with('/') {
         bail!("{label} '{id}' JSON pointer must be empty or start with '/'");
+    }
+    for segment in pointer.split('/').skip(1) {
+        if segment.starts_with('[') || segment.ends_with(']') {
+            validate_selector(label, id, segment)?;
+        }
     }
     // RFC 6901 allows only ~0 and ~1 escapes. Rejecting malformed escapes here
     // keeps compile/run parity deterministic across serde_json versions.
@@ -3807,6 +3951,71 @@ mod tests {
     }
 
     #[test]
+    fn identity_selectors_resolve_uniquely_or_refuse() {
+        use serde_json::json;
+        let doc = json!({
+            "tools": [
+                {"name": "loom_status", "arity": 0},
+                {"name": "loom_context", "arity": 1},
+                {"name": "loom_next", "arity": 2}
+            ],
+            "twins": [{"name": "same"}, {"name": "same"}],
+            "scalar": 3
+        });
+
+        // Names the element, and keeps naming it wherever the list moves.
+        assert_eq!(
+            resolve_pointer(&doc, "/tools/[name=loom_context]/arity"),
+            Resolved::Unique(&json!(1))
+        );
+        let mut reordered = doc.clone();
+        reordered["tools"].as_array_mut().unwrap().reverse();
+        assert_eq!(
+            resolve_pointer(&reordered, "/tools/[name=loom_context]/arity"),
+            Resolved::Unique(&json!(1))
+        );
+        // The coordinate does not survive the same reorder.
+        assert_eq!(
+            resolve_pointer(&doc, "/tools/1/name"),
+            Resolved::Unique(&json!("loom_context"))
+        );
+        assert_eq!(
+            resolve_pointer(&reordered, "/tools/1/name"),
+            Resolved::Unique(&json!("loom_context"))
+        );
+        assert_eq!(
+            resolve_pointer(&reordered, "/tools/0/name"),
+            Resolved::Unique(&json!("loom_next"))
+        );
+
+        // Fail closed: no match, two matches, and a selector on a non-array.
+        assert_eq!(
+            resolve_pointer(&doc, "/tools/[name=absent]/arity"),
+            Resolved::Missing
+        );
+        assert_eq!(
+            resolve_pointer(&doc, "/twins/[name=same]"),
+            Resolved::Ambiguous(2)
+        );
+        assert_eq!(resolve_pointer(&doc, "/scalar/[name=x]"), Resolved::Missing);
+
+        // A selector-free pointer is delegated verbatim, escapes included.
+        let escaped = json!({"a/b": {"c~d": 7}});
+        assert_eq!(
+            resolve_pointer(&escaped, "/a~1b/c~0d"),
+            Resolved::Unique(&json!(7))
+        );
+
+        // Validation refuses values carrying pointer syntax rather than guessing.
+        assert!(
+            validate_json_pointer("assertion", "x", "/tools/[name=loom_context]/arity").is_ok()
+        );
+        assert!(validate_json_pointer("assertion", "x", "/tools/[name=a/b]").is_err());
+        assert!(validate_json_pointer("assertion", "x", "/tools/[name]").is_err());
+        assert!(validate_json_pointer("assertion", "x", "/tools/[=v]").is_err());
+    }
+
+    #[test]
     fn journey_lint_static_predicates_are_narrow() {
         assert!(is_exact_graph_identity("0123456789abcdef0123456789ABCDEF"));
         assert!(!is_exact_graph_identity(
@@ -3821,11 +4030,30 @@ mod tests {
                 equals,
                 source,
             };
-        assert!(exact_census_pin(&assertion(
-            "/request_count",
-            Some(json!(16)),
-            None
-        )));
+        // No authored transcript, so every pre-existing case below is judged
+        // exactly as it was before the exemption existed.
+        let plain = |argv: Vec<String>| CliOperation {
+            id: "probe".into(),
+            summary: String::new(),
+            argv,
+            environment: Vec::new(),
+            read_only: false,
+            timeout_seconds: None,
+            expected_exit: 0,
+            arguments: Vec::new(),
+            output: OperationOutput {
+                format: OutputFormat::Json,
+                captures: Vec::new(),
+                assertions: Vec::new(),
+                redact: Vec::new(),
+            },
+            exercises: Vec::new(),
+        };
+        let no_transcript = plain(vec!["loom".into(), "status".into()]);
+        assert!(exact_census_pin(
+            &assertion("/request_count", Some(json!(16)), None),
+            &no_transcript
+        ));
         for pointer in [
             "/entry_count",
             "/file_count",
@@ -3833,15 +4061,64 @@ mod tests {
             "/operation_count",
             "/byte_total",
         ] {
-            assert!(exact_census_pin(&assertion(pointer, Some(json!(1)), None)));
+            assert!(exact_census_pin(
+                &assertion(pointer, Some(json!(1)), None),
+                &no_transcript
+            ));
         }
-        assert!(!exact_census_pin(&assertion(
-            "/exit_code",
-            Some(json!(0)),
-            None
-        )));
-        assert!(positional_census_pointer("/findings/0/kind"));
-        assert!(!positional_census_pointer("/finding/by-id/kind"));
+        assert!(!exact_census_pin(
+            &assertion("/exit_code", Some(json!(0)), None),
+            &no_transcript
+        ));
+        assert!(positional_census_pointer(
+            "/findings/0/kind",
+            &no_transcript
+        ));
+        assert!(!positional_census_pointer(
+            "/finding/by-id/kind",
+            &no_transcript
+        ));
+
+        // A transcript the fixture authored: counts and reply indices over it
+        // are arithmetic on its own input, so they are exempt — but anything
+        // deeper, or past the end of the authored list, still counts.
+        let two_requests = plain(vec![
+            "loom".into(),
+            "mcp".into(),
+            "transcript".into(),
+            "--requests-json".into(),
+            "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}},\
+              {\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\",\"params\":{}}]"
+                .into(),
+            "--json".into(),
+        ]);
+        assert_eq!(authored_transcript_len(&two_requests), Some(2));
+        assert!(!exact_census_pin(
+            &assertion("/request_count", Some(json!(2)), None),
+            &two_requests
+        ));
+        assert!(!exact_census_pin(
+            &assertion("/response_count", Some(json!(2)), None),
+            &two_requests
+        ));
+        // A count that disagrees with the authored list is not arithmetic on it.
+        assert!(exact_census_pin(
+            &assertion("/request_count", Some(json!(9)), None),
+            &two_requests
+        ));
+        assert!(!positional_census_pointer(
+            "/responses/1/result",
+            &two_requests
+        ));
+        // Past the authored end, and deeper than the reply index, still fire.
+        assert!(positional_census_pointer(
+            "/responses/7/result",
+            &two_requests
+        ));
+        assert!(positional_census_pointer(
+            "/responses/1/result/tools/2/name",
+            &two_requests
+        ));
         assert_eq!(
             assertion("/name", None, Some(format!("{ASSERTION_NOT_EQUALS}\"\"")))
                 .not_equals_value(),
