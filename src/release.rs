@@ -2653,6 +2653,25 @@ fn require_passed_journey_report_with_sandbox(
                 })
             })
             .collect();
+        // Name the checks, not just how many. A candidate Journey that refuses
+        // costs a sealed one-shot authority token to observe; reporting
+        // "assertions_failed: 1" and no identity makes the next token the only
+        // way to learn which one, and that is a diagnostic the runtime already
+        // held.
+        let failed_assertions: Vec<_> = report
+            .failed_assertions
+            .iter()
+            .take(8)
+            .map(|failed| {
+                serde_json::json!({
+                    "operation_id": bounded_diagnostic_text(&failed.operation_id, 256),
+                    "assertion_id": bounded_diagnostic_text(&failed.assertion_id, 256),
+                    "pointer": bounded_diagnostic_text(&failed.pointer, 256),
+                    "kind": failed.kind,
+                })
+            })
+            .collect();
+        let failed_assertions_omitted = report.failed_assertions.len().saturating_sub(8);
         let detail = report.detail.as_deref().map(|detail| match sandbox {
             Some(sandbox) => release_diagnostic_stream(detail.as_bytes(), sandbox),
             None => bounded_diagnostic_text(detail, RELEASE_DIAGNOSTIC_BYTES),
@@ -2677,6 +2696,8 @@ fn require_passed_journey_report_with_sandbox(
                 "failing_steps_omitted": report.steps.iter()
                     .filter(|step| step.exit_code != 0 || step.assertions_failed != 0)
                     .count().saturating_sub(8),
+                "failed_assertions": failed_assertions,
+                "failed_assertions_omitted": failed_assertions_omitted,
             }
         });
         bail!(

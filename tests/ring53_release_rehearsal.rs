@@ -1849,9 +1849,9 @@ fn all_source_surface_manifests_parse_and_bind_authored_journeys() {
             .filter(|operation| !operation.read_only)
             .count();
     }
-    assert_eq!(operation_count, 88);
+    assert_eq!(operation_count, 108);
     assert_eq!(declared_read_only, 34);
-    assert_eq!(declared_mutable, 54);
+    assert_eq!(declared_mutable, 74);
 }
 
 #[test]

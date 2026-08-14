@@ -186,6 +186,38 @@ pub struct PassedAssertion {
     pub assertion_id: String,
 }
 
+/// One typed check that did NOT hold, named. The counterpart of
+/// [`PassedAssertion`], and the same argument applies as for a sync ripple:
+/// `assertions_failed: 1` is not actionable. A caller reading a failed run —
+/// an operator, a release gate reporting why a candidate Journey refused — has
+/// to know WHICH check moved before it can decide anything, and re-running the
+/// Journey to find out is the expensive way to learn a name the runtime
+/// already had.
+///
+/// `kind` distinguishes a typed output assertion from a capture that could not
+/// be taken, because both increment the same counter and they are repaired in
+/// different places.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FailedAssertion {
+    pub operation_id: String,
+    /// The authored assertion id, or the capture id for a capture failure.
+    pub assertion_id: String,
+    pub pointer: String,
+    pub kind: FailedCheckKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FailedCheckKind {
+    /// A typed `output.assertions` entry that did not hold.
+    Assertion,
+    /// A declared capture whose pointer resolved to nothing.
+    CaptureMissing,
+    /// A declared capture whose value did not match its declared type.
+    CaptureType,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RuntimeReport {
@@ -207,6 +239,11 @@ pub struct RuntimeReport {
     /// Typed output assertions that held during this observed run.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub passed_assertions: Vec<PassedAssertion>,
+    /// The typed checks that did not hold, named. Empty — and omitted from the
+    /// serialization — for any passing run, so a passing report is byte-identical
+    /// to one produced before this field existed.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub failed_assertions: Vec<FailedAssertion>,
 }
 
 #[derive(Debug)]
@@ -1402,6 +1439,7 @@ fn blocked_runtime_report(
         steps: Vec::new(),
         captures: BTreeMap::new(),
         passed_assertions: Vec::new(),
+        failed_assertions: Vec::new(),
     }
 }
 
@@ -1611,6 +1649,7 @@ fn execute_fresh_with_anchors(
     }
     let graph_root = if isolated { temp.path() } else { root };
     let mut setup_reports = Vec::new();
+    let mut failed_assertions: Vec<FailedAssertion> = Vec::new();
     let file_transition_reports = Vec::new();
     let reports = Vec::new();
     let assertions_passed = 0usize;
@@ -1690,6 +1729,7 @@ fn execute_fresh_with_anchors(
                                     &redacted_captures,
                                     &secrets,
                                 ),
+                                failed_assertions,
                             },
                         ),
                         Vec::new(),
@@ -1704,6 +1744,12 @@ fn execute_fresh_with_anchors(
                     setup_passed += 1;
                 } else {
                     setup_failed += 1;
+                    failed_assertions.push(FailedAssertion {
+                        operation_id: operation.operation_id.clone(),
+                        assertion_id: assertion.id.clone(),
+                        pointer: assertion.pointer.clone(),
+                        kind: FailedCheckKind::Assertion,
+                    });
                 }
             }
             for pointer in &operation.redact {
@@ -1731,6 +1777,7 @@ fn execute_fresh_with_anchors(
                             file_transitions: file_transition_reports,
                             steps: reports,
                             captures: redact_capture_map(captures, &redacted_captures, &secrets),
+                            failed_assertions,
                         },
                     ),
                     Vec::new(),
@@ -1756,6 +1803,7 @@ fn execute_fresh_with_anchors(
         redacted_captures,
         assertions_passed,
         passed_assertions: Vec::new(),
+        failed_assertions,
         human_decisions: Vec::new(),
         anchors: std::mem::take(anchors),
     };
@@ -1778,6 +1826,8 @@ struct ActiveRun {
     assertions_passed: usize,
     #[serde(default)]
     passed_assertions: Vec<PassedAssertion>,
+    #[serde(default)]
+    failed_assertions: Vec<FailedAssertion>,
     human_decisions: Vec<Value>,
     /// Execution-time anchors, present only on Store-owned guarded runs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1894,15 +1944,33 @@ fn run_steps(
                 });
             } else {
                 step_failed += 1;
+                active.failed_assertions.push(FailedAssertion {
+                    operation_id: step.operation_id.clone(),
+                    assertion_id: assertion.id.clone(),
+                    pointer: assertion.pointer.clone(),
+                    kind: FailedCheckKind::Assertion,
+                });
             }
         }
         for capture in &step.captures {
             let Some(value) = output.pointer(&capture.pointer).cloned() else {
                 step_failed += 1;
+                active.failed_assertions.push(FailedAssertion {
+                    operation_id: step.operation_id.clone(),
+                    assertion_id: capture.id.clone(),
+                    pointer: capture.pointer.clone(),
+                    kind: FailedCheckKind::CaptureMissing,
+                });
                 continue;
             };
             if !capture.value_type.accepts(&value) {
                 step_failed += 1;
+                active.failed_assertions.push(FailedAssertion {
+                    operation_id: step.operation_id.clone(),
+                    assertion_id: capture.id.clone(),
+                    pointer: capture.pointer.clone(),
+                    kind: FailedCheckKind::CaptureType,
+                });
                 continue;
             }
             let capture_key = format!("steps.{}.outputs.{}", step.step_id, capture.id);
@@ -1993,6 +2061,7 @@ fn completed_outcome(
         steps: active.reports,
         captures,
         passed_assertions: active.passed_assertions,
+        failed_assertions: active.failed_assertions,
     };
     if report.status == RuntimeStatus::Blocked {
         // A blocked-by-recheck run observed nothing trustworthy.
@@ -2538,6 +2607,7 @@ struct RuntimeProgress {
     file_transitions: Vec<FileTransitionReport>,
     steps: Vec<StepReport>,
     captures: BTreeMap<String, Value>,
+    failed_assertions: Vec<FailedAssertion>,
 }
 
 fn report_with(
@@ -2561,6 +2631,7 @@ fn report_with(
         steps: progress.steps,
         captures: progress.captures,
         passed_assertions: Vec::new(),
+        failed_assertions: progress.failed_assertions,
     }
 }
 
@@ -3886,6 +3957,7 @@ pub fn report_observation_json(report: &RuntimeReport) -> Result<Vec<u8>> {
         "assertions_passed": report.assertions_passed,
         "assertions_failed": report.assertions_failed,
         "passed_assertions": report.passed_assertions,
+        "failed_assertions": report.failed_assertions,
     }))?)
 }
 

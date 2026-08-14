@@ -2078,8 +2078,14 @@ impl InterfaceSurfaceDefinition {
     }
 }
 
+/// Both id shapes the graph mints: asserted nodes and edges carry a 32-hex
+/// `randomblob(16)`, derived nodes a 17-hex content fingerprint. Checking only
+/// the 32-hex form left every derived identity — the smell findings a fixture
+/// is most tempted to adjudicate by id — invisible to the lint, and those are
+/// the *least* stable ids in the graph: they are recomputed from the code, so
+/// an ordinary source edit retires them.
 fn is_exact_graph_identity(text: &str) -> bool {
-    text.len() == 32 && text.bytes().all(|byte| byte.is_ascii_hexdigit())
+    matches!(text.len(), 17 | 32) && text.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 fn is_undeclared_graph_identity(store: &crate::store::Store, text: &str) -> Result<bool> {
@@ -2087,6 +2093,35 @@ fn is_undeclared_graph_identity(store: &crate::store::Store, text: &str) -> Resu
         return Ok(false);
     }
     Ok(store.get_node(text)?.is_none() && store.get_edge(text)?.is_none())
+}
+
+/// Every maximal hex run in `text` that has an identity's exact shape.
+///
+/// An argv token is not always the identity itself: an operation that drives a
+/// batch — `loom mcp transcript --requests-json '[…]'`, an inline `loom apply`
+/// fragment — carries its ids *inside* one JSON argument, where a whole-token
+/// check sees only a long string and reports nothing. Those are exactly the
+/// fixtures that adjudicate findings by id, so the rule was blind where it was
+/// needed most. Boundaries are enforced on both sides so a longer hash is
+/// never mistaken for an identity.
+fn embedded_graph_identities(text: &str) -> Vec<&str> {
+    let bytes = text.as_bytes();
+    let mut out = Vec::new();
+    let mut start = None;
+    for index in 0..=bytes.len() {
+        let is_hex = index < bytes.len() && bytes[index].is_ascii_hexdigit();
+        match (is_hex, start) {
+            (true, None) => start = Some(index),
+            (false, Some(begin)) => {
+                if is_exact_graph_identity(&text[begin..index]) {
+                    out.push(&text[begin..index]);
+                }
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 fn value_contains_undeclared_graph_identity(
@@ -2182,8 +2217,16 @@ impl SurfaceManifest {
         };
         for operation in &self.surface.operations {
             for arg in &operation.argv {
-                if is_undeclared_graph_identity(store, arg)? {
-                    add("graph-local-identity", JourneyLintSeverity::Blocking, Some(&operation.id), None, "replace the undeclared 32-hex identity in argv with a repository-declared identity, stable name, or captured value".into());
+                let mut reported = false;
+                for candidate in embedded_graph_identities(arg) {
+                    if is_undeclared_graph_identity(store, candidate)? {
+                        add("graph-local-identity", JourneyLintSeverity::Blocking, Some(&operation.id), None, format!("replace the undeclared graph identity '{candidate}' in argv with a repository-declared identity, stable name, or captured value"));
+                        reported = true;
+                        break;
+                    }
+                }
+                if reported {
+                    break;
                 }
             }
             if relies_on_real_clock_minute_bucket(operation) {
@@ -4006,6 +4049,7 @@ mod tests {
             }],
             captures: BTreeMap::new(),
             passed_assertions: Vec::new(),
+            failed_assertions: Vec::new(),
         };
         let recorded = vec![ExecutableBoundary {
             operation_id: "gridctl-reject".into(),

@@ -695,10 +695,17 @@ impl Store {
         Ok(out)
     }
 
-    /// Resolve a finding by exact id or unique id-prefix.
+    /// Resolve a finding by exact id, unique id-prefix, or exact unique name.
     ///
-    /// Finding listings print short id prefixes; verdict writes must accept those
-    /// without falling back to names or fragments.
+    /// Finding listings print short id prefixes; verdict writes accept those.
+    /// Fuzzy matching and name *fragments* stay refused — a write must never
+    /// land on a finding the caller did not mean. An exact whole-name match is
+    /// admitted for one reason: an asserted finding's id is `randomblob(16)`,
+    /// so a caller that creates a finding and then adjudicates it — a Journey
+    /// proof fixture manufacturing its own residue, most of all — has no
+    /// stable identity to write down except the text it authored. Pinning the
+    /// generated id instead makes the fixture rot the next time the graph
+    /// changes. Two findings sharing a name is refused, not guessed at.
     pub fn resolve_finding(&self, key: &str) -> Result<Node> {
         if let Some(n) = self.get_node(key)? {
             if n.node_type == NodeType::Finding {
@@ -712,7 +719,21 @@ impl Store {
             Some(NodeType::Finding.as_str()),
         )?;
         match matches.len() {
-            0 => bail!("no finding matches '{key}'"),
+            0 => {
+                let named = self.find_nodes_by(
+                    "name = ?1",
+                    params![key],
+                    Some(NodeType::Finding.as_str()),
+                )?;
+                match named.len() {
+                    0 => bail!("no finding matches '{key}'"),
+                    1 => Ok(named.into_iter().next().expect("len == 1 by match arm")),
+                    n => bail!(
+                        "ambiguous finding name '{key}': {n} findings share it — \
+                         adjudicate by id"
+                    ),
+                }
+            }
             1 => Ok(matches.into_iter().next().expect("len == 1 by match arm")),
             n => bail!("ambiguous finding prefix '{key}': {n} match"),
         }

@@ -2384,6 +2384,7 @@ fn blocked_report(
         steps: Vec::new(),
         captures: BTreeMap::new(),
         passed_assertions: Vec::new(),
+        failed_assertions: Vec::new(),
     }
 }
 
