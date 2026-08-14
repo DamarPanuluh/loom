@@ -2216,10 +2216,21 @@ fn positional_census_pointer(pointer: &str, operation: &CliOperation) -> bool {
     ) {
         if index < authored {
             // Anything deeper is still positional into whatever the reply
-            // contained, which the fixture does not author.
-            return segments
+            // contained, which the fixture does not author — except the tool
+            // reply envelope itself. `mcp::tool_content` is the sole builder of
+            // a tool result and always emits exactly one content element, so
+            // `/result/content/0` is fixed by loom's own protocol code rather
+            // than by graph state. A *different* content index would be a real
+            // mistake and still fires.
+            let tail = &segments[2..];
+            // `/result/content/0` is the tool reply envelope; skip exactly that
+            // prefix and judge whatever the fixture reached into beyond it.
+            let body = match tail {
+                ["result", "content", "0", rest @ ..] => rest,
+                _ => tail,
+            };
+            return body
                 .iter()
-                .skip(2)
                 .any(|segment| !segment.is_empty() && segment.bytes().all(|b| b.is_ascii_digit()));
         }
     }
