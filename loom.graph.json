@@ -22749,7 +22749,7 @@
         "type": "test"
       },
       "created_at": "2026-08-11T18:17:59.484Z",
-      "updated_at": "2026-08-13T13:45:50.934Z"
+      "updated_at": "2026-08-14T20:37:25.186Z"
     },
     {
       "id": "ee400a004b71fcf7f37d8b67b1468b78",
@@ -24268,7 +24268,7 @@
       "type": "validation",
       "name": "journey:release-workflow:proof",
       "description": "compiler-owned Journey proof profile",
-      "status": "not_run",
+      "status": "blocked",
       "truth_class": "asserted",
       "body": {
         "compiler_version": "6",
@@ -24278,7 +24278,7 @@
         "type": "journey"
       },
       "created_at": "2026-08-10T12:18:01.358Z",
-      "updated_at": ""
+      "updated_at": "2026-08-14T20:11:55.635Z"
     },
     {
       "id": "f65f5ff4112d2d8a0607898203cbe7ab",
@@ -24973,20 +24973,6 @@
       "updated_at": "2026-08-09T12:54:20.353Z"
     },
     {
-      "id": "0153bb3065246ee2fb9cfa9c5941bab9",
-      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
-      "to_id": "a45b15e4d71e3fa33976fe532065c6fe",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T18:47:46.412Z",
-      "updated_at": "2026-08-14T18:47:46.412Z"
-    },
-    {
       "id": "01782c57e73596945dc3765c27ab499f",
       "from_id": "6808563516646ae785a81cdd1cb16d78",
       "to_id": "620da2943266c331a94c4eb21dd42113",
@@ -25517,6 +25503,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T15:40:22.369Z",
       "updated_at": "2026-08-14T15:41:02.461Z"
+    },
+    {
+      "id": "0d473b8940c333479bb13168d829cc14",
+      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
+      "to_id": "8de90b8bb12da4e88463e63e9de7c1d0",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T20:13:21.559Z",
+      "updated_at": "2026-08-14T20:13:21.559Z"
     },
     {
       "id": "0da01404368e0b0689200a59345fb64d",
@@ -26849,20 +26849,6 @@
       "updated_at": "2026-08-14T07:16:39.888Z"
     },
     {
-      "id": "3b2c257d299a58b68fdda505fad162b0",
-      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
-      "to_id": "7539753a724bba90543accbe7dcd8c56",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T18:47:46.412Z",
-      "updated_at": "2026-08-14T18:47:46.412Z"
-    },
-    {
       "id": "3be6fe134728effa3decc77abfeecca0",
       "from_id": "dc2683db4539c13a7b913129334060ff",
       "to_id": "6808563516646ae785a81cdd1cb16d78",
@@ -26875,6 +26861,20 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:20.283Z",
       "updated_at": "2026-08-09T12:54:20.283Z"
+    },
+    {
+      "id": "3c9f91c07df054a72594f29f5347289d",
+      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
+      "to_id": "e21177256723e3a7d3985da08faac498",
+      "kind": "exercises",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T20:13:21.561Z",
+      "updated_at": "2026-08-14T20:13:21.561Z"
     },
     {
       "id": "3d2d33c986b3539c5a57f3508125fc86",
@@ -27311,6 +27311,20 @@
       "updated_at": "2026-08-09T13:30:27.769Z"
     },
     {
+      "id": "4cef15bb4f1f4095dca3e4bdf2324384",
+      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
+      "to_id": "9f0efd64e6b9ccbdd0f9a9425ff7c525",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T20:13:21.560Z",
+      "updated_at": "2026-08-14T20:13:21.560Z"
+    },
+    {
       "id": "4d8118a60e19aa6683ebca2e05971dd1",
       "from_id": "42c6e0310688ba636c0c62f137ce90d7",
       "to_id": "6398b5de19eec1288aa850f635175359",
@@ -27421,6 +27435,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-09T15:27:19.931Z",
       "updated_at": "2026-08-14T07:16:39.990Z"
+    },
+    {
+      "id": "4fc23ff0a89da04b7575fedf0e2ab9a6",
+      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
+      "to_id": "a45b15e4d71e3fa33976fe532065c6fe",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T20:13:21.559Z",
+      "updated_at": "2026-08-14T20:13:21.559Z"
     },
     {
       "id": "500fad5ddff9c6aa3882e51b095ccfd6",
@@ -27939,20 +27967,6 @@
       "inspected_by": "loom",
       "created_at": "2026-08-13T05:07:40.743Z",
       "updated_at": "2026-08-13T13:32:44.725Z"
-    },
-    {
-      "id": "6098914217a86fa2457c02ea81b2ab7f",
-      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
-      "to_id": "a98c1886aeaf765577bd62df988c02ba",
-      "kind": "proves",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T18:47:46.411Z",
-      "updated_at": "2026-08-14T18:47:46.411Z"
     },
     {
       "id": "617d67c8736ce0f20f13a9d14366ccd0",
@@ -28935,20 +28949,6 @@
       "updated_at": "2026-08-14T16:28:04.301Z"
     },
     {
-      "id": "8271becacc4a6946e86d8e66325a9fbd",
-      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
-      "to_id": "e21177256723e3a7d3985da08faac498",
-      "kind": "exercises",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T18:47:46.414Z",
-      "updated_at": "2026-08-14T18:47:46.414Z"
-    },
-    {
       "id": "82ac6b36d8ee3fca393dc4e44f618676",
       "from_id": "d75242d6ee594ec8c2136c2713a49c64",
       "to_id": "a8b68c190362615aa838dd237ffef8fa",
@@ -29495,6 +29495,20 @@
       "updated_at": "2026-08-13T14:10:29.664Z"
     },
     {
+      "id": "92a281b7741397486179e60a701d7c3f",
+      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
+      "to_id": "a98c1886aeaf765577bd62df988c02ba",
+      "kind": "proves",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T20:13:21.556Z",
+      "updated_at": "2026-08-14T20:13:21.556Z"
+    },
+    {
       "id": "92d62a0631a5d9aef26767c8ba402bf7",
       "from_id": "a0c67e4b689e9f31f477cb6cdd894535",
       "to_id": "d932e40515659425b6275dd960a083fa",
@@ -29885,20 +29899,6 @@
       "inspected_by": "",
       "created_at": "2026-08-09T18:11:41.608Z",
       "updated_at": "2026-08-09T18:11:41.608Z"
-    },
-    {
-      "id": "a0ee9f1f96a66b22654e9aade6353b36",
-      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
-      "to_id": "8de90b8bb12da4e88463e63e9de7c1d0",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T18:47:46.412Z",
-      "updated_at": "2026-08-14T18:47:46.412Z"
     },
     {
       "id": "a1905e6c172e19670cf71f55f842bf03",
@@ -30529,20 +30529,6 @@
       "inspected_by": "solo",
       "created_at": "2026-08-09T14:45:41.855Z",
       "updated_at": "2026-08-14T07:36:25.106Z"
-    },
-    {
-      "id": "b8aa131fbe640a9ffaa12ecc2894db36",
-      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
-      "to_id": "9f0efd64e6b9ccbdd0f9a9425ff7c525",
-      "kind": "calls",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T18:47:46.413Z",
-      "updated_at": "2026-08-14T18:47:46.413Z"
     },
     {
       "id": "b90a47b0e080225e1178a987a354b4f9",
@@ -36912,7 +36898,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-11T18:17:59.484Z",
-      "updated_at": "2026-08-13T13:45:50.932Z"
+      "updated_at": "2026-08-14T20:37:25.184Z"
     },
     {
       "id": "f15bd6160712b725202744f6d7f90e5a",
@@ -37109,6 +37095,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-13T05:07:40.681Z",
       "updated_at": "2026-08-13T13:32:41.514Z"
+    },
+    {
+      "id": "f8740cd6c0444d99ba21b57897ad5a77",
+      "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
+      "to_id": "7539753a724bba90543accbe7dcd8c56",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-14T20:13:21.558Z",
+      "updated_at": "2026-08-14T20:13:21.558Z"
     },
     {
       "id": "f90d9b981dccb0dab646ec9d0848a388",
@@ -41673,7 +41673,7 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-13T13:45:50.931Z",
+      "asserted_at": "2026-08-14T20:37:25.183Z",
       "decision_mode": "individual"
     },
     {
@@ -53030,6 +53030,20 @@
       "recorded_at": "2026-08-14T08:53:55.615Z"
     },
     {
+      "id": "e0aa3fa46fe13916d",
+      "fact_id": "f6941e83f6a24e7a4",
+      "payload": {
+        "kind": "span",
+        "file": "src/harness.rs",
+        "start": 76,
+        "end": 83,
+        "hash": "03e11fd4853ac8fd",
+        "symbol": "acquire",
+        "symbol_hash": "03e11fd4853ac8fd"
+      },
+      "recorded_at": "2026-08-14T06:58:20.788Z"
+    },
+    {
       "id": "e41477364b4a7c7c1",
       "fact_id": "f6941e83f6a24e7a4",
       "payload": {
@@ -53049,20 +53063,6 @@
         "duration_ms": 0,
         "ran_at": "1786690700790",
         "loom_version": "0.32.0"
-      },
-      "recorded_at": "2026-08-14T06:58:20.788Z"
-    },
-    {
-      "id": "e56488b934091e486",
-      "fact_id": "f6941e83f6a24e7a4",
-      "payload": {
-        "kind": "span",
-        "file": "src/harness.rs",
-        "start": 42,
-        "end": 49,
-        "hash": "03e11fd4853ac8fd",
-        "symbol": "acquire",
-        "symbol_hash": "03e11fd4853ac8fd"
       },
       "recorded_at": "2026-08-14T06:58:20.788Z"
     },
@@ -65325,7 +65325,7 @@
       "recorded_at": "2026-08-14T11:54:39.129Z"
     },
     {
-      "id": "e32b77f8cb5685d6d",
+      "id": "e5364ea341f00f818",
       "fact_id": "fcae4c8537053f776",
       "payload": {
         "kind": "run",
@@ -65333,22 +65333,22 @@
         "command": "cargo test --test ring30_runner an_observed_run_records_what_it_covered -- --exact",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "acff126852562787",
-        "stderr_hash": "5766d68ce86e052c",
-        "stdout_excerpt": "\nrunning 1 test\ntest an_observed_run_records_what_it_covered ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.04s\n\n",
-        "stderr_excerpt": "   Compiling loom v0.31.4 (/private/tmp/loom-v12-finish.I2R9bl)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.65s\n     Running tests/ring30_runner.rs (/Users/laptopdp/Developer/damarpanuluh/loom/target/debug/deps/ring30_runner-300ab7edd3587490)\n",
+        "stdout_hash": "fa8f9884f903ba38",
+        "stderr_hash": "0b3b03be9d381231",
+        "stdout_excerpt": "\nrunning 1 test\ntest an_observed_run_records_what_it_covered ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.03s\n\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.30s\n     Running tests/ring30_runner.rs (target/debug/deps/ring30_runner-703fe2b4fde1e74a)\n",
         "covered": {
-          "src/harness.rs": "cb030ee20644b577",
+          "src/harness.rs": "e52d4f7b4a5c5f49",
           "src/runner.rs": "7d2d19e90930608a",
           "src/subprocess.rs": "7a95bf38433afd49"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 1482,
-        "ran_at": "1786628750924",
-        "loom_version": "0.31.4"
+        "duration_ms": 384,
+        "ran_at": "1786739845179",
+        "loom_version": "0.32.0"
       },
-      "recorded_at": "2026-08-13T13:45:50.931Z"
+      "recorded_at": "2026-08-14T20:37:25.183Z"
     },
     {
       "id": "e78e5dd78eec1bf2e",
@@ -65357,7 +65357,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring30_runner an_observed_run_records_what_it_covered -- --exact` exit 0"
       },
-      "recorded_at": "2026-08-13T13:45:50.931Z"
+      "recorded_at": "2026-08-14T20:37:25.183Z"
     },
     {
       "id": "e278408eefead7061",
@@ -73304,7 +73304,7 @@
       "target_id": "1a381da7e1d7e7c2a40ab1b232eace80",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/runner.rs\",\"proven_by\":\"contract: exclusive bounded proof observation\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/runner.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -75132,6 +75132,20 @@
       "target_kind": "edge",
       "key": "step_ids",
       "value": "[\"run-registered-proof\"]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3c9f91c07df054a72594f29f5347289d",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "rehearse_cmd",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3c9f91c07df054a72594f29f5347289d",
+      "target_kind": "edge",
+      "key": "surface_locator",
+      "value": "rehearse_cmd",
       "truth_class": "asserted"
     },
     {
@@ -79044,7 +79058,7 @@
       "target_id": "7539753a724bba90543accbe7dcd8c56",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/release.rs\",\"proven_by\":\"journey:release-workflow:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/release.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -79303,7 +79317,7 @@
       "target_id": "79ba183fdb956d9097a1ab2d39f7df42",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/journey.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/journey.rs\",\"proven_by\":\"contract: strict semantic Journey parsing\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -80053,20 +80067,6 @@
       "target_kind": "edge",
       "key": "surface_locator",
       "value": "run",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "8271becacc4a6946e86d8e66325a9fbd",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "rehearse_cmd",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "8271becacc4a6946e86d8e66325a9fbd",
-      "target_kind": "edge",
-      "key": "surface_locator",
-      "value": "rehearse_cmd",
       "truth_class": "asserted"
     },
     {
@@ -80878,7 +80878,7 @@
       "target_id": "8de90b8bb12da4e88463e63e9de7c1d0",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"scripts/dogfood.sh\",\"proven_by\":\"journey:release-workflow:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"scripts/dogfood.sh\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -82635,7 +82635,7 @@
       "target_id": "a45b15e4d71e3fa33976fe532065c6fe",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/release.rs\",\"proven_by\":\"journey:release-workflow:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/release.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -88312,7 +88312,7 @@
       "target_id": "ee200c0c8c9a0bd982f820838e0bf166",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"1a381da7e1d7e7c2a40ab1b232eace80\":\"src/harness.rs=cb030ee20644b577,src/runner.rs=7d2d19e90930608a,src/subprocess.rs=7a95bf38433afd49\"}",
+      "value": "{\"1a381da7e1d7e7c2a40ab1b232eace80\":\"src/harness.rs=e52d4f7b4a5c5f49,src/runner.rs=7d2d19e90930608a,src/subprocess.rs=7a95bf38433afd49\"}",
       "truth_class": "derived"
     },
     {
@@ -88501,7 +88501,7 @@
       "target_id": "f14a0941c66c4e1b395d34097ece0839",
       "target_kind": "edge",
       "key": "stale_cause",
-      "value": "validation command changed",
+      "value": "cargo test --test ring30_runner an_observed_run_records_what_it_covered -- --exact no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -88746,7 +88746,7 @@
       "target_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"207\",\"call_witness\":\"run_isolated_gate\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands/release_cmd.rs\",\"entry_symbol\":\"rehearse_cmd\",\"grounded_symbol\":\"run_isolated_gate\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -88830,21 +88830,21 @@
       "target_id": "f7c86516caeb46c49a2ed7d99acbfa3b",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"ENV_LOCK>Mutex::new\",\"a_child_of_the_holder_proceeds_without_relocking>ENV_LOCK::lock\",\"a_child_of_the_holder_proceeds_without_relocking>ExecutionIdentity::solo\",\"a_child_of_the_holder_proceeds_without_relocking>acquire\",\"a_child_of_the_holder_proceeds_without_relocking>acquire\",\"a_child_of_the_holder_proceeds_without_relocking>acquire::expect\",\"a_child_of_the_holder_proceeds_without_relocking>acquire::unwrap\",\"a_child_of_the_holder_proceeds_without_relocking>drop\",\"a_child_of_the_holder_proceeds_without_relocking>env::remove_var\",\"a_child_of_the_holder_proceeds_without_relocking>env::remove_var\",\"a_child_of_the_holder_proceeds_without_relocking>fs::remove_dir_all\",\"a_child_of_the_holder_proceeds_without_relocking>lock::unwrap\",\"a_child_of_the_holder_proceeds_without_relocking>temp_root\",\"acquire>acquire_at\",\"acquire>lock_path\",\"acquire_at>Err\",\"acquire_at>Err::with_context\",\"acquire_at>Ok\",\"acquire_at>Ok\",\"acquire_at>OpenOptions::new\",\"acquire_at>Some\",\"acquire_at>Some\",\"acquire_at>actor\",\"acquire_at>and_then\",\"acquire_at>and_then::map\",\"acquire_at>anyhow::bail\",\"acquire_at>args\",\"acquire_at>as_str\",\"acquire_at>as_u64\",\"acquire_at>create::write\",\"acquire_at>display\",\"acquire_at>display\",\"acquire_at>env::set_var\",\"acquire_at>env::var\",\"acquire_at>f::set_len\",\"acquire_at>f::write_all\",\"acquire_at>file::try_lock\",\"acquire_at>format\",\"acquire_at>format\",\"acquire_at>format\",\"acquire_at>format\",\"acquire_at>from_str::ok\",\"acquire_at>fs::create_dir_all\",\"acquire_at>fs::read_to_string\",\"acquire_at>get\",\"acquire_at>get::and_then\",\"acquire_at>h::get\",\"acquire_at>holder::map\",\"acquire_at>holder::to_string\",\"acquire_at>id\",\"acquire_at>join\",\"acquire_at>key::as_str\",\"acquire_at>map::unwrap_or_default\",\"acquire_at>map::unwrap_or_else\",\"acquire_at>millis_to_iso\",\"acquire_at>new::create\",\"acquire_at>now_iso\",\"acquire_at>ok::and_then\",\"acquire_at>ok::as_deref\",\"acquire_at>open::with_context\",\"acquire_at>path::parent\",\"acquire_at>path::to_string_lossy\",\"acquire_at>profile\",\"acquire_at>read_to_string::ok\",\"acquire_at>serde_json::from_str\",\"acquire_at>serde_json::json\",\"acquire_at>to_string\",\"acquire_at>to_string::as_bytes\",\"acquire_at>to_string_lossy\",\"acquire_at>to_string_lossy::to_string\",\"acquire_at>truncate::open\",\"acquire_at>unwrap_or\",\"acquire_at>unwrap_or\",\"acquire_at>v::as_str\",\"acquire_at>var::ok\",\"acquire_at>write::truncate\",\"acquire_for_artifact>acquire_at\",\"acquire_for_artifact>canonicalize::unwrap_or_else\",\"acquire_for_artifact>env::temp_dir\",\"acquire_for_artifact>fingerprint\",\"acquire_for_artifact>format\",\"acquire_for_artifact>spec::canonicalize\",\"acquire_for_artifact>spec::to_path_buf\",\"acquire_for_artifact>temp_dir::join\",\"acquire_for_artifact>to_string_lossy::to_string\",\"acquire_for_artifact>unwrap_or_else::to_string_lossy\",\"fmt>f::write_str\",\"lock_path>canonicalize::unwrap_or_else\",\"lock_path>env::temp_dir\",\"lock_path>fingerprint\",\"lock_path>format\",\"lock_path>loom_dir::is_dir\",\"lock_path>loom_dir::join\",\"lock_path>root::canonicalize\",\"lock_path>root::join\",\"lock_path>root::to_path_buf\",\"lock_path>temp_dir::join\",\"lock_path>to_string_lossy::to_string\",\"lock_path>unwrap_or_else::to_string_lossy\",\"second_executor_is_refused_with_the_holders_identity>ENV_LOCK::lock\",\"second_executor_is_refused_with_the_holders_identity>ExecutionIdentity::solo\",\"second_executor_is_refused_with_the_holders_identity>acquire\",\"second_executor_is_refused_with_the_holders_identity>acquire\",\"second_executor_is_refused_with_the_holders_identity>acquire\",\"second_executor_is_refused_with_the_holders_identity>acquire::expect\",\"second_executor_is_refused_with_the_holders_identity>acquire::unwrap\",\"second_executor_is_refused_with_the_holders_identity>acquire::unwrap_err\",\"second_executor_is_refused_with_the_holders_identity>assert\",\"second_executor_is_refused_with_the_holders_identity>assert\",\"second_executor_is_refused_with_the_holders_identity>contains\",\"second_executor_is_refused_with_the_holders_identity>contains\",\"second_executor_is_refused_with_the_holders_identity>drop\",\"second_executor_is_refused_with_the_holders_identity>env::remove_var\",\"second_executor_is_refused_with_the_holders_identity>env::remove_var\",\"second_executor_is_refused_with_the_holders_identity>env::remove_var\",\"second_executor_is_refused_with_the_holders_identity>format\",\"second_executor_is_refused_with_the_holders_identity>fs::remove_dir_all\",\"second_executor_is_refused_with_the_holders_identity>lock::unwrap\",\"second_executor_is_refused_with_the_holders_identity>temp_root\",\"temp_root>create_dir_all::unwrap\",\"temp_root>dir::join\",\"temp_root>env::temp_dir\",\"temp_root>format\",\"temp_root>fs::create_dir_all\",\"temp_root>id\",\"temp_root>temp_dir::join\"]",
+      "value": "[\">new\",\">thread_local\",\"a_nested_step_of_the_holder_proceeds_without_relocking>ExecutionIdentity::solo\",\"a_nested_step_of_the_holder_proceeds_without_relocking>acquire\",\"a_nested_step_of_the_holder_proceeds_without_relocking>acquire\",\"a_nested_step_of_the_holder_proceeds_without_relocking>acquire::expect\",\"a_nested_step_of_the_holder_proceeds_without_relocking>acquire::unwrap\",\"a_nested_step_of_the_holder_proceeds_without_relocking>drop\",\"a_nested_step_of_the_holder_proceeds_without_relocking>fs::remove_dir_all\",\"a_nested_step_of_the_holder_proceeds_without_relocking>temp_root\",\"acquire>acquire_at\",\"acquire>lock_path\",\"acquire_at>Err\",\"acquire_at>Err::with_context\",\"acquire_at>HELD::with\",\"acquire_at>Ok\",\"acquire_at>Ok\",\"acquire_at>OpenOptions::new\",\"acquire_at>Some\",\"acquire_at>Some\",\"acquire_at>actor\",\"acquire_at>and_then\",\"acquire_at>and_then::map\",\"acquire_at>anyhow::bail\",\"acquire_at>args\",\"acquire_at>as_str\",\"acquire_at>as_u64\",\"acquire_at>borrow_mut::insert\",\"acquire_at>create::write\",\"acquire_at>display\",\"acquire_at>display\",\"acquire_at>f::set_len\",\"acquire_at>f::write_all\",\"acquire_at>file::try_lock\",\"acquire_at>format\",\"acquire_at>format\",\"acquire_at>format\",\"acquire_at>format\",\"acquire_at>from_str::ok\",\"acquire_at>fs::create_dir_all\",\"acquire_at>fs::read_to_string\",\"acquire_at>get\",\"acquire_at>get::and_then\",\"acquire_at>h::get\",\"acquire_at>held::borrow_mut\",\"acquire_at>held_by_this_thread\",\"acquire_at>holder::map\",\"acquire_at>holder::to_string\",\"acquire_at>id\",\"acquire_at>join\",\"acquire_at>key::clone\",\"acquire_at>map::unwrap_or_default\",\"acquire_at>map::unwrap_or_else\",\"acquire_at>millis_to_iso\",\"acquire_at>new::create\",\"acquire_at>now_iso\",\"acquire_at>ok::and_then\",\"acquire_at>open::with_context\",\"acquire_at>path::parent\",\"acquire_at>path::to_string_lossy\",\"acquire_at>profile\",\"acquire_at>read_to_string::ok\",\"acquire_at>serde_json::from_str\",\"acquire_at>serde_json::json\",\"acquire_at>to_string\",\"acquire_at>to_string::as_bytes\",\"acquire_at>to_string_lossy\",\"acquire_at>to_string_lossy::to_string\",\"acquire_at>truncate::open\",\"acquire_at>unwrap_or\",\"acquire_at>unwrap_or\",\"acquire_at>v::as_str\",\"acquire_at>write::truncate\",\"acquire_for_artifact>acquire_at\",\"acquire_for_artifact>canonicalize::unwrap_or_else\",\"acquire_for_artifact>env::temp_dir\",\"acquire_for_artifact>fingerprint\",\"acquire_for_artifact>format\",\"acquire_for_artifact>spec::canonicalize\",\"acquire_for_artifact>spec::to_path_buf\",\"acquire_for_artifact>temp_dir::join\",\"acquire_for_artifact>to_string_lossy::to_string\",\"acquire_for_artifact>unwrap_or_else::to_string_lossy\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>ExecutionIdentity::solo\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>acquire\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>acquire\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>acquire\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>acquire::expect\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>acquire::unwrap\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>acquire::unwrap\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>drop\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>fs::remove_dir_all\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>fs::remove_dir_all\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>scope::spawn\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>temp_root\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>temp_root\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy>thread::scope\",\"drop>HELD::with\",\"drop>borrow_mut::remove\",\"drop>held::borrow_mut\",\"drop>key::take\",\"fmt>f::write_str\",\"held_by_this_thread>HELD::with\",\"held_by_this_thread>borrow::contains\",\"held_by_this_thread>held::borrow\",\"lock_path>canonicalize::unwrap_or_else\",\"lock_path>env::temp_dir\",\"lock_path>fingerprint\",\"lock_path>format\",\"lock_path>loom_dir::is_dir\",\"lock_path>loom_dir::join\",\"lock_path>root::canonicalize\",\"lock_path>root::join\",\"lock_path>root::to_path_buf\",\"lock_path>temp_dir::join\",\"lock_path>to_string_lossy::to_string\",\"lock_path>unwrap_or_else::to_string_lossy\",\"second_executor_is_refused_with_the_holders_identity>ExecutionIdentity::solo\",\"second_executor_is_refused_with_the_holders_identity>acquire\",\"second_executor_is_refused_with_the_holders_identity>acquire\",\"second_executor_is_refused_with_the_holders_identity>acquire\",\"second_executor_is_refused_with_the_holders_identity>acquire::expect\",\"second_executor_is_refused_with_the_holders_identity>acquire::unwrap\",\"second_executor_is_refused_with_the_holders_identity>acquire::unwrap_err\",\"second_executor_is_refused_with_the_holders_identity>assert\",\"second_executor_is_refused_with_the_holders_identity>assert\",\"second_executor_is_refused_with_the_holders_identity>contains\",\"second_executor_is_refused_with_the_holders_identity>contains\",\"second_executor_is_refused_with_the_holders_identity>drop\",\"second_executor_is_refused_with_the_holders_identity>format\",\"second_executor_is_refused_with_the_holders_identity>fs::remove_dir_all\",\"second_executor_is_refused_with_the_holders_identity>scope::spawn\",\"second_executor_is_refused_with_the_holders_identity>scope::spawn\",\"second_executor_is_refused_with_the_holders_identity>temp_root\",\"second_executor_is_refused_with_the_holders_identity>thread::scope\",\"second_executor_is_refused_with_the_holders_identity>thread::scope\",\"temp_root>create_dir_all::unwrap\",\"temp_root>dir::join\",\"temp_root>env::temp_dir\",\"temp_root>format\",\"temp_root>fs::create_dir_all\",\"temp_root>id\",\"temp_root>temp_dir::join\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "f7c86516caeb46c49a2ed7d99acbfa3b",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "cb030ee20644b577",
+      "value": "e52d4f7b4a5c5f49",
       "truth_class": "derived"
     },
     {
       "target_id": "f7c86516caeb46c49a2ed7d99acbfa3b",
       "target_kind": "node",
       "key": "imports",
-      "value": "[\"anyhow::Context\",\"crate::Result\",\"std::fs::File\",\"std::fs::OpenOptions\",\"std::io::Write\",\"std::path::Path\",\"std::path::PathBuf\",\"super\"]",
+      "value": "[\"anyhow::Context\",\"crate::Result\",\"std::cell::RefCell\",\"std::collections::BTreeSet\",\"std::fs::File\",\"std::fs::OpenOptions\",\"std::io::Write\",\"std::path::Path\",\"std::path::PathBuf\",\"super\"]",
       "truth_class": "derived"
     },
     {
@@ -88858,7 +88858,7 @@
       "target_id": "f7c86516caeb46c49a2ed7d99acbfa3b",
       "target_kind": "node",
       "key": "loc",
-      "value": "214",
+      "value": "282",
       "truth_class": "derived"
     },
     {
@@ -88872,21 +88872,21 @@
       "target_id": "f7c86516caeb46c49a2ed7d99acbfa3b",
       "target_kind": "node",
       "key": "symbol_count",
-      "value": "12",
+      "value": "13",
       "truth_class": "derived"
     },
     {
       "target_id": "f7c86516caeb46c49a2ed7d99acbfa3b",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"ENV_LOCK\":\"ceb1345d8c8919a3\",\"HARNESS_CONTENTION_MARKER\":\"3db1154693058c0f\",\"HELD_ENV\":\"dbe4766e55c70b14\",\"HarnessGuard\":\"6b556aaebb907766\",\"a_child_of_the_holder_proceeds_without_relocking\":\"3b74682a1a84d0fe\",\"acquire\":\"03e11fd4853ac8fd\",\"acquire_at\":\"9956781099e8eea4\",\"acquire_for_artifact\":\"600d7d3423319965\",\"fmt\":\"9893d3de3e877e23\",\"lock_path\":\"0f1d22013eedeb2e\",\"second_executor_is_refused_with_the_holders_identity\":\"1cd77cd35a118953\",\"temp_root\":\"dbc9dabfb1c74122\"}",
+      "value": "{\"HARNESS_CONTENTION_MARKER\":\"3db1154693058c0f\",\"HarnessGuard\":\"11cd08b26e9f0a07\",\"a_nested_step_of_the_holder_proceeds_without_relocking\":\"69bca13fe85aa7dc\",\"acquire\":\"03e11fd4853ac8fd\",\"acquire_at\":\"20cd0f35a55e47b3\",\"acquire_for_artifact\":\"600d7d3423319965\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy\":\"a31a4c8bb47426f4\",\"drop\":\"b9b397db828b056d\",\"fmt\":\"9893d3de3e877e23\",\"held_by_this_thread\":\"bfcc32db2fdc089f\",\"lock_path\":\"0f1d22013eedeb2e\",\"second_executor_is_refused_with_the_holders_identity\":\"0ce9b32c8373355b\",\"temp_root\":\"dbc9dabfb1c74122\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "f7c86516caeb46c49a2ed7d99acbfa3b",
       "target_kind": "node",
       "key": "test_symbols",
-      "value": "[\"second_executor_is_refused_with_the_holders_identity\",\"a_child_of_the_holder_proceeds_without_relocking\"]",
+      "value": "[\"second_executor_is_refused_with_the_holders_identity\",\"a_nested_step_of_the_holder_proceeds_without_relocking\",\"an_unrelated_lock_on_another_thread_does_not_revoke_re_entrancy\"]",
       "truth_class": "derived"
     },
     {
