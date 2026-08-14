@@ -89,21 +89,34 @@ pub fn compiler_owned_journey_validation(
     Ok(Some((owner, profile.to_string())))
 }
 
-/// Generic edge commands must not rewrite compiler-owned Journey proof
-/// topology. Journey compile/run are the only owners of these closure edges.
-pub fn require_generic_edge_mutable(store: &Store, edge: &Edge) -> Result<()> {
+/// The Journey/profile that owns this edge when it belongs to a compiler-owned
+/// proof closure (`Proves`/`Validates`/`Calls`/`Exercises` out of a Validation
+/// that `journey compile` created), or None for an ordinary edge.
+///
+/// ONE predicate serves both halves of the compiler-ownership cut: the write
+/// guard below refuses generic mutation, and the queues refuse to SERVE the
+/// same edges through a generic lane. Splitting them let Analyze hand out
+/// packets whose only write-back the CLI rejects.
+pub fn compiler_owned_proof_edge(store: &Store, edge: &Edge) -> Result<Option<(Node, String)>> {
     if !matches!(
         edge.kind,
         EdgeKind::Proves | EdgeKind::Validates | EdgeKind::Calls | EdgeKind::Exercises
     ) {
-        return Ok(());
+        return Ok(None);
     }
     let Some(source) = store.get_node(&edge.from_id)? else {
-        return Ok(());
+        return Ok(None);
     };
-    if source.node_type == NodeType::Validation
-        && compiler_owned_journey_validation(store, &source)?.is_some()
-    {
+    if source.node_type != NodeType::Validation {
+        return Ok(None);
+    }
+    compiler_owned_journey_validation(store, &source)
+}
+
+/// Generic edge commands must not rewrite compiler-owned Journey proof
+/// topology. Journey compile/run are the only owners of these closure edges.
+pub fn require_generic_edge_mutable(store: &Store, edge: &Edge) -> Result<()> {
+    if compiler_owned_proof_edge(store, edge)?.is_some() {
         bail!(
             "compiler-owned Journey proof topology cannot be changed generically; use loom journey compile/run"
         );

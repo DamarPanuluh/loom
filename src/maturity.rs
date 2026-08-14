@@ -156,7 +156,7 @@ impl LadderInputs {
         )?;
         let uninspected =
             store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?;
-        let split = |edges: &[crate::model::Edge]| -> (usize, usize, usize) {
+        let split = |edges: &[crate::model::Edge]| -> Result<(usize, usize, usize)> {
             let governs = edges.iter().filter(|e| e.kind == EdgeKind::Governs).count();
             let validates = edges
                 .iter()
@@ -164,19 +164,22 @@ impl LadderInputs {
                 .count();
             // `depends_on` is a federation ripple link and `exercises` is
             // validation-specific evidence provenance; neither is a claim the
-            // analyze lane verifies. Counting them as relationships inflated
+            // analyze lane verifies. Compiler-owned Journey proof topology is
+            // not one either: `journey compile/run` owns it and the validate
+            // lane serves it. Counting any of them as relationships inflated
             // the rung above the queue depth — the exact drift the shared
-            // predicate (`crate::workitem::not_measured_lane`) exists to
-            // prevent.
-            let unmeasured = edges
-                .iter()
-                .filter(|e| !crate::workitem::not_measured_lane(e))
-                .count();
-            (edges.len() - unmeasured, governs, validates)
+            // predicate (`crate::workitem::analyze_serves`) exists to prevent.
+            let mut relationships = 0usize;
+            for edge in edges {
+                if crate::workitem::analyze_serves(store, edge)? {
+                    relationships += 1;
+                }
+            }
+            Ok((relationships, governs, validates))
         };
-        let (stale_relationships, stale_governs, stale_validates) = split(&stale);
+        let (stale_relationships, stale_governs, stale_validates) = split(&stale)?;
         let (uninspected_relationships, uninspected_governs, uninspected_validates) =
-            split(&uninspected);
+            split(&uninspected)?;
         let validation_work_units = crate::workitem::validation_work_units(store)?.len();
 
         // Proofs: registered validations are not proof until they pass.

@@ -476,7 +476,12 @@ pub(super) fn exemplar_contract(edge: &Edge, pattern: &str, file: &str) -> Promp
     }
 }
 
-pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> PromptContract {
+pub(super) fn fixer_contract(
+    edge: &Edge,
+    from_name: &str,
+    to_name: &str,
+    compiler_owned: Option<(Node, String)>,
+) -> PromptContract {
     // Which endpoint is the INTENT depends on the edge kind, and getting it
     // wrong produces a command that cannot resolve. `implements` and `relates`
     // run intent→target, so the intent is `from`; `governs` runs rule→intent
@@ -485,6 +490,19 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
         EdgeKind::Governs | EdgeKind::Validates => to_name,
         _ => from_name,
     };
+    // Compiler-owned Journey proof topology does not re-measure through sync:
+    // `journey compile/run` is the only writer that can take those edges off
+    // failing. Naming sync alone would send the fixer to a door that cannot
+    // close their own packet.
+    let rerun = compiler_owned.map(|(journey, profile)| {
+        format!(
+            "loom journey compile {} --profile {}; loom journey run {} --profile {}",
+            q(&journey.id),
+            q(&profile),
+            q(&journey.id),
+            q(&profile)
+        )
+    });
     PromptContract {
         role: "fixer".into(),
         mindset: "Use Loom first to understand the stale/failing criterion, linked entities, \
@@ -514,7 +532,10 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
                 q(intent_name)
             ),
             FINDING_ADD_ACTION.into(),
-        ],
+        ]
+        .into_iter()
+        .chain(rerun.clone())
+        .collect(),
         forbidden_actions: vec![
             "recording the passing verdict yourself (the owning lane re-measures after sync)".into(),
             "suppress the symptom without a root-cause fix".into(),
@@ -529,11 +550,19 @@ pub(super) fn fixer_contract(edge: &Edge, from_name: &str, to_name: &str) -> Pro
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
-        write_back: "fix the source at root cause, then loom sync — sync re-opens this claim as \
+        write_back: match &rerun {
+            Some(rerun) => format!(
+                "fix the source at root cause, then loom sync; this claim is compiler-owned Journey \
+                 proof topology, so sync alone cannot re-measure it — re-run the profile: {rerun}. \
+                 If the behavior was deliberately removed, retire the intent instead: the failure is \
+                 then the graph being out of date, and that IS the root cause"
+            ),
+            None => "fix the source at root cause, then loom sync — sync re-opens this claim as \
                      needs_reverification and its owning lane re-measures it. If the behavior was \
                      deliberately removed, retire the intent instead: the failure is then the \
                      graph being out of date, and that IS the root cause"
-            .into(),
+                .into(),
+        },
         stop_condition: "after the fix + sync, return to loom status".into(),
         human_gate: None,
     }
@@ -680,6 +709,18 @@ pub(super) fn validator_contract(
     intent_name: &str,
 ) -> Result<PromptContract> {
     let val = store.get_node(&edge.from_id)?;
+    if let Some(validation) = &val {
+        if let Some((journey, profile)) =
+            crate::completeness::compiler_owned_journey_validation(store, validation)?
+        {
+            let mut contract = journey_proof_contract_for_profile(&journey, &profile);
+            contract.why_now = format!(
+                "compiler-owned {} edge is {}; settle it with `loom journey run {} --profile {}`",
+                edge.kind, edge.status, journey.id, profile
+            );
+            return Ok(contract);
+        }
+    }
     let command = val
         .as_ref()
         .and_then(|n| {

@@ -459,6 +459,225 @@ fn review_queue_low_confidence_count_matches_eligible_edges() {
 // 2. QUEUE DISJOINTNESS (fix / quality / validate partition)
 // ===========================================================================
 
+/// A hand-authored validation with one passing `validates` edge and one
+/// `exercises` edge naming the code entry its proof drives.
+fn generic_validation_with_exercises(
+    store: &Store,
+) -> (loom::model::Node, loom::model::Edge, loom::model::Edge) {
+    let target = implemented_intent(store, "the CLI answers with the record");
+    let file = codefile(store, "src/behavior.rs");
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "behavior-end-to-end",
+            "drives the CLI and asserts the record",
+            "passed",
+            serde_json::json!({"type":"test", "command":"cargo test behavior"}),
+        )
+        .unwrap();
+    // The validates edge is left for the validate lane: a passing verdict on
+    // it needs a Loom-observed run, which this fixture deliberately has not.
+    let validates = store
+        .add_edge(
+            EdgeKind::Validates,
+            &validation.id,
+            &target.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let exercises = store
+        .add_edge(
+            EdgeKind::Exercises,
+            &validation.id,
+            &file.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    (validation, validates, exercises)
+}
+
+/// Provenance that was inspected and then invalidated by a drifted locator.
+/// Sync can only stale a settled verdict, so the inspection comes first.
+fn inspect_then_stale(store: &Store, edge: &loom::model::Edge) {
+    store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "the proof drives this entry point",
+            "src/behavior.rs:1",
+            0.95,
+            "validator",
+        )
+        .unwrap();
+    assert!(
+        store
+            .stale_edge(&edge.id, "locator 'behavior' no longer resolves")
+            .unwrap(),
+        "the fixture must reach the state sync produces"
+    );
+}
+
+#[test]
+fn stale_exercises_provenance_becomes_analyze_work_that_edge_verdict_closes() {
+    // `exercises` is provenance, not a claim — so an uninspected one is not
+    // queued, and proof strength counts it as current. Once sync invalidates
+    // it (a drifted locator), it stops counting and NOTHING could settle it:
+    // `validation run` writes verdicts on `validates` alone. That silently
+    // dropped a proof from S3 to S2 with no lane to drain. Analyze owns it
+    // from the moment it goes stale, and the door it names must open.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (_validation, _validates, exercises) = generic_validation_with_exercises(&store);
+
+    assert!(
+        workitem::queue_items(&store, Lane::Analyze)
+            .unwrap()
+            .iter()
+            .all(|entry| entry.target.id != exercises.id),
+        "intact provenance is not a claim awaiting inspection"
+    );
+
+    inspect_then_stale(&store, &exercises);
+    let roster = workitem::queue_items(&store, Lane::Analyze).unwrap();
+    assert!(
+        roster.iter().any(|entry| entry.target.id == exercises.id),
+        "invalidated provenance must be queued somewhere: {roster:#?}"
+    );
+    assert_eq!(
+        Lane::Analyze.depth(&loom::lane::LadderInputs::gather(&store).unwrap()),
+        roster.len(),
+        "the relationships rung must count exactly what the analyze queue serves"
+    );
+
+    let packet = workitem::next(&store, Some(Lane::Analyze))
+        .unwrap()
+        .expect("the stale exercises edge is servable analyze work");
+    assert_eq!(packet.target.id, exercises.id);
+    assert_eq!(
+        packet.owner_role, "validator",
+        "the registry owner gates the write, so the packet must run as it"
+    );
+    let write_back = packet.prompt_contract.write_back.clone();
+    assert!(
+        write_back.contains(&format!("loom edge verdict {}", exercises.id)),
+        "a validation run settles `validates` only — the packet must name the verdict: {write_back}"
+    );
+    drop(store);
+
+    // The named door actually opens.
+    loom::commands::run(loom::cli::Cli {
+        graph: Some(tmp.path().to_path_buf()),
+        json: true,
+        command: Some(loom::cli::Command::Edge {
+            cmd: loom::cli::EdgeCmd::Verdict {
+                edge_id: exercises.id.clone(),
+                verdict: "ground".into(),
+                criterion: "the proof still drives this entry point".into(),
+                evidence: "src/behavior.rs:1".into(),
+                confidence: 0.95,
+            },
+        }),
+    })
+    .expect("edge verdict must close the packet it was told to close");
+
+    let store = Store::open(tmp.path()).unwrap();
+    assert_eq!(
+        store.get_edge(&exercises.id).unwrap().unwrap().status,
+        InspectionStatus::Passing
+    );
+    assert!(
+        workitem::queue_items(&store, Lane::Analyze)
+            .unwrap()
+            .iter()
+            .all(|entry| entry.target.id != exercises.id),
+        "the closed packet must leave the queue"
+    );
+}
+
+#[test]
+fn validator_owned_non_validates_edges_name_the_verdict_not_the_run() {
+    // The validator contract belongs to `validates`: re-run the proof. Every
+    // other validator-owned kind is an inspection claim, and a validation run
+    // records nothing on it — naming the run was a door that never opened,
+    // and it passed the closure invariant only because the validation's name
+    // appears in the command.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (validation, validates, exercises) = generic_validation_with_exercises(&store);
+    let surface = store
+        .add_node(
+            NodeType::InterfaceSurface,
+            "behavior-cli",
+            "the CLI under proof",
+            "active",
+            serde_json::json!({
+                "schema": "loom.interface-surface/v1",
+                "stable_id": "behavior-cli",
+                "title": "Behavior CLI",
+                "kind": "cli",
+                "identity": "behavior",
+                "operations": [{"id":"show","summary":"show","argv":["behavior","show"],"arguments":[],"output":{"format":"json"}}],
+            }),
+        )
+        .unwrap();
+    let calls = store
+        .add_edge(
+            EdgeKind::Calls,
+            &validation.id,
+            &surface.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    inspect_then_stale(&store, &exercises);
+
+    // Drain the lane: every packet must name a verdict on its own target, and
+    // both validator-owned claims must appear.
+    let mut seen = std::collections::BTreeSet::new();
+    while let Some(packet) = workitem::next(&store, Some(Lane::Analyze)).unwrap() {
+        if packet.target.kind != "edge" {
+            break;
+        }
+        if [&calls.id, &exercises.id].contains(&&packet.target.id) {
+            assert_eq!(packet.owner_role, "validator");
+            assert!(
+                packet
+                    .prompt_contract
+                    .write_back
+                    .contains(&format!("loom edge verdict {}", packet.target.id)),
+                "a validator-owned inspection claim must name the verdict on its own edge: {}",
+                packet.prompt_contract.write_back
+            );
+            seen.insert(packet.target.id.clone());
+        }
+        store
+            .record_verdict(
+                &packet.target.id,
+                InspectionStatus::Passing,
+                "inspected for this test",
+                "src/behavior.rs:1",
+                0.95,
+                "validator",
+            )
+            .unwrap();
+    }
+    assert_eq!(
+        seen,
+        [calls.id.clone(), exercises.id.clone()].into_iter().collect(),
+        "both the calls and the stale exercises claim must be served"
+    );
+
+    // `validates` keeps the run — that IS the door that settles it.
+    let _ = validates;
+    let packet = workitem::next(&store, Some(Lane::Validate))
+        .unwrap()
+        .expect("a stale validates edge is validate work");
+    assert!(
+        packet.prompt_contract.write_back.contains("loom validation"),
+        "re-running the proof is what settles a validates edge: {}",
+        packet.prompt_contract.write_back
+    );
+}
+
 #[test]
 fn queue_modes_never_serve_the_same_edge() {
     let tmp = Tmp::new();

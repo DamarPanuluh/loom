@@ -425,7 +425,7 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
     // gated by the registry owner, so a packet naming any other role would
     // promise work its lane cannot record — the exact INV-7 rejection a
     // drain worker hit on 2026-07-19. Same rule review_item already applies.
-    if let Some(e) = stale.into_iter().find(not_measured_lane) {
+    if let Some(e) = first_analyzable(store, stale)? {
         let owner = crate::registry::spec(e.kind).owner.as_str();
         return Ok(Some(edge_work(
             store,
@@ -458,7 +458,7 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
         crate::model::TruthClass::Asserted,
         &[InspectionStatus::Uninspected],
     )?;
-    if let Some(e) = uninspected.into_iter().find(not_measured_lane) {
+    if let Some(e) = first_analyzable(store, uninspected)? {
         let owner = crate::registry::spec(e.kind).owner.as_str();
         return Ok(Some(edge_work(
             store,
@@ -807,7 +807,12 @@ pub(crate) enum ValidationWorkUnit {
 /// The single profile-bearing Validate roster consumed by lane depth, the
 /// lightweight roster, and singular packet selection.
 pub(crate) fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkUnit>> {
-    let mut validates: Vec<Edge> = store
+    // The whole compiler-owned closure is scanned, not `validates` alone: an
+    // uninspected or staled `calls`/`proves`/`exercises` edge is proof work
+    // whose only door is `journey run`, and the analyze lane refuses to serve
+    // it. Scanning only `validates` left those edges queued nowhere while
+    // Compass still counted the graph incomplete.
+    let mut closure: Vec<Edge> = store
         .live_edges_by_status(
             crate::model::TruthClass::Asserted,
             &[
@@ -816,23 +821,29 @@ pub(crate) fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkU
             ],
         )?
         .into_iter()
-        .filter(|edge| edge.kind == EdgeKind::Validates)
+        .filter(|edge| {
+            matches!(
+                edge.kind,
+                EdgeKind::Validates | EdgeKind::Proves | EdgeKind::Calls | EdgeKind::Exercises
+            )
+        })
         .collect();
-    validates.sort_by(|left, right| left.id.cmp(&right.id));
+    closure.sort_by(|left, right| left.id.cmp(&right.id));
 
     let mut compiled = std::collections::BTreeMap::new();
     let mut generic_unrun = Vec::new();
     let mut generic_stale = Vec::new();
-    for edge in validates {
-        let Some(validation) = store.get_node(&edge.from_id)? else {
-            continue;
-        };
+    for edge in closure {
         if let Some((journey, profile)) =
-            crate::completeness::compiler_owned_journey_validation(store, &validation)?
+            crate::completeness::compiler_owned_proof_edge(store, &edge)?
         {
             compiled
-                .entry(validation.id.clone())
+                .entry(edge.from_id.clone())
                 .or_insert((journey, profile));
+        } else if edge.kind != EdgeKind::Validates {
+            // A generic proof-adjacent edge keeps its own lane (analyze); only
+            // `validates` is this lane's generic unit.
+            continue;
         } else if edge.status == InspectionStatus::Uninspected {
             generic_unrun.push(edge);
         } else {
@@ -1281,9 +1292,22 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
             &to_name,
             crate::policy::load(store)?.review_confidence_floor,
         ),
-        (_, "fixer") => fixer_contract(edge, &from_name, &to_name),
+        (_, "fixer") => fixer_contract(
+            edge,
+            &from_name,
+            &to_name,
+            crate::completeness::compiler_owned_proof_edge(store, edge)?,
+        ),
         (_, "quality") => quality_contract(store, edge, &from_name, &to_name)?,
-        (_, "validator") => validator_contract(store, edge, &from_name, &to_name)?,
+        (_, "validator") if edge.kind == EdgeKind::Validates => {
+            validator_contract(store, edge, &from_name, &to_name)?
+        }
+        // Every other validator-owned kind (`calls`, `exercises`) is an
+        // inspection claim closed by `loom edge verdict`, not by re-running the
+        // proof: a validation run settles its `validates` edges and nothing
+        // else, so naming it here was a door that never opened. The packet
+        // keeps the registry owner, because that is what gates the write.
+        (_, "validator") => analyzer_contract(edge, role, &from_name, &to_name),
         _ if edge.kind == EdgeKind::Exemplar => exemplar_contract(edge, &from_name, &to_name),
         _ => analyzer_contract(edge, role, &from_name, &to_name),
     };
@@ -1720,12 +1744,52 @@ fn audit_subjects(store: &Store) -> Result<Vec<crate::audit::AuditFinding>> {
 /// not a claim the ANALYZE lane verifies: `governs`/`validates` have their own
 /// lanes, `depends_on` is a federation ripple link, and `exercises` is
 /// validation-specific evidence provenance rather than a relationship claim.
-/// Maturity and the analyze queue must both agree on this set.
+/// The `exercises` exclusion holds only while that provenance is intact —
+/// `analyze_serves` re-admits it once sync invalidates it.
 pub(crate) fn not_measured_lane(e: &Edge) -> bool {
     !matches!(
         e.kind,
         EdgeKind::Governs | EdgeKind::Validates | EdgeKind::DependsOn | EdgeKind::Exercises
     )
+}
+
+/// Whether the ANALYZE lane may serve this edge at all. Maturity's
+/// relationships rung and the analyze queue both count through this one
+/// predicate, so the rung can never advertise a depth the lane will not serve.
+///
+/// Kind alone is not enough in either direction:
+///
+/// - A `proves`/`calls`/`exercises` edge out of a compiler-owned Journey
+///   Validation is proof topology `journey compile/run` owns, and
+///   `require_generic_edge_mutable` refuses the `loom edge verdict` write an
+///   analyze packet would name. Those route to the validate lane, which names
+///   the run. The serve path and the write guard share one predicate so they
+///   cannot drift apart again.
+/// - An ordinary `exercises` edge is provenance rather than a claim — until
+///   sync invalidates it. A drifted locator stales the edge, which drops the
+///   validation below S3 (proof strength counts only current projections), and
+///   nothing else can settle it: `validation run` writes verdicts on
+///   `validates` edges alone, and `edge set-locator` repairs the facet without
+///   re-inspecting. So a STALE ordinary `exercises` edge is analyze work; an
+///   uninspected one still counts as current and has nothing to drain.
+pub(crate) fn analyze_serves(store: &Store, edge: &Edge) -> Result<bool> {
+    if crate::completeness::compiler_owned_proof_edge(store, edge)?.is_some() {
+        return Ok(false);
+    }
+    if edge.kind == EdgeKind::Exercises {
+        return Ok(edge.status == InspectionStatus::NeedsReverification);
+    }
+    Ok(not_measured_lane(edge))
+}
+
+/// The first edge the analyze lane may serve, evaluating ownership lazily.
+fn first_analyzable(store: &Store, edges: Vec<Edge>) -> Result<Option<Edge>> {
+    for edge in edges {
+        if analyze_serves(store, &edge)? {
+            return Ok(Some(edge));
+        }
+    }
+    Ok(None)
 }
 
 /// The `fix` lane's roster. One arm per lane, each its own function:
@@ -1753,17 +1817,16 @@ fn roster_fix(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_analyze(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
     use crate::model::TruthClass;
-    for e in store
-        .live_edges_by_status(
-            TruthClass::Asserted,
-            &[InspectionStatus::NeedsReverification],
-        )?
-        .iter()
-        .filter(|e| not_measured_lane(e))
-    {
+    for e in store.live_edges_by_status(
+        TruthClass::Asserted,
+        &[InspectionStatus::NeedsReverification],
+    )? {
+        if !analyze_serves(store, &e)? {
+            continue;
+        }
         out.push(edge_entry(
             store,
-            e,
+            &e,
             "analyze",
             "dependency changed — re-verify this claim",
         )?);
@@ -1788,14 +1851,13 @@ fn roster_analyze(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
             "exemplar review failed — inspect or replace this claimed example",
         )?);
     }
-    for e in store
-        .live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])?
-        .iter()
-        .filter(|e| not_measured_lane(e))
-    {
+    for e in store.live_edges_by_status(TruthClass::Asserted, &[InspectionStatus::Uninspected])? {
+        if !analyze_serves(store, &e)? {
+            continue;
+        }
         out.push(edge_entry(
             store,
-            e,
+            &e,
             "analyze",
             "uninspected claim — inspect the code and record a verdict",
         )?);

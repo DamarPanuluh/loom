@@ -747,6 +747,192 @@ fn compiler_owned_journey_validation_rejects_manual_verdict() {
     );
 }
 
+/// The exact Grid state: a compiler-owned Journey proof whose Proves and
+/// Validates edges settled from a passing run, and whose `calls` edge did not.
+fn passed_proof_with_uninspected_calls(
+    store: &Store,
+    root: &std::path::Path,
+) -> (Node, loom::model::Edge) {
+    let journey = authored_journey(store, root, "flow");
+    let target = intent(store, "compiled behavior", "implemented");
+    let (surface, _) = add_surface(store, &journey);
+    codefile(store, "src/flow_cli.rs");
+
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "journey:flow:proof",
+            "compiler-owned Journey proof",
+            "passed",
+            serde_json::json!({"type":"journey", "profile":"proof"}),
+        )
+        .unwrap();
+    for (kind, to) in [
+        (EdgeKind::Proves, &journey.id),
+        (EdgeKind::Validates, &target.id),
+    ] {
+        let edge = store
+            .add_edge(kind, &validation.id, to, TruthClass::Asserted)
+            .unwrap();
+        store
+            .record_verdict(
+                &edge.id,
+                InspectionStatus::Passing,
+                "compiled proof observed",
+                "src/flow_cli.rs:1",
+                0.99,
+                "validator",
+            )
+            .unwrap();
+    }
+    let calls = store
+        .add_edge(
+            EdgeKind::Calls,
+            &validation.id,
+            &surface.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    (journey, calls)
+}
+
+#[test]
+fn compiler_owned_proof_topology_routes_to_validate_never_analyze() {
+    // The serve path must agree with the generic-mutation cut. A `calls` edge
+    // out of a compiler-owned Journey Validation is proof topology only
+    // `journey compile/run` can inspect, so Analyze — whose write-back is
+    // `loom edge verdict`, which that cut rejects — must not serve it. The
+    // validate lane owns it and names the run. An ordinary `calls` edge from a
+    // hand-authored Validation stays analyze work.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (journey, compiled_calls) = passed_proof_with_uninspected_calls(&store, tmp.path());
+    let surface = store.get_node(&compiled_calls.to_id).unwrap().unwrap();
+
+    let hand_authored = store
+        .add_node(
+            NodeType::Validation,
+            "hand-authored-cli-check",
+            "an ordinary validation nobody compiled",
+            "not_run",
+            serde_json::json!({"type":"command", "command":"flow --help"}),
+        )
+        .unwrap();
+    let generic_calls = store
+        .add_edge(
+            EdgeKind::Calls,
+            &hand_authored.id,
+            &surface.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+
+    let analyze = workitem::queue_items(&store, Lane::Analyze).unwrap();
+    assert!(
+        analyze.iter().all(|entry| entry.target.id != compiled_calls.id),
+        "analyze must not enumerate compiler-owned proof topology: {analyze:#?}"
+    );
+    assert!(
+        analyze
+            .iter()
+            .any(|entry| entry.target.id == generic_calls.id),
+        "an ordinary calls edge is still an analyze claim: {analyze:#?}"
+    );
+    assert_eq!(
+        Lane::Analyze.depth(&LadderInputs::gather(&store).unwrap()),
+        analyze.len(),
+        "the relationships rung must count exactly what the analyze queue serves"
+    );
+
+    // Which uninspected claim the picker reaches first is id-ordered, so only
+    // the exclusion is asserted here; the roster above proves the ordinary
+    // calls edge is still analyze work.
+    let served = workitem::next(&store, Some(Lane::Analyze))
+        .unwrap()
+        .expect("analyze has servable work");
+    assert_ne!(served.target.id, compiled_calls.id);
+
+    let validate = workitem::next(&store, Some(Lane::Validate))
+        .unwrap()
+        .expect("the uninspected compiler-owned calls edge is validate work");
+    assert_eq!(validate.target.id, journey.id);
+    assert!(
+        validate
+            .prompt_contract
+            .write_back
+            .contains(&format!("loom journey run '{}' --profile 'proof'", journey.id)),
+        "validate must name the only legal door: {}",
+        validate.prompt_contract.write_back
+    );
+
+    // With no ordinary calls claim left, `--mode analyze` moves on to the rest
+    // of its lane. It neither serves the compiler-owned edge nor refuses with
+    // an unservable-packet defect — the packet simply is not its work.
+    store.delete_edge(&generic_calls.id).unwrap();
+    let residue = workitem::next(&store, Some(Lane::Analyze))
+        .expect("analyze must not refuse the lane over compiler-owned topology");
+    assert!(
+        residue
+            .as_ref()
+            .is_none_or(|item| item.target.id != compiled_calls.id),
+        "analyze served the edge only journey run can inspect: {residue:#?}"
+    );
+    assert!(
+        workitem::queue_items(&store, Lane::Analyze)
+            .unwrap()
+            .iter()
+            .all(|entry| entry.target.id != compiled_calls.id),
+    );
+    assert_eq!(
+        store
+            .get_edge(&compiled_calls.id)
+            .unwrap()
+            .expect("the calls edge survives")
+            .status,
+        InspectionStatus::Uninspected,
+        "routing must not fake a verdict on the edge it declines to serve"
+    );
+}
+
+#[test]
+fn failing_compiler_owned_proof_edge_names_the_rerun_not_sync_alone() {
+    // A failed run marks the same closure `failing`, which is fix-lane work.
+    // Sync cannot re-measure compiler-owned topology, so the fixer packet must
+    // name the re-run as well, not send the worker to a door that never closes.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let (journey, compiled_calls) = passed_proof_with_uninspected_calls(&store, tmp.path());
+    store
+        .record_verdict(
+            &compiled_calls.id,
+            InspectionStatus::Failing,
+            "the compiled profile failed against its surface",
+            "src/flow_cli.rs:1",
+            0.99,
+            "validator",
+        )
+        .unwrap();
+
+    let fix = workitem::next(&store, Some(Lane::Fix))
+        .unwrap()
+        .expect("a failing proof edge is fix work");
+    assert_eq!(fix.target.id, compiled_calls.id);
+    let rerun = format!("loom journey run '{}' --profile 'proof'", journey.id);
+    assert!(
+        fix.prompt_contract.write_back.contains(&rerun),
+        "the fixer must be told sync alone cannot re-measure this claim: {}",
+        fix.prompt_contract.write_back
+    );
+    assert!(
+        fix.prompt_contract
+            .allowed_actions
+            .iter()
+            .any(|action| action.contains(&rerun)),
+        "the re-run must be an allowed fixer action: {:#?}",
+        fix.prompt_contract.allowed_actions
+    );
+}
+
 #[test]
 fn commandless_non_manual_validation_routes_to_configuration_not_verdict() {
     let tmp = Tmp::new();

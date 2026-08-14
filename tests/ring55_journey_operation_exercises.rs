@@ -545,6 +545,101 @@ fn settle_compiled(fixture: &CrossProcessFixture) {
     assert_eq!(report.status, RuntimeStatus::Passed, "{report:#?}");
 }
 
+#[test]
+fn journey_run_settles_compiler_owned_calls_and_exercises() {
+    use loom::model::InspectionStatus;
+    let fixture = cross_process_fixture(vec![default_exercise()]);
+    for kind in [EdgeKind::Calls, EdgeKind::Exercises] {
+        let edges = fixture
+            .store
+            .edges_with(Some(kind), Some(&fixture.validation_id), None)
+            .unwrap();
+        assert!(
+            !edges.is_empty(),
+            "{kind} closure must exist before the run"
+        );
+        for edge in &edges {
+            assert_eq!(
+                edge.status,
+                InspectionStatus::Uninspected,
+                "{kind} starts uninspected"
+            );
+        }
+    }
+    settle_compiled(&fixture);
+    for kind in [
+        EdgeKind::Validates,
+        EdgeKind::Proves,
+        EdgeKind::Calls,
+        EdgeKind::Exercises,
+    ] {
+        for edge in fixture
+            .store
+            .edges_with(Some(kind), Some(&fixture.validation_id), None)
+            .unwrap()
+        {
+            assert_eq!(
+                edge.status,
+                InspectionStatus::Passing,
+                "{kind} {} must settle from the observed run",
+                edge.id
+            );
+        }
+    }
+
+    for edge in fixture
+        .store
+        .edges_with(
+            Some(EdgeKind::Calls),
+            Some(&fixture.validation_id),
+            None,
+        )
+        .unwrap()
+    {
+        fixture.store.delete_edge(&edge.id).unwrap();
+    }
+    let surface = fixture
+        .store
+        .edges_with(
+            Some(EdgeKind::Calls),
+            Some(&fixture.validation_id),
+            None,
+        )
+        .unwrap();
+    assert!(surface.is_empty());
+    let surfaces = fixture
+        .store
+        .edges_with(Some(EdgeKind::Surfaces), Some(&fixture.journey_id), None)
+        .unwrap();
+    fixture
+        .store
+        .ensure_edge(
+            EdgeKind::Calls,
+            &fixture.validation_id,
+            &surfaces[0].to_id,
+        )
+        .unwrap();
+    loom::journey::resettle_uninspected_compiler_topology(
+        &fixture.store,
+        &fixture.validation_id,
+    )
+    .unwrap();
+    let restored = fixture
+        .store
+        .edges_with(
+            Some(EdgeKind::Calls),
+            Some(&fixture.validation_id),
+            None,
+        )
+        .unwrap();
+    assert_eq!(restored.len(), 1);
+    assert_eq!(
+        restored[0].status,
+        InspectionStatus::Passing,
+        "compile-time resettle must copy the passing run onto recreated Calls"
+    );
+}
+
 fn settle_with_assertions(fixture: &CrossProcessFixture) {
     settle_compiled(fixture);
     for kind in [

@@ -2046,6 +2046,7 @@ fn compile_internal(
             .get_node(&validation.id)?
             .ok_or_else(|| anyhow!("compiled Validation vanished"))?
     };
+    crate::journey::resettle_uninspected_compiler_topology(&store, &validation.id)?;
     let artifact = crate::journey_runtime::write_proof(&root, &proof)?;
     Ok(CompileProduct {
         proof,

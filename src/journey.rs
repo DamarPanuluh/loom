@@ -2898,7 +2898,15 @@ pub fn settle_compiled_validation(
         Some(run)
     };
 
-    for kind in [EdgeKind::Validates, EdgeKind::Proves] {
+    // Compile owns the Proves/Validates/Calls/Exercises closure. Generic edge
+    // verdicts cannot inspect those edges, so the observed run is the only
+    // writer that can take them off `uninspected`.
+    for kind in [
+        EdgeKind::Validates,
+        EdgeKind::Proves,
+        EdgeKind::Calls,
+        EdgeKind::Exercises,
+    ] {
         for edge in store.edges_with(Some(kind), Some(validation_id), None)? {
             let mut assertion = Assertion::new(
                 Subject::Edge(edge.id),
@@ -2932,6 +2940,78 @@ pub fn settle_compiled_validation(
         }),
     )?;
     regrade_compiled_validation(store, validation_id)
+}
+
+/// Copy a passing Journey run onto compiler-owned Calls/Exercises that are
+/// still `uninspected`. Compile can recreate those edges while the Validation
+/// stays `passed`; generic `edge verdict` cannot inspect them.
+pub fn resettle_uninspected_compiler_topology(
+    store: &crate::store::Store,
+    validation_id: &str,
+) -> Result<()> {
+    use crate::evidence::Evidence;
+    use crate::model::{Claim, EdgeKind, InspectionStatus, NodeType};
+    use crate::store::{Assertion, Subject};
+
+    let Some(validation) = store.get_node(validation_id)? else {
+        return Ok(());
+    };
+    if validation.node_type != NodeType::Validation || validation.status != "passed" {
+        return Ok(());
+    }
+
+    let mut donor = None;
+    for kind in [EdgeKind::Validates, EdgeKind::Proves] {
+        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {
+            if edge.status != InspectionStatus::Passing {
+                continue;
+            }
+            let Some(view) = store.fact(&Subject::Edge(edge.id.clone()), Claim::Verdict)? else {
+                continue;
+            };
+            for row in &view.evidence {
+                if let Evidence::Run(run) = &row.payload {
+                    if run.locally_minted {
+                        donor = Some(run.clone());
+                        break;
+                    }
+                }
+            }
+            if donor.is_some() {
+                break;
+            }
+        }
+        if donor.is_some() {
+            break;
+        }
+    }
+    let Some(run) = donor else {
+        return Ok(());
+    };
+    let evidence = format!(
+        "compiled Journey '{}' already passed; copied locally-minted observation onto uninspected compiler topology",
+        validation.name
+    );
+
+    for kind in [EdgeKind::Calls, EdgeKind::Exercises] {
+        for edge in store.edges_with(Some(kind), Some(validation_id), None)? {
+            if edge.status != InspectionStatus::Uninspected {
+                continue;
+            }
+            let assertion = Assertion::new(
+                Subject::Edge(edge.id),
+                Claim::Verdict,
+                InspectionStatus::Passing.as_str(),
+                "loom",
+            )
+            .criterion("compiled Journey profile")
+            .confidence(1.0)
+            .cited(crate::evidence::cite(store.root(), &evidence)?)
+            .observed(run.clone());
+            store.assert_fact(assertion)?;
+        }
+    }
+    Ok(())
 }
 
 fn regrade_compiled_validation(store: &crate::store::Store, validation_id: &str) -> Result<()> {

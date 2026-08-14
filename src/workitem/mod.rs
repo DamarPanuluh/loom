@@ -13,7 +13,7 @@ use crate::lane::Lane;
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
-pub(crate) use queues::not_measured_lane;
+pub(crate) use queues::analyze_serves;
 pub(crate) use queues::ungrounded_implemented_intents;
 pub(crate) use queues::unmeasured_quality_pairs;
 pub(crate) use queues::unproven_implemented_intents;
