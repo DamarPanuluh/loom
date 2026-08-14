@@ -231,8 +231,7 @@ impl Store {
         let edge = self
             .get_edge(edge_id)?
             .ok_or_else(|| anyhow!("no edge '{edge_id}'"))?;
-        if edge.truth_class != TruthClass::Asserted
-            || edge.status != InspectionStatus::Uninspected
+        if edge.truth_class != TruthClass::Asserted || edge.status != InspectionStatus::Uninspected
         {
             return Ok(false);
         }

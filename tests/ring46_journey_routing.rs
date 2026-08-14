@@ -829,7 +829,9 @@ fn compiler_owned_proof_topology_routes_to_validate_never_analyze() {
 
     let analyze = workitem::queue_items(&store, Lane::Analyze).unwrap();
     assert!(
-        analyze.iter().all(|entry| entry.target.id != compiled_calls.id),
+        analyze
+            .iter()
+            .all(|entry| entry.target.id != compiled_calls.id),
         "analyze must not enumerate compiler-owned proof topology: {analyze:#?}"
     );
     assert!(
@@ -857,10 +859,10 @@ fn compiler_owned_proof_topology_routes_to_validate_never_analyze() {
         .expect("the uninspected compiler-owned calls edge is validate work");
     assert_eq!(validate.target.id, journey.id);
     assert!(
-        validate
-            .prompt_contract
-            .write_back
-            .contains(&format!("loom journey run '{}' --profile 'proof'", journey.id)),
+        validate.prompt_contract.write_back.contains(&format!(
+            "loom journey run '{}' --profile 'proof'",
+            journey.id
+        )),
         "validate must name the only legal door: {}",
         validate.prompt_contract.write_back
     );
@@ -877,12 +879,10 @@ fn compiler_owned_proof_topology_routes_to_validate_never_analyze() {
             .is_none_or(|item| item.target.id != compiled_calls.id),
         "analyze served the edge only journey run can inspect: {residue:#?}"
     );
-    assert!(
-        workitem::queue_items(&store, Lane::Analyze)
-            .unwrap()
-            .iter()
-            .all(|entry| entry.target.id != compiled_calls.id),
-    );
+    assert!(workitem::queue_items(&store, Lane::Analyze)
+        .unwrap()
+        .iter()
+        .all(|entry| entry.target.id != compiled_calls.id),);
     assert_eq!(
         store
             .get_edge(&compiled_calls.id)

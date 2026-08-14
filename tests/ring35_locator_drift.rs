@@ -448,7 +448,13 @@ fn exercised(
         )
         .unwrap();
     store
-        .set_facet(&e.id, TargetKind::Edge, "locator", locator, TruthClass::Asserted)
+        .set_facet(
+            &e.id,
+            TargetKind::Edge,
+            "locator",
+            locator,
+            TruthClass::Asserted,
+        )
         .unwrap();
     (validation, e.id)
 }
@@ -482,7 +488,10 @@ fn dead_exercises_provenance_reopens_even_uninspected() {
         .get_facet(&edge, TargetKind::Edge, "stale_cause")
         .unwrap()
         .unwrap();
-    assert!(cause.contains("vanished") && cause.contains("entry.rs"), "{cause}");
+    assert!(
+        cause.contains("vanished") && cause.contains("entry.rs"),
+        "{cause}"
+    );
     let served = loom::workitem::next(&store, Some(loom::lane::Lane::Analyze))
         .unwrap()
         .expect("the surfaced drift is analyze work");
@@ -496,13 +505,8 @@ fn dead_exercises_provenance_reopens_even_uninspected() {
 fn resolving_exercises_provenance_stays_uninspected_and_unqueued() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
-    let (_validation, edge) = exercised(
-        &store,
-        &tmp,
-        "entry.rs",
-        "pub fn present() {}\n",
-        "present",
-    );
+    let (_validation, edge) =
+        exercised(&store, &tmp, "entry.rs", "pub fn present() {}\n", "present");
 
     loom::sync::run(&store, tmp.path()).unwrap();
     assert_eq!(status(&store, &edge), "uninspected");

@@ -589,22 +589,14 @@ fn journey_run_settles_compiler_owned_calls_and_exercises() {
 
     for edge in fixture
         .store
-        .edges_with(
-            Some(EdgeKind::Calls),
-            Some(&fixture.validation_id),
-            None,
-        )
+        .edges_with(Some(EdgeKind::Calls), Some(&fixture.validation_id), None)
         .unwrap()
     {
         fixture.store.delete_edge(&edge.id).unwrap();
     }
     let surface = fixture
         .store
-        .edges_with(
-            Some(EdgeKind::Calls),
-            Some(&fixture.validation_id),
-            None,
-        )
+        .edges_with(Some(EdgeKind::Calls), Some(&fixture.validation_id), None)
         .unwrap();
     assert!(surface.is_empty());
     let surfaces = fixture
@@ -613,24 +605,13 @@ fn journey_run_settles_compiler_owned_calls_and_exercises() {
         .unwrap();
     fixture
         .store
-        .ensure_edge(
-            EdgeKind::Calls,
-            &fixture.validation_id,
-            &surfaces[0].to_id,
-        )
+        .ensure_edge(EdgeKind::Calls, &fixture.validation_id, &surfaces[0].to_id)
         .unwrap();
-    loom::journey::resettle_uninspected_compiler_topology(
-        &fixture.store,
-        &fixture.validation_id,
-    )
-    .unwrap();
+    loom::journey::resettle_uninspected_compiler_topology(&fixture.store, &fixture.validation_id)
+        .unwrap();
     let restored = fixture
         .store
-        .edges_with(
-            Some(EdgeKind::Calls),
-            Some(&fixture.validation_id),
-            None,
-        )
+        .edges_with(Some(EdgeKind::Calls), Some(&fixture.validation_id), None)
         .unwrap();
     assert_eq!(restored.len(), 1);
     assert_eq!(

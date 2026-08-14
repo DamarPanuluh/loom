@@ -662,7 +662,9 @@ fn validator_owned_non_validates_edges_name_the_verdict_not_the_run() {
     }
     assert_eq!(
         seen,
-        [calls.id.clone(), exercises.id.clone()].into_iter().collect(),
+        [calls.id.clone(), exercises.id.clone()]
+            .into_iter()
+            .collect(),
         "both the calls and the stale exercises claim must be served"
     );
 
@@ -672,7 +674,10 @@ fn validator_owned_non_validates_edges_name_the_verdict_not_the_run() {
         .unwrap()
         .expect("a stale validates edge is validate work");
     assert!(
-        packet.prompt_contract.write_back.contains("loom validation"),
+        packet
+            .prompt_contract
+            .write_back
+            .contains("loom validation"),
         "re-running the proof is what settles a validates edge: {}",
         packet.prompt_contract.write_back
     );
