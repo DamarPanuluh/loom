@@ -159,6 +159,33 @@ fn pre_push_refuses_escape_non_executable_and_foreign_hook_without_partial_insta
     );
 }
 
+#[test]
+fn local_ci_builds_the_adapter_then_runs_the_isolated_dogfood_gate() {
+    let script = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/scripts/local-ci.sh"
+    ))
+    .unwrap();
+    let build = script
+        .find("cargo build")
+        .expect("local CI must build the trusted local adapter");
+    let gate = script
+        .find("scripts/dogfood.sh --check")
+        .expect("local CI must run the isolated Journey-root dogfood gate");
+    assert!(
+        build < gate,
+        "the adapter must be built before the gate runs it"
+    );
+    // The gate is isolated by construction; local CI must never reach for the
+    // live graph itself.
+    for forbidden in ["loom import", "loom init", "--graph", "migrate"] {
+        assert!(
+            !script.contains(forbidden),
+            "local-ci.sh must not migrate or replace the live graph: {forbidden}"
+        );
+    }
+}
+
 #[cfg(unix)]
 trait Mode {
     fn mode(&self) -> u32;
