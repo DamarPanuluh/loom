@@ -17279,21 +17279,6 @@
       "updated_at": ""
     },
     {
-      "id": "d1a30ea90a0570f08",
-      "type": "finding",
-      "name": "user-visible intent 'semantic commit recommendations expose exact scope and evidence' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:a0c67e4b689e9f31f477cb6cdd894535",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d1b13324746c62103",
       "type": "finding",
       "name": "src/journey.rs::validate_for is long",
@@ -17878,21 +17863,6 @@
         "kind": "large_symbol",
         "metric": 126,
         "symbol": "topology_problems"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d33a346c0850ed0e1",
-      "type": "finding",
-      "name": "user-visible intent 'the LLM decides whether to create a semantic checkpoint' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:057bc2ec51dde77864587a258a3c3bd6",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -19588,7 +19558,7 @@
     {
       "id": "d897a0fa7f6edb55c",
       "type": "finding",
-      "name": "proof 'journey:proof-stability:proof' reported passed then failed over unchanged code for 'flag unchanged-anchor proof instability', 'settle comparable proof observations' — its outcome does not depend only on the code it covers",
+      "name": "proof 'journey:proof-stability:proof' reported failed then passed over unchanged code for 'flag unchanged-anchor proof instability', 'settle comparable proof observations' — its outcome does not depend only on the code it covers",
       "description": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
       "status": "unstable_proof",
       "truth_class": "derived",
@@ -20029,7 +19999,7 @@
     {
       "id": "d9b4d628d72369575",
       "type": "finding",
-      "name": "proof 'journey:proof-strength:proof' reported passed then failed over unchanged code for 'derive proof strength from observed shape', 'grade liveness-only proofs' — its outcome does not depend only on the code it covers",
+      "name": "proof 'journey:proof-strength:proof' reported failed then passed over unchanged code for 'derive proof strength from observed shape', 'grade liveness-only proofs' — its outcome does not depend only on the code it covers",
       "description": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
       "status": "unstable_proof",
       "truth_class": "derived",
@@ -20103,7 +20073,7 @@
     {
       "id": "d9e3991e4e28f6862",
       "type": "finding",
-      "name": "proof 'journey:wantedness:proof' reported passed then failed over unchanged code for 'missing human authority is projected as unratified', 'technical evidence remains separate from wantedness' — its outcome does not depend only on the code it covers",
+      "name": "proof 'journey:wantedness:proof' reported failed then passed over unchanged code for 'missing human authority is projected as unratified', 'technical evidence remains separate from wantedness' — its outcome does not depend only on the code it covers",
       "description": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
       "status": "unstable_proof",
       "truth_class": "derived",
@@ -20750,6 +20720,21 @@
       "updated_at": ""
     },
     {
+      "id": "dbd70df9ebd213c56",
+      "type": "finding",
+      "name": "proof 'journey:semantic-commit-recommendation:proof' reported failed then passed over unchanged code for 'Git checkpoints remain evidence outside Loom truth', 'Git push requires an explicit human decision', 'graph integrity violations are reported', 'semantic checkpoint readiness is assessed', 'semantic commit recommendations expose exact scope and evidence', 'the LLM decides whether to create a semantic checkpoint' — its outcome does not depend only on the code it covers",
+      "description": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
+      "status": "unstable_proof",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "unstable_proof:d7278d7ac05f8019e1d6eac9c090cc9d",
+        "kind": "unstable_proof"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dbe26ead2b61f615e",
       "type": "finding",
       "name": "'graph integrity violations are reported' and 'Loom diagnoses shared proof risk' both realize src/signal.rs with no relationship connecting them",
@@ -20875,21 +20860,6 @@
       },
       "created_at": "2026-08-09T12:54:04.539Z",
       "updated_at": "2026-08-09T12:54:04.539Z"
-    },
-    {
-      "id": "dc3503c7c10635421",
-      "type": "finding",
-      "name": "user-visible intent 'semantic checkpoint readiness is assessed' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:8eb58e388d9b999f62666a0582c1b893",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
     },
     {
       "id": "dc36661afbf37da90",
@@ -21430,7 +21400,7 @@
     {
       "id": "ddbd305ec80e53a28",
       "type": "finding",
-      "name": "proof 'journey:runs-proofs:proof' reported passed then failed over unchanged code for 'Confined compiled Journey execution', 'dispatch the authoritative proof runner', 'settle only observed proof outcomes' — its outcome does not depend only on the code it covers",
+      "name": "proof 'journey:runs-proofs:proof' reported failed then passed over unchanged code for 'Confined compiled Journey execution', 'dispatch the authoritative proof runner', 'settle only observed proof outcomes' — its outcome does not depend only on the code it covers",
       "description": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
       "status": "unstable_proof",
       "truth_class": "derived",
@@ -21752,21 +21722,6 @@
         "kind": "complex_symbol",
         "metric": 44,
         "symbol": "journey_readiness"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "def843c9cfe845ffe",
-      "type": "finding",
-      "name": "user-visible intent 'Git push requires an explicit human decision' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:4df3da35d45316e7777ae9e4fa2efabd",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -79472,7 +79427,7 @@
       "target_id": "29dda843c5cc785b9ee93692c53c36d9",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/status_cmd.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/status_cmd.rs\",\"proven_by\":\"journey:system-purpose:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -79920,7 +79875,7 @@
       "target_id": "32141e1b005e5af9942406aeab573c5c",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/proofstrength.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/proofstrength.rs\",\"proven_by\":\"journey:proof-strength:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -81656,7 +81611,7 @@
       "target_id": "4df3da35d45316e7777ae9e4fa2efabd",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/checkpoint.rs\",\"proven_by\":\"checkpoint-push-human-gate\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/checkpoint.rs\",\"proven_by\":\"journey:semantic-commit-recommendation:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -82006,7 +81961,7 @@
       "target_id": "5345985b41a16ffdade0d603bced3643",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/proof.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/proof.rs\",\"proven_by\":\"journey:runs-proofs:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -82958,7 +82913,7 @@
       "target_id": "616aba56a908b7f8a138ce09f3052859",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/store/derived.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/store/derived.rs\",\"proven_by\":\"journey:proof-stability:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -83420,7 +83375,7 @@
       "target_id": "6808563516646ae785a81cdd1cb16d78",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/anchor.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/anchor.rs\",\"proven_by\":\"journey:runs-proofs:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -84015,7 +83970,7 @@
       "target_id": "6e0cbb96748eb410df5f94b5c60c1709",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/store/derived.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/store/derived.rs\",\"proven_by\":\"journey:proof-stability:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -84470,7 +84425,7 @@
       "target_id": "79ba183fdb956d9097a1ab2d39f7df42",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/journey.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/journey.rs\",\"proven_by\":\"contract: strict semantic Journey parsing\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -86199,7 +86154,7 @@
       "target_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/candidate_surface_policy.rs\",\"proven_by\":\"contract: confined compiled Journey execution\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/candidate_surface_policy.rs\",\"proven_by\":\"journey:runs-proofs:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -87599,7 +87554,7 @@
       "target_id": "a0c67e4b689e9f31f477cb6cdd894535",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/checkpoint_cmd.rs\",\"proven_by\":\"checkpoint-scope-evidence-contract\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands/checkpoint_cmd.rs\",\"proven_by\":\"journey:semantic-commit-recommendation:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -88159,7 +88114,7 @@
       "target_id": "aadea5df1a91a98c8b89663284fcf98e",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/ratification.rs\",\"proven_by\":\"journey:wantedness:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -89279,7 +89234,7 @@
       "target_id": "b96c3449dd6f460723ae055b8b3f3a0a",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/workitem/queues.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/workitem/queues.rs\",\"proven_by\":\"journey:wantedness:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -89496,7 +89451,7 @@
       "target_id": "bbd0126142a517757982cc9ba1d27a0d",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"journey:semantic-commit-recommendation:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -91260,7 +91215,7 @@
       "target_id": "d5d5f7c3f72ea9c1175ee6b21b42f499",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/proofstrength.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/proofstrength.rs\",\"proven_by\":\"journey:proof-strength:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -94396,7 +94351,7 @@
       "target_id": "f90323739cd30a85789829751c9387e9",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/completeness.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/completeness.rs\",\"proven_by\":\"journey:system-purpose:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
