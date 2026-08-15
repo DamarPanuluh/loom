@@ -3565,7 +3565,7 @@
       "type": "proposal",
       "name": "Journey semantic-commit-recommendation derivation semantic-commit-recommendation-v1",
       "description": "This projection separates the readiness decision, the recommendation projection, the autonomous checkpoint decision, and the Loom-truth boundary. It reuses the approved doctor behavior instead of duplicating graph-integrity diagnosis, and it keeps Loom's command read-only while letting the acting LLM decide whether a scoped Git checkpoint improves history.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -3701,7 +3701,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T13:30:27.719Z",
-      "updated_at": "2026-08-09T13:30:27.771Z"
+      "updated_at": "2026-08-15T09:49:17.618Z"
     },
     {
       "id": "2e7da1d273ba0fc513d1dceed9b40bf8",
@@ -5869,6 +5869,20 @@
       "updated_at": "2026-08-09T12:54:41.883Z"
     },
     {
+      "id": "463bda0c30ebd7773b77f382d29cf8e0",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "8e768135da3f1d9dd85940650749726b"
+      },
+      "created_at": "2026-08-15T09:50:44.914Z",
+      "updated_at": "2026-08-15T09:50:44.914Z"
+    },
+    {
       "id": "4642264d355f4f70791fbd9bb9ec98ff",
       "type": "journey",
       "name": "next-router",
@@ -6071,6 +6085,210 @@
       },
       "created_at": "2026-08-10T04:00:54.629Z",
       "updated_at": "2026-08-10T04:00:54.629Z"
+    },
+    {
+      "id": "49f465faba43341545b350cd1a31bb18",
+      "type": "proposal",
+      "name": "Journey semantic-commit-recommendation derivation semantic-commit-recommendation-v2",
+      "description": "Carries the accepted v1 projection forward unchanged and adds the three degraded outcomes the authored steps already expect but no technical Intent named: typed blockers on a blocked recommendation, keep-local on push-decision drift, and deferral on ambiguous ownership.",
+      "status": "superseded",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "report-graph-integrity-violations",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "reuse",
+            "spawned": "bbd0126142a517757982cc9ba1d27a0d",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-checkpoint-readiness"
+            ],
+            "text": "Checkpoint readiness consumes the already approved deterministic doctor behavior; creating another doctor Intent would duplicate the same integrity criterion."
+          },
+          {
+            "intent_entry_id": "assess-semantic-checkpoint-readiness",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "8eb58e388d9b999f62666a0582c1b893",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-checkpoint-readiness"
+            ],
+            "text": "The conjunction of implementation, proof, synchronization, integrity, export, and semantic-cohesion evidence is one fail-closed decision with one observable ready-or-blocked result."
+          },
+          {
+            "intent_entry_id": "project-semantic-commit-recommendation",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "create",
+            "spawned": "a0c67e4b689e9f31f477cb6cdd894535",
+            "status": "adopted",
+            "step_ids": [
+              "review-commit-recommendation"
+            ],
+            "text": "This is the user-facing read model produced from readiness evidence and is independently falsifiable from the gate that supplies that evidence."
+          },
+          {
+            "intent_entry_id": "let-llm-decide-semantic-checkpoint",
+            "kind": "journey_intent",
+            "number": 4,
+            "operation": "create",
+            "spawned": "057bc2ec51dde77864587a258a3c3bd6",
+            "status": "adopted",
+            "step_ids": [
+              "decide-commit-checkpoint"
+            ],
+            "text": "The checkpoint should reduce human friction: Loom supplies evidence and exact scope, while the LLM exercises bounded judgment about whether a commit is useful and safe."
+          },
+          {
+            "intent_entry_id": "gate-git-push-on-human-decision",
+            "kind": "journey_intent",
+            "number": 5,
+            "operation": "create",
+            "spawned": "4df3da35d45316e7777ae9e4fa2efabd",
+            "status": "adopted",
+            "step_ids": [
+              "request-push-decision"
+            ],
+            "text": "Local history checkpoints are reversible autonomous workflow, while publishing them changes shared external state and therefore remains a separate human authority decision."
+          },
+          {
+            "intent_entry_id": "separate-git-checkpoint-from-loom-truth",
+            "kind": "journey_intent",
+            "number": 6,
+            "operation": "create",
+            "spawned": "0d40306d9479b9a428a843a37b22b156",
+            "status": "adopted",
+            "step_ids": [
+              "review-commit-recommendation",
+              "decide-commit-checkpoint",
+              "request-push-decision"
+            ],
+            "text": "Repository history can attest that a cohesive snapshot was chosen, but it cannot become a second authority for Loom's graph truth."
+          },
+          {
+            "intent_entry_id": "block-recommendation-with-typed-blockers",
+            "kind": "journey_intent",
+            "number": 7,
+            "operation": "create",
+            "spawned": "51f4c89eb61f9577c11e6679e54f7b66",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-checkpoint-readiness",
+              "review-commit-recommendation"
+            ],
+            "text": "The blocked outcome is what readiness produces when no single Intent bundle explains the change, and it must be observable as typed blockers rather than a partial scope."
+          },
+          {
+            "intent_entry_id": "keep-checkpoint-local-on-push-drift",
+            "kind": "journey_intent",
+            "number": 8,
+            "operation": "create",
+            "spawned": "1f5a383edef46d5e3b68c2f158b9f869",
+            "status": "adopted",
+            "step_ids": [
+              "request-push-decision"
+            ],
+            "text": "The authored step expects a refusal or missing answer to leave the checkpoint local; that outcome is independently falsifiable from the gate that demands the decision."
+          },
+          {
+            "intent_entry_id": "defer-checkpoint-on-ambiguous-ownership",
+            "kind": "journey_intent",
+            "number": 9,
+            "operation": "create",
+            "spawned": "e4a2e77dbe896323fe7ceede5458242b",
+            "status": "adopted",
+            "step_ids": [
+              "decide-commit-checkpoint"
+            ],
+            "text": "The authored step expects ambiguous ownership to cause deferral rather than a guess; deferring is a distinct observable outcome from deciding to commit."
+          }
+        ],
+        "journey_hash": "5b97bc005b7f5990",
+        "journey_id": "semantic-commit-recommendation",
+        "journey_node_id": "998eb146c4c794c94594acc451a04c30",
+        "manifest_hash": "89e2786bd7b672af",
+        "proposal_id": "semantic-commit-recommendation-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward unchanged and adds the three degraded outcomes the authored steps already expect but no technical Intent named: typed blockers on a blocked recommendation, keep-local on push-decision drift, and deferral on ambiguous ownership.",
+        "raw": "{\"intents\":[{\"id\":\"report-graph-integrity-violations\",\"intent_id\":\"bbd0126142a517757982cc9ba1d27a0d\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"Checkpoint readiness consumes the already approved deterministic doctor behavior; creating another doctor Intent would duplicate the same integrity criterion.\",\"step_ids\":[\"inspect-checkpoint-readiness\"],\"visibility\":\"internal\"},{\"criterion\":\"Given a working-tree diff, Loom reports ready only when exactly one implemented Intent or one semantically connected implemented Intent bundle explains every included change, every relevant current Validation is passing, registered repository content matches the synchronized graph, doctor reports no issue, and loom.graph.json exactly matches the live graph; otherwise it reports every blocker, readiness never depends on a fixed number of files or changes, and unrelated dirty paths are explicitly excluded rather than silently staged.\",\"id\":\"assess-semantic-checkpoint-readiness\",\"level\":\"feature\",\"name\":\"semantic checkpoint readiness is assessed\",\"operation\":\"create\",\"rationale\":\"The conjunction of implementation, proof, synchronization, integrity, export, and semantic-cohesion evidence is one fail-closed decision with one observable ready-or-blocked result.\",\"step_ids\":[\"inspect-checkpoint-readiness\"],\"visibility\":\"user_visible\"},{\"criterion\":\"For a ready checkpoint, Loom returns the selected Intent ids and names, a scope rationale, every included path, every excluded dirty path with its exclusion reason, every evaluated check with its observed result and exact validation command, and a deterministic suggested commit message; for a blocked checkpoint it returns no recommendation and names the blockers.\",\"id\":\"project-semantic-commit-recommendation\",\"level\":\"feature\",\"name\":\"semantic commit recommendations expose exact scope and evidence\",\"operation\":\"create\",\"rationale\":\"This is the user-facing read model produced from readiness evidence and is independently falsifiable from the gate that supplies that evidence.\",\"step_ids\":[\"review-commit-recommendation\"],\"visibility\":\"user_visible\"},{\"criterion\":\"After Loom emits a ready read-only recommendation, the acting LLM decides without a human interruption whether the local checkpoint improves historical tracing, reviewability, or regression bisecting; when it commits, it stages only the exact recommended paths, excludes unrelated or ambiguously owned changes, uses the semantic message, and leaves the commit local, while ambiguity causes deferral rather than guessing.\",\"id\":\"let-llm-decide-semantic-checkpoint\",\"level\":\"feature\",\"name\":\"the LLM decides whether to create a semantic checkpoint\",\"operation\":\"create\",\"rationale\":\"The checkpoint should reduce human friction: Loom supplies evidence and exact scope, while the LLM exercises bounded judgment about whether a commit is useful and safe.\",\"step_ids\":[\"decide-commit-checkpoint\"],\"visibility\":\"user_visible\"},{\"criterion\":\"The LLM may recommend publishing a local checkpoint, but no Git push executes without a current explicit human decision bound to the exact repository, remote, branch, and local commit; refusal, silence, scope drift, or a changed commit leaves the checkpoint local and requires a new decision.\",\"id\":\"gate-git-push-on-human-decision\",\"level\":\"feature\",\"name\":\"Git push requires an explicit human decision\",\"operation\":\"create\",\"rationale\":\"Local history checkpoints are reversible autonomous workflow, while publishing them changes shared external state and therefore remains a separate human authority decision.\",\"step_ids\":[\"request-push-decision\"],\"visibility\":\"user_visible\"},{\"criterion\":\"Neither a recommended nor a created Git commit directly ratifies an Intent, changes Intent lifecycle, settles a proof or relationship verdict, creates a grounding or derivation, or establishes checkpoint readiness; a created commit id is returned only as repository-history evidence.\",\"id\":\"separate-git-checkpoint-from-loom-truth\",\"level\":\"cross_cutting\",\"name\":\"Git checkpoints remain evidence outside Loom truth\",\"operation\":\"create\",\"rationale\":\"Repository history can attest that a cohesive snapshot was chosen, but it cannot become a second authority for Loom's graph truth.\",\"step_ids\":[\"review-commit-recommendation\",\"decide-commit-checkpoint\",\"request-push-decision\"],\"visibility\":\"internal\"},{\"criterion\":\"When no single implemented Intent bundle explains the included changes, or a selected path has selected and unselected realizing owners, or the Intent is unratified, the recommendation reports status blocked with each typed blocker, its message and its target ids, and emits no suggested commit message.\",\"id\":\"block-recommendation-with-typed-blockers\",\"level\":\"feature\",\"name\":\"A blocked recommendation names its typed blockers instead of a partial scope\",\"operation\":\"create\",\"rationale\":\"The blocked outcome is what readiness produces when no single Intent bundle explains the change, and it must be observable as typed blockers rather than a partial scope.\",\"step_ids\":[\"inspect-checkpoint-readiness\",\"review-commit-recommendation\"],\"visibility\":\"user_visible\"},{\"criterion\":\"When the repository, remote, branch, or local commit bound to a push decision changes, or the human refuses or stays silent, no push executes and the checkpoint stays local until a new explicit decision is given.\",\"id\":\"keep-checkpoint-local-on-push-drift\",\"level\":\"feature\",\"name\":\"A push decision that drifts from the exact commit keeps the checkpoint local\",\"operation\":\"create\",\"rationale\":\"The authored step expects a refusal or missing answer to leave the checkpoint local; that outcome is independently falsifiable from the gate that demands the decision.\",\"step_ids\":[\"request-push-decision\"],\"visibility\":\"user_visible\"},{\"criterion\":\"When ownership is ambiguous or the staged set drifts from the recommendation, the acting LLM records no commit, never runs the forbidden whole-tree stage, and leaves publication local-only for a later decision.\",\"id\":\"defer-checkpoint-on-ambiguous-ownership\",\"level\":\"feature\",\"name\":\"On ambiguity the acting LLM defers the checkpoint instead of widening the stage\",\"operation\":\"create\",\"rationale\":\"The authored step expects ambiguous ownership to cause deferral rather than a guess; deferring is a distinct observable outcome from deciding to commit.\",\"step_ids\":[\"decide-commit-checkpoint\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"5b97bc005b7f5990\",\"journey_id\":\"semantic-commit-recommendation\",\"proposal_id\":\"semantic-commit-recommendation-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward unchanged and adds the three degraded outcomes the authored steps already expect but no technical Intent named: typed blockers on a blocked recommendation, keep-local on push-decision drift, and deferral on ambiguous ownership.\",\"relationships\":[{\"from\":\"assess-semantic-checkpoint-readiness\",\"id\":\"readiness-requires-doctor\",\"kind\":\"requires\",\"rationale\":\"A clean readiness result is impossible unless the existing doctor behavior can deterministically expose graph-integrity violations.\",\"to\":\"report-graph-integrity-violations\"},{\"from\":\"project-semantic-commit-recommendation\",\"id\":\"recommendation-requires-readiness\",\"kind\":\"requires\",\"rationale\":\"The projection may recommend a checkpoint only after the complete fail-closed readiness decision succeeds.\",\"to\":\"assess-semantic-checkpoint-readiness\"},{\"from\":\"let-llm-decide-semantic-checkpoint\",\"id\":\"llm-decision-requires-recommendation\",\"kind\":\"requires\",\"rationale\":\"The LLM may create a semantic checkpoint only from a ready recommendation with exact scope and evidence.\",\"to\":\"project-semantic-commit-recommendation\"},{\"from\":\"let-llm-decide-semantic-checkpoint\",\"id\":\"llm-decision-requires-truth-separation\",\"kind\":\"requires\",\"rationale\":\"Even an autonomously chosen commit must preserve the distinction between Git history evidence and Loom's asserted truth.\",\"to\":\"separate-git-checkpoint-from-loom-truth\"},{\"from\":\"gate-git-push-on-human-decision\",\"id\":\"push-gate-requires-local-checkpoint-decision\",\"kind\":\"requires\",\"rationale\":\"A push decision can be requested only for a concrete local checkpoint that the LLM already chose from a ready recommendation.\",\"to\":\"let-llm-decide-semantic-checkpoint\"},{\"from\":\"block-recommendation-with-typed-blockers\",\"id\":\"blocked-report-requires-readiness\",\"kind\":\"requires\",\"rationale\":\"Typed blockers can only be named by the readiness decision that computed them.\",\"to\":\"assess-semantic-checkpoint-readiness\"},{\"from\":\"keep-checkpoint-local-on-push-drift\",\"id\":\"push-drift-requires-push-gate\",\"kind\":\"requires\",\"rationale\":\"Keeping the checkpoint local on drift is the refusal half of the gate that binds a push decision to the exact commit.\",\"to\":\"gate-git-push-on-human-decision\"},{\"from\":\"defer-checkpoint-on-ambiguous-ownership\",\"id\":\"deferral-requires-llm-decision\",\"kind\":\"requires\",\"rationale\":\"Deferring is one of the two outcomes of the autonomous checkpoint decision, so it stands on that decision behavior.\",\"to\":\"let-llm-decide-semantic-checkpoint\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "5c64d5aafc1ff7f75f25a8258cf5e132",
+            "from": "block-recommendation-with-typed-blockers",
+            "id": "blocked-report-requires-readiness",
+            "kind": "requires",
+            "rationale": "Typed blockers can only be named by the readiness decision that computed them.",
+            "to": "assess-semantic-checkpoint-readiness"
+          },
+          {
+            "edge_id": "36966834751adf626cae191bbe151c69",
+            "from": "defer-checkpoint-on-ambiguous-ownership",
+            "id": "deferral-requires-llm-decision",
+            "kind": "requires",
+            "rationale": "Deferring is one of the two outcomes of the autonomous checkpoint decision, so it stands on that decision behavior.",
+            "to": "let-llm-decide-semantic-checkpoint"
+          },
+          {
+            "edge_id": "068eccc8cc557deddcedd859feeb4a01",
+            "from": "let-llm-decide-semantic-checkpoint",
+            "id": "llm-decision-requires-recommendation",
+            "kind": "requires",
+            "rationale": "The LLM may create a semantic checkpoint only from a ready recommendation with exact scope and evidence.",
+            "to": "project-semantic-commit-recommendation"
+          },
+          {
+            "edge_id": "4bdafcaad44cabc16c7bfe26760fdae7",
+            "from": "let-llm-decide-semantic-checkpoint",
+            "id": "llm-decision-requires-truth-separation",
+            "kind": "requires",
+            "rationale": "Even an autonomously chosen commit must preserve the distinction between Git history evidence and Loom's asserted truth.",
+            "to": "separate-git-checkpoint-from-loom-truth"
+          },
+          {
+            "edge_id": "e1549196b7557af67f3f1b59b5c7e581",
+            "from": "keep-checkpoint-local-on-push-drift",
+            "id": "push-drift-requires-push-gate",
+            "kind": "requires",
+            "rationale": "Keeping the checkpoint local on drift is the refusal half of the gate that binds a push decision to the exact commit.",
+            "to": "gate-git-push-on-human-decision"
+          },
+          {
+            "edge_id": "f31053e408896375b87039d1c8794f4d",
+            "from": "gate-git-push-on-human-decision",
+            "id": "push-gate-requires-local-checkpoint-decision",
+            "kind": "requires",
+            "rationale": "A push decision can be requested only for a concrete local checkpoint that the LLM already chose from a ready recommendation.",
+            "to": "let-llm-decide-semantic-checkpoint"
+          },
+          {
+            "edge_id": "870869974103dd16f8d2cfc8fad51366",
+            "from": "assess-semantic-checkpoint-readiness",
+            "id": "readiness-requires-doctor",
+            "kind": "requires",
+            "rationale": "A clean readiness result is impossible unless the existing doctor behavior can deterministically expose graph-integrity violations.",
+            "to": "report-graph-integrity-violations"
+          },
+          {
+            "edge_id": "812078f32c8d89be778499825f2f5eb2",
+            "from": "project-semantic-commit-recommendation",
+            "id": "recommendation-requires-readiness",
+            "kind": "requires",
+            "rationale": "The projection may recommend a checkpoint only after the complete fail-closed readiness decision succeeds.",
+            "to": "assess-semantic-checkpoint-readiness"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T09:49:17.564Z",
+      "updated_at": "2026-08-15T09:50:44.936Z"
     },
     {
       "id": "4a4ef6a90281ca1817abe71ce57b6c12",
@@ -8163,6 +8381,24 @@
       "updated_at": "2026-08-13T05:06:25.031Z"
     },
     {
+      "id": "6535f3d82c406aa5fb830bf48dd5a804",
+      "type": "finding",
+      "name": "every unrooted-intent derive packet targets journey 'compass-projection' regardless of which journey the intent actually belongs to, so following the packet would write a false derivation",
+      "description": "a driver obeying the packet would accept a manifest binding sixteen unrelated behaviors to the compass journey's hash; the honest fix is eleven derive-accepts against the parent journeys, which the queue never points at",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.9,
+        "evidence": "loom journey map --json reports compass-projection with derive_gaps [] and derived/derivations_ratified/proven all true, yet loom next --mode derive --all --json returns 16 items whose target is compass-projection and whose reasons name scenarios of intents rooted in semantic-commit-recommendation, green-graph, self-audit, shared-proof, duplicate-command-warn, pagination, mcp-in-band, impact, find-grounding and writes-graph",
+        "file": "src/workitem/queues.rs",
+        "impact": "a driver obeying the packet would accept a manifest binding sixteen unrelated behaviors to the compass journey's hash; the honest fix is eleven derive-accepts against the parent journeys, which the queue never points at",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-15T09:24:45.825Z",
+      "updated_at": "2026-08-15T09:24:45.825Z"
+    },
+    {
       "id": "65865c2d56094de57ae62b1fc9a66d73",
       "type": "note",
       "name": "note:ratify",
@@ -9606,6 +9842,20 @@
       "updated_at": "2026-08-14T22:48:36.321Z"
     },
     {
+      "id": "72caa2473b4fffa16d56d700f165b74b",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "8c3ea9a8365a6927ac7f27088ac645b2"
+      },
+      "created_at": "2026-08-15T09:50:44.924Z",
+      "updated_at": "2026-08-15T09:50:44.924Z"
+    },
+    {
       "id": "730cc74bd95ad2f5ab13cb74de1e7bcc",
       "type": "interface_surface",
       "name": "loom-reopens-anchored-claims",
@@ -10566,6 +10816,20 @@
       "body": {},
       "created_at": "2026-08-09T12:54:42.913Z",
       "updated_at": "2026-08-09T12:54:42.913Z"
+    },
+    {
+      "id": "83ab54d6524dbe108b6b04862406fe9a",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "be0fe713b672af342bdf003d5d1ad51b"
+      },
+      "created_at": "2026-08-15T09:50:44.920Z",
+      "updated_at": "2026-08-15T09:50:44.920Z"
     },
     {
       "id": "843d184eac16bd40fd8235e1fe696dbe",
@@ -17576,6 +17840,210 @@
       "updated_at": "2026-08-10T04:00:05.696Z"
     },
     {
+      "id": "cb1955576eec9258d27f8223d3714c30",
+      "type": "proposal",
+      "name": "Journey semantic-commit-recommendation derivation semantic-commit-recommendation-v3",
+      "description": "Corrects v2, which minted duplicates by declaring three already-existing Intents as create. This binds the same three by intent_id instead.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept v3, then delete the 3 dupes"
+        },
+        "items": [
+          {
+            "intent_entry_id": "report-graph-integrity-violations",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "reuse",
+            "spawned": "bbd0126142a517757982cc9ba1d27a0d",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-checkpoint-readiness"
+            ],
+            "text": "Checkpoint readiness consumes the already approved deterministic doctor behavior; creating another doctor Intent would duplicate the same integrity criterion."
+          },
+          {
+            "intent_entry_id": "assess-semantic-checkpoint-readiness",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "8eb58e388d9b999f62666a0582c1b893",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-checkpoint-readiness"
+            ],
+            "text": "The conjunction of implementation, proof, synchronization, integrity, export, and semantic-cohesion evidence is one fail-closed decision with one observable ready-or-blocked result."
+          },
+          {
+            "intent_entry_id": "project-semantic-commit-recommendation",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "create",
+            "spawned": "a0c67e4b689e9f31f477cb6cdd894535",
+            "status": "adopted",
+            "step_ids": [
+              "review-commit-recommendation"
+            ],
+            "text": "This is the user-facing read model produced from readiness evidence and is independently falsifiable from the gate that supplies that evidence."
+          },
+          {
+            "intent_entry_id": "let-llm-decide-semantic-checkpoint",
+            "kind": "journey_intent",
+            "number": 4,
+            "operation": "create",
+            "spawned": "057bc2ec51dde77864587a258a3c3bd6",
+            "status": "adopted",
+            "step_ids": [
+              "decide-commit-checkpoint"
+            ],
+            "text": "The checkpoint should reduce human friction: Loom supplies evidence and exact scope, while the LLM exercises bounded judgment about whether a commit is useful and safe."
+          },
+          {
+            "intent_entry_id": "gate-git-push-on-human-decision",
+            "kind": "journey_intent",
+            "number": 5,
+            "operation": "create",
+            "spawned": "4df3da35d45316e7777ae9e4fa2efabd",
+            "status": "adopted",
+            "step_ids": [
+              "request-push-decision"
+            ],
+            "text": "Local history checkpoints are reversible autonomous workflow, while publishing them changes shared external state and therefore remains a separate human authority decision."
+          },
+          {
+            "intent_entry_id": "separate-git-checkpoint-from-loom-truth",
+            "kind": "journey_intent",
+            "number": 6,
+            "operation": "create",
+            "spawned": "0d40306d9479b9a428a843a37b22b156",
+            "status": "adopted",
+            "step_ids": [
+              "review-commit-recommendation",
+              "decide-commit-checkpoint",
+              "request-push-decision"
+            ],
+            "text": "Repository history can attest that a cohesive snapshot was chosen, but it cannot become a second authority for Loom's graph truth."
+          },
+          {
+            "intent_entry_id": "block-recommendation-with-typed-blockers",
+            "kind": "journey_intent",
+            "number": 7,
+            "operation": "reuse",
+            "spawned": "8e768135da3f1d9dd85940650749726b",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-checkpoint-readiness",
+              "review-commit-recommendation"
+            ],
+            "text": "Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion."
+          },
+          {
+            "intent_entry_id": "keep-checkpoint-local-on-push-drift",
+            "kind": "journey_intent",
+            "number": 8,
+            "operation": "reuse",
+            "spawned": "be0fe713b672af342bdf003d5d1ad51b",
+            "status": "adopted",
+            "step_ids": [
+              "request-push-decision"
+            ],
+            "text": "Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion."
+          },
+          {
+            "intent_entry_id": "defer-checkpoint-on-ambiguous-ownership",
+            "kind": "journey_intent",
+            "number": 9,
+            "operation": "reuse",
+            "spawned": "8c3ea9a8365a6927ac7f27088ac645b2",
+            "status": "adopted",
+            "step_ids": [
+              "decide-commit-checkpoint"
+            ],
+            "text": "Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion."
+          }
+        ],
+        "journey_hash": "5b97bc005b7f5990",
+        "journey_id": "semantic-commit-recommendation",
+        "journey_node_id": "998eb146c4c794c94594acc451a04c30",
+        "manifest_hash": "1f46df45f92aa721",
+        "proposal_id": "semantic-commit-recommendation-v3",
+        "proposal_rationale": "Corrects v2, which minted duplicates by declaring three already-existing Intents as create. This binds the same three by intent_id instead.",
+        "raw": "{\"intents\":[{\"id\":\"report-graph-integrity-violations\",\"intent_id\":\"bbd0126142a517757982cc9ba1d27a0d\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"Checkpoint readiness consumes the already approved deterministic doctor behavior; creating another doctor Intent would duplicate the same integrity criterion.\",\"step_ids\":[\"inspect-checkpoint-readiness\"],\"visibility\":\"internal\"},{\"criterion\":\"Given a working-tree diff, Loom reports ready only when exactly one implemented Intent or one semantically connected implemented Intent bundle explains every included change, every relevant current Validation is passing, registered repository content matches the synchronized graph, doctor reports no issue, and loom.graph.json exactly matches the live graph; otherwise it reports every blocker, readiness never depends on a fixed number of files or changes, and unrelated dirty paths are explicitly excluded rather than silently staged.\",\"id\":\"assess-semantic-checkpoint-readiness\",\"level\":\"feature\",\"name\":\"semantic checkpoint readiness is assessed\",\"operation\":\"create\",\"rationale\":\"The conjunction of implementation, proof, synchronization, integrity, export, and semantic-cohesion evidence is one fail-closed decision with one observable ready-or-blocked result.\",\"step_ids\":[\"inspect-checkpoint-readiness\"],\"visibility\":\"user_visible\"},{\"criterion\":\"For a ready checkpoint, Loom returns the selected Intent ids and names, a scope rationale, every included path, every excluded dirty path with its exclusion reason, every evaluated check with its observed result and exact validation command, and a deterministic suggested commit message; for a blocked checkpoint it returns no recommendation and names the blockers.\",\"id\":\"project-semantic-commit-recommendation\",\"level\":\"feature\",\"name\":\"semantic commit recommendations expose exact scope and evidence\",\"operation\":\"create\",\"rationale\":\"This is the user-facing read model produced from readiness evidence and is independently falsifiable from the gate that supplies that evidence.\",\"step_ids\":[\"review-commit-recommendation\"],\"visibility\":\"user_visible\"},{\"criterion\":\"After Loom emits a ready read-only recommendation, the acting LLM decides without a human interruption whether the local checkpoint improves historical tracing, reviewability, or regression bisecting; when it commits, it stages only the exact recommended paths, excludes unrelated or ambiguously owned changes, uses the semantic message, and leaves the commit local, while ambiguity causes deferral rather than guessing.\",\"id\":\"let-llm-decide-semantic-checkpoint\",\"level\":\"feature\",\"name\":\"the LLM decides whether to create a semantic checkpoint\",\"operation\":\"create\",\"rationale\":\"The checkpoint should reduce human friction: Loom supplies evidence and exact scope, while the LLM exercises bounded judgment about whether a commit is useful and safe.\",\"step_ids\":[\"decide-commit-checkpoint\"],\"visibility\":\"user_visible\"},{\"criterion\":\"The LLM may recommend publishing a local checkpoint, but no Git push executes without a current explicit human decision bound to the exact repository, remote, branch, and local commit; refusal, silence, scope drift, or a changed commit leaves the checkpoint local and requires a new decision.\",\"id\":\"gate-git-push-on-human-decision\",\"level\":\"feature\",\"name\":\"Git push requires an explicit human decision\",\"operation\":\"create\",\"rationale\":\"Local history checkpoints are reversible autonomous workflow, while publishing them changes shared external state and therefore remains a separate human authority decision.\",\"step_ids\":[\"request-push-decision\"],\"visibility\":\"user_visible\"},{\"criterion\":\"Neither a recommended nor a created Git commit directly ratifies an Intent, changes Intent lifecycle, settles a proof or relationship verdict, creates a grounding or derivation, or establishes checkpoint readiness; a created commit id is returned only as repository-history evidence.\",\"id\":\"separate-git-checkpoint-from-loom-truth\",\"level\":\"cross_cutting\",\"name\":\"Git checkpoints remain evidence outside Loom truth\",\"operation\":\"create\",\"rationale\":\"Repository history can attest that a cohesive snapshot was chosen, but it cannot become a second authority for Loom's graph truth.\",\"step_ids\":[\"review-commit-recommendation\",\"decide-commit-checkpoint\",\"request-push-decision\"],\"visibility\":\"internal\"},{\"id\":\"block-recommendation-with-typed-blockers\",\"intent_id\":\"8e768135da3f1d9dd85940650749726b\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion.\",\"step_ids\":[\"inspect-checkpoint-readiness\",\"review-commit-recommendation\"],\"visibility\":\"user_visible\"},{\"id\":\"keep-checkpoint-local-on-push-drift\",\"intent_id\":\"be0fe713b672af342bdf003d5d1ad51b\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion.\",\"step_ids\":[\"request-push-decision\"],\"visibility\":\"user_visible\"},{\"id\":\"defer-checkpoint-on-ambiguous-ownership\",\"intent_id\":\"8c3ea9a8365a6927ac7f27088ac645b2\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion.\",\"step_ids\":[\"decide-commit-checkpoint\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"5b97bc005b7f5990\",\"journey_id\":\"semantic-commit-recommendation\",\"proposal_id\":\"semantic-commit-recommendation-v3\",\"proposal_rationale\":\"Corrects v2, which minted duplicates by declaring three already-existing Intents as create. This binds the same three by intent_id instead.\",\"relationships\":[{\"from\":\"assess-semantic-checkpoint-readiness\",\"id\":\"readiness-requires-doctor\",\"kind\":\"requires\",\"rationale\":\"A clean readiness result is impossible unless the existing doctor behavior can deterministically expose graph-integrity violations.\",\"to\":\"report-graph-integrity-violations\"},{\"from\":\"project-semantic-commit-recommendation\",\"id\":\"recommendation-requires-readiness\",\"kind\":\"requires\",\"rationale\":\"The projection may recommend a checkpoint only after the complete fail-closed readiness decision succeeds.\",\"to\":\"assess-semantic-checkpoint-readiness\"},{\"from\":\"let-llm-decide-semantic-checkpoint\",\"id\":\"llm-decision-requires-recommendation\",\"kind\":\"requires\",\"rationale\":\"The LLM may create a semantic checkpoint only from a ready recommendation with exact scope and evidence.\",\"to\":\"project-semantic-commit-recommendation\"},{\"from\":\"let-llm-decide-semantic-checkpoint\",\"id\":\"llm-decision-requires-truth-separation\",\"kind\":\"requires\",\"rationale\":\"Even an autonomously chosen commit must preserve the distinction between Git history evidence and Loom's asserted truth.\",\"to\":\"separate-git-checkpoint-from-loom-truth\"},{\"from\":\"gate-git-push-on-human-decision\",\"id\":\"push-gate-requires-local-checkpoint-decision\",\"kind\":\"requires\",\"rationale\":\"A push decision can be requested only for a concrete local checkpoint that the LLM already chose from a ready recommendation.\",\"to\":\"let-llm-decide-semantic-checkpoint\"},{\"from\":\"block-recommendation-with-typed-blockers\",\"id\":\"blocked-report-requires-readiness\",\"kind\":\"requires\",\"rationale\":\"Typed blockers can only be named by the readiness decision that computed them.\",\"to\":\"assess-semantic-checkpoint-readiness\"},{\"from\":\"keep-checkpoint-local-on-push-drift\",\"id\":\"push-drift-requires-push-gate\",\"kind\":\"requires\",\"rationale\":\"Keeping the checkpoint local on drift is the refusal half of the gate that binds a push decision to the exact commit.\",\"to\":\"gate-git-push-on-human-decision\"},{\"from\":\"defer-checkpoint-on-ambiguous-ownership\",\"id\":\"deferral-requires-llm-decision\",\"kind\":\"requires\",\"rationale\":\"Deferring is one of the two outcomes of the autonomous checkpoint decision, so it stands on that decision behavior.\",\"to\":\"let-llm-decide-semantic-checkpoint\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "2c4f86217ded57fe6015690227fee090",
+            "from": "block-recommendation-with-typed-blockers",
+            "id": "blocked-report-requires-readiness",
+            "kind": "requires",
+            "rationale": "Typed blockers can only be named by the readiness decision that computed them.",
+            "to": "assess-semantic-checkpoint-readiness"
+          },
+          {
+            "edge_id": "bdafd265effe0169398a665ff5b3ca1e",
+            "from": "defer-checkpoint-on-ambiguous-ownership",
+            "id": "deferral-requires-llm-decision",
+            "kind": "requires",
+            "rationale": "Deferring is one of the two outcomes of the autonomous checkpoint decision, so it stands on that decision behavior.",
+            "to": "let-llm-decide-semantic-checkpoint"
+          },
+          {
+            "edge_id": "068eccc8cc557deddcedd859feeb4a01",
+            "from": "let-llm-decide-semantic-checkpoint",
+            "id": "llm-decision-requires-recommendation",
+            "kind": "requires",
+            "rationale": "The LLM may create a semantic checkpoint only from a ready recommendation with exact scope and evidence.",
+            "to": "project-semantic-commit-recommendation"
+          },
+          {
+            "edge_id": "4bdafcaad44cabc16c7bfe26760fdae7",
+            "from": "let-llm-decide-semantic-checkpoint",
+            "id": "llm-decision-requires-truth-separation",
+            "kind": "requires",
+            "rationale": "Even an autonomously chosen commit must preserve the distinction between Git history evidence and Loom's asserted truth.",
+            "to": "separate-git-checkpoint-from-loom-truth"
+          },
+          {
+            "edge_id": "cf0c814ec8e2e92c02dc8744e58a68a9",
+            "from": "keep-checkpoint-local-on-push-drift",
+            "id": "push-drift-requires-push-gate",
+            "kind": "requires",
+            "rationale": "Keeping the checkpoint local on drift is the refusal half of the gate that binds a push decision to the exact commit.",
+            "to": "gate-git-push-on-human-decision"
+          },
+          {
+            "edge_id": "f31053e408896375b87039d1c8794f4d",
+            "from": "gate-git-push-on-human-decision",
+            "id": "push-gate-requires-local-checkpoint-decision",
+            "kind": "requires",
+            "rationale": "A push decision can be requested only for a concrete local checkpoint that the LLM already chose from a ready recommendation.",
+            "to": "let-llm-decide-semantic-checkpoint"
+          },
+          {
+            "edge_id": "870869974103dd16f8d2cfc8fad51366",
+            "from": "assess-semantic-checkpoint-readiness",
+            "id": "readiness-requires-doctor",
+            "kind": "requires",
+            "rationale": "A clean readiness result is impossible unless the existing doctor behavior can deterministically expose graph-integrity violations.",
+            "to": "report-graph-integrity-violations"
+          },
+          {
+            "edge_id": "812078f32c8d89be778499825f2f5eb2",
+            "from": "project-semantic-commit-recommendation",
+            "id": "recommendation-requires-readiness",
+            "kind": "requires",
+            "rationale": "The projection may recommend a checkpoint only after the complete fail-closed readiness decision succeeds.",
+            "to": "assess-semantic-checkpoint-readiness"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T09:50:44.883Z",
+      "updated_at": "2026-08-15T09:50:44.936Z"
+    },
+    {
       "id": "cc00a84aa43347a137cd8b55d30cd8a2",
       "type": "note",
       "name": "note:decision",
@@ -21088,21 +21556,6 @@
       "updated_at": ""
     },
     {
-      "id": "d9512374d34676a1b",
-      "type": "finding",
-      "name": "user-visible intent 'A blocked recommendation names its typed blockers instead of a partial scope' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:8e768135da3f1d9dd85940650749726b",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d962f9baa1d403c7b",
       "type": "finding",
       "name": "src/anchor.rs imports src/model.rs but their intents have no recorded relationship",
@@ -22408,6 +22861,21 @@
         "kind": "complex_symbol",
         "metric": 24,
         "symbol": "lint"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dcbc423d6385f8bac",
+      "type": "finding",
+      "name": "user-visible intent 'A blocked recommendation names its typed blockers instead of a partial scope' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:8e768135da3f1d9dd85940650749726b",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -28366,6 +28834,20 @@
       "updated_at": "2026-08-14T23:13:25.055Z"
     },
     {
+      "id": "2c4f86217ded57fe6015690227fee090",
+      "from_id": "8e768135da3f1d9dd85940650749726b",
+      "to_id": "8eb58e388d9b999f62666a0582c1b893",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:50:44.935Z",
+      "updated_at": "2026-08-15T09:50:44.935Z"
+    },
+    {
       "id": "2c89fc5f2cebeb92fe1feeff04032333",
       "from_id": "7c3723dfd09f22f847f6932781144386",
       "to_id": "45f190ee03676607461817692bc5b468",
@@ -28812,6 +29294,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:48.866Z",
       "updated_at": "2026-08-14T07:16:39.888Z"
+    },
+    {
+      "id": "3aef7c81818e486205434f6929c0b3ac",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "8c3ea9a8365a6927ac7f27088ac645b2",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:52:51.768Z",
+      "updated_at": "2026-08-15T09:52:51.768Z"
     },
     {
       "id": "3bd5fe99f48d5ab9b9c53fce15029761",
@@ -29612,6 +30108,20 @@
       "updated_at": "2026-08-13T13:41:21.045Z"
     },
     {
+      "id": "532a4af1d940341249e6dab44b260006",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "be0fe713b672af342bdf003d5d1ad51b",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:52:51.768Z",
+      "updated_at": "2026-08-15T09:52:51.768Z"
+    },
+    {
       "id": "5339af69f172ca5706f1ce6b11b0599d",
       "from_id": "5345985b41a16ffdade0d603bced3643",
       "to_id": "4cb67b233f7fa6fbef2f48b9952927a1",
@@ -29638,6 +30148,20 @@
       "inspected_by": "",
       "created_at": "2026-08-15T06:59:58.956Z",
       "updated_at": "2026-08-15T06:59:58.956Z"
+    },
+    {
+      "id": "53f8b4abb44fce27b1d1f289623fde25",
+      "from_id": "d7278d7ac05f8019e1d6eac9c090cc9d",
+      "to_id": "8e768135da3f1d9dd85940650749726b",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:52:51.768Z",
+      "updated_at": "2026-08-15T09:52:51.768Z"
     },
     {
       "id": "54a811bddd0c9592304b2abed575de2e",
@@ -29918,6 +30442,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-11T18:17:59.903Z",
       "updated_at": "2026-08-14T07:37:20.720Z"
+    },
+    {
+      "id": "5baa4b57aa0e4e05da18da4960e89ded",
+      "from_id": "998eb146c4c794c94594acc451a04c30",
+      "to_id": "be0fe713b672af342bdf003d5d1ad51b",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:50:44.929Z",
+      "updated_at": "2026-08-15T09:50:44.929Z"
     },
     {
       "id": "5befb41be3630087a015ea25f956dcb4",
@@ -32888,6 +33426,20 @@
       "updated_at": "2026-08-14T07:16:41.459Z"
     },
     {
+      "id": "bdafd265effe0169398a665ff5b3ca1e",
+      "from_id": "8c3ea9a8365a6927ac7f27088ac645b2",
+      "to_id": "057bc2ec51dde77864587a258a3c3bd6",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:50:44.935Z",
+      "updated_at": "2026-08-15T09:50:44.935Z"
+    },
+    {
       "id": "bdb8b749712cf6fb44b1c477a9e4a1e7",
       "from_id": "a45b15e4d71e3fa33976fe532065c6fe",
       "to_id": "c6b1c7fbaa07a8c90184bb9cdb86fe4b",
@@ -33322,6 +33874,20 @@
       "updated_at": "2026-08-14T07:16:41.017Z"
     },
     {
+      "id": "cdb1452e007a66c67611534a0d03c418",
+      "from_id": "998eb146c4c794c94594acc451a04c30",
+      "to_id": "8e768135da3f1d9dd85940650749726b",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:50:44.929Z",
+      "updated_at": "2026-08-15T09:50:44.929Z"
+    },
+    {
       "id": "cde4d4935d2ac6edbc27652cf7b334ed",
       "from_id": "a03cfd1d58679b956b112fd78386a6fa",
       "to_id": "6398b5de19eec1288aa850f635175359",
@@ -33390,6 +33956,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T22:47:23.398Z",
       "updated_at": "2026-08-14T22:48:36.317Z"
+    },
+    {
+      "id": "cf0c814ec8e2e92c02dc8744e58a68a9",
+      "from_id": "be0fe713b672af342bdf003d5d1ad51b",
+      "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:50:44.936Z",
+      "updated_at": "2026-08-15T09:50:44.936Z"
     },
     {
       "id": "cf1acd3aaa2e40b5a829c2fe981331a9",
@@ -36120,6 +36700,20 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d84058294c920cc05d480e2a8ee289d1",
+      "from_id": "998eb146c4c794c94594acc451a04c30",
+      "to_id": "8c3ea9a8365a6927ac7f27088ac645b2",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:50:44.930Z",
+      "updated_at": "2026-08-15T09:50:44.930Z"
     },
     {
       "id": "d840866c3ad005ee1",
@@ -40411,6 +41005,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f1ebb60b128038696",
+      "subject_kind": "node",
+      "subject_id": "be0fe713b672af342bdf003d5d1ad51b",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T09:50:44.919Z",
+      "decision_mode": "batch",
+      "batch_id": "1786787444903-95626-1"
+    },
+    {
       "id": "f1ef94bfacd5b6425",
       "subject_kind": "node",
       "subject_id": "56d44edf69fdfa63987c0569d22a37c3",
@@ -43616,6 +44224,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fb1f5d1af6b12cc3b",
+      "subject_kind": "node",
+      "subject_id": "8e768135da3f1d9dd85940650749726b",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T09:50:44.914Z",
+      "decision_mode": "batch",
+      "batch_id": "1786787444903-95626-1"
+    },
+    {
       "id": "fb2018552590a1a0c",
       "subject_kind": "edge",
       "subject_id": "d6ffa02a95a65ec5748df8d154e31233",
@@ -45008,6 +45630,20 @@
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T22:22:31.794Z",
       "decision_mode": "individual"
+    },
+    {
+      "id": "fe7a16cc96be8c512",
+      "subject_kind": "node",
+      "subject_id": "8c3ea9a8365a6927ac7f27088ac645b2",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T09:50:44.924Z",
+      "decision_mode": "batch",
+      "batch_id": "1786787444903-95626-1"
     },
     {
       "id": "fe7dadee98db95e2e",
@@ -49168,6 +49804,24 @@
         "loom_version": "0.32.0"
       },
       "recorded_at": "2026-08-14T22:48:42.040Z"
+    },
+    {
+      "id": "e4ca265bacebf606c",
+      "fact_id": "f1ebb60b128038696",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721"
+      },
+      "recorded_at": "2026-08-15T09:50:44.919Z"
+    },
+    {
+      "id": "ee3c2965e6890e440",
+      "fact_id": "f1ebb60b128038696",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786787444914-95626-3"
+      },
+      "recorded_at": "2026-08-15T09:50:44.919Z"
     },
     {
       "id": "e71633708c0e3e33e",
@@ -67400,6 +68054,24 @@
       "recorded_at": "2026-08-14T06:58:20.894Z"
     },
     {
+      "id": "e28d01d1c0b87cb8f",
+      "fact_id": "fb1f5d1af6b12cc3b",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721"
+      },
+      "recorded_at": "2026-08-15T09:50:44.914Z"
+    },
+    {
+      "id": "e57426892c0433c90",
+      "fact_id": "fb1f5d1af6b12cc3b",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786787444907-95626-2"
+      },
+      "recorded_at": "2026-08-15T09:50:44.914Z"
+    },
+    {
       "id": "e07c1d50c5f506441",
       "fact_id": "fb2018552590a1a0c",
       "payload": {
@@ -76492,6 +77164,24 @@
       "recorded_at": "2026-08-14T22:22:31.794Z"
     },
     {
+      "id": "e9201d47a4b84ee56",
+      "fact_id": "fe7a16cc96be8c512",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786787444920-95626-4"
+      },
+      "recorded_at": "2026-08-15T09:50:44.924Z"
+    },
+    {
+      "id": "e96ce6df4a5a78e80",
+      "fact_id": "fe7a16cc96be8c512",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721"
+      },
+      "recorded_at": "2026-08-15T09:50:44.924Z"
+    },
+    {
       "id": "e1d1e40a1719b2a50",
       "fact_id": "fe7dadee98db95e2e",
       "payload": {
@@ -80457,7 +81147,7 @@
       "target_id": "068eccc8cc557deddcedd859feeb4a01",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"2e1c104fdaf896a595f4f75ab3d19ad4\":{\"manifest_hash\":\"02f42fe1aeb12da4\",\"rationale\":\"The LLM may create a semantic checkpoint only from a ready recommendation with exact scope and evidence.\",\"relationship_id\":\"llm-decision-requires-recommendation\"}}",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"The LLM may create a semantic checkpoint only from a ready recommendation with exact scope and evidence.\",\"relationship_id\":\"llm-decision-requires-recommendation\"}}",
       "truth_class": "asserted"
     },
     {
@@ -81065,6 +81755,13 @@
     {
       "target_id": "0d0cfe4a0497a60b7f286d64d8a7723b",
       "target_kind": "node",
+      "key": "journey_exemption",
+      "value": "{\"human_decision_digest\":\"54692d7d914b3e1c\",\"kind\":\"repository_maintenance\",\"reason\":\"the skill is dev tooling for driving loom itself, not a product journey a user walks; it is proven at S2 by tests/ring59_driver_skill.rs\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0d0cfe4a0497a60b7f286d64d8a7723b",
+      "target_kind": "node",
       "key": "level",
       "value": "feature",
       "truth_class": "asserted"
@@ -81367,14 +82064,14 @@
       "target_id": "104d2df5b8678d0f9b4f6ddfdba4c6d6",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "02f42fe1aeb12da4",
+      "value": "1f46df45f92aa721",
       "truth_class": "asserted"
     },
     {
       "target_id": "104d2df5b8678d0f9b4f6ddfdba4c6d6",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2e1c104fdaf896a595f4f75ab3d19ad4",
+      "value": "cb1955576eec9258d27f8223d3714c30",
       "truth_class": "asserted"
     },
     {
@@ -82076,6 +82773,13 @@
       "key": "de_facto",
       "value": "{\"demonstrated_in\":null,\"proven_by\":\"a gated packet is neither worked nor waited on mid-drain\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "197dfd42886e121e6ca822065e390648",
+      "target_kind": "node",
+      "key": "journey_exemption",
+      "value": "{\"human_decision_digest\":\"54692d7d914b3e1c\",\"kind\":\"repository_maintenance\",\"reason\":\"a failure case of the loom-driver skill, which the human exempted as dev tooling rather than a product journey\"}",
+      "truth_class": "asserted"
     },
     {
       "target_id": "197dfd42886e121e6ca822065e390648",
@@ -83244,6 +83948,20 @@
       "target_kind": "edge",
       "key": "surface_locator",
       "value": "run",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2c4f86217ded57fe6015690227fee090",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"Typed blockers can only be named by the readiness decision that computed them.\",\"relationship_id\":\"blocked-report-requires-readiness\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2c4f86217ded57fe6015690227fee090",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
       "truth_class": "asserted"
     },
     {
@@ -85168,7 +85886,7 @@
       "target_id": "4bdafcaad44cabc16c7bfe26760fdae7",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"2e1c104fdaf896a595f4f75ab3d19ad4\":{\"manifest_hash\":\"02f42fe1aeb12da4\",\"rationale\":\"Even an autonomously chosen commit must preserve the distinction between Git history evidence and Loom's asserted truth.\",\"relationship_id\":\"llm-decision-requires-truth-separation\"}}",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"Even an autonomously chosen commit must preserve the distinction between Git history evidence and Loom's asserted truth.\",\"relationship_id\":\"llm-decision-requires-truth-separation\"}}",
       "truth_class": "asserted"
     },
     {
@@ -86385,6 +87103,13 @@
     {
       "target_id": "5af569f41f427877527d689962c05645",
       "target_kind": "node",
+      "key": "journey_exemption",
+      "value": "{\"human_decision_digest\":\"54692d7d914b3e1c\",\"kind\":\"repository_maintenance\",\"reason\":\"a failure case of the loom-driver skill, which the human exempted as dev tooling rather than a product journey\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5af569f41f427877527d689962c05645",
+      "target_kind": "node",
       "key": "level",
       "value": "feature",
       "truth_class": "asserted"
@@ -86409,6 +87134,48 @@
       "key": "stale_cause",
       "value": "cargo test --test ring40_packet_closure no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "5baa4b57aa0e4e05da18da4960e89ded",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "5b97bc005b7f5990",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5baa4b57aa0e4e05da18da4960e89ded",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "1f46df45f92aa721",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5baa4b57aa0e4e05da18da4960e89ded",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "cb1955576eec9258d27f8223d3714c30",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5baa4b57aa0e4e05da18da4960e89ded",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5baa4b57aa0e4e05da18da4960e89ded",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"request-push-decision\":\"e1b4c1e44789e617\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "5baa4b57aa0e4e05da18da4960e89ded",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"request-push-decision\"]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "5c3282d2e208c7e21c4f8d449cfc6d02",
@@ -88220,14 +88987,14 @@
       "target_id": "76d8197075390836d040b1ef12b2615b",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "02f42fe1aeb12da4",
+      "value": "1f46df45f92aa721",
       "truth_class": "asserted"
     },
     {
       "target_id": "76d8197075390836d040b1ef12b2615b",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2e1c104fdaf896a595f4f75ab3d19ad4",
+      "value": "cb1955576eec9258d27f8223d3714c30",
       "truth_class": "asserted"
     },
     {
@@ -88731,14 +89498,14 @@
       "target_id": "7cf8fe3e87ae087b4f101b2cbe7f329a",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "02f42fe1aeb12da4",
+      "value": "1f46df45f92aa721",
       "truth_class": "asserted"
     },
     {
       "target_id": "7cf8fe3e87ae087b4f101b2cbe7f329a",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2e1c104fdaf896a595f4f75ab3d19ad4",
+      "value": "cb1955576eec9258d27f8223d3714c30",
       "truth_class": "asserted"
     },
     {
@@ -89165,7 +89932,7 @@
       "target_id": "812078f32c8d89be778499825f2f5eb2",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"2e1c104fdaf896a595f4f75ab3d19ad4\":{\"manifest_hash\":\"02f42fe1aeb12da4\",\"rationale\":\"The projection may recommend a checkpoint only after the complete fail-closed readiness decision succeeds.\",\"relationship_id\":\"recommendation-requires-readiness\"}}",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"The projection may recommend a checkpoint only after the complete fail-closed readiness decision succeeds.\",\"relationship_id\":\"recommendation-requires-readiness\"}}",
       "truth_class": "asserted"
     },
     {
@@ -89494,7 +90261,7 @@
       "target_id": "870869974103dd16f8d2cfc8fad51366",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"2e1c104fdaf896a595f4f75ab3d19ad4\":{\"manifest_hash\":\"02f42fe1aeb12da4\",\"rationale\":\"A clean readiness result is impossible unless the existing doctor behavior can deterministically expose graph-integrity violations.\",\"relationship_id\":\"readiness-requires-doctor\"}}",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"A clean readiness result is impossible unless the existing doctor behavior can deterministically expose graph-integrity violations.\",\"relationship_id\":\"readiness-requires-doctor\"}}",
       "truth_class": "asserted"
     },
     {
@@ -91146,14 +91913,14 @@
       "target_id": "959dbf310b7b52542342536c34caf4cb",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "02f42fe1aeb12da4",
+      "value": "1f46df45f92aa721",
       "truth_class": "asserted"
     },
     {
       "target_id": "959dbf310b7b52542342536c34caf4cb",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2e1c104fdaf896a595f4f75ab3d19ad4",
+      "value": "cb1955576eec9258d27f8223d3714c30",
       "truth_class": "asserted"
     },
     {
@@ -93817,6 +94584,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "bdafd265effe0169398a665ff5b3ca1e",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"Deferring is one of the two outcomes of the autonomous checkpoint decision, so it stands on that decision behavior.\",\"relationship_id\":\"deferral-requires-llm-decision\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "bdafd265effe0169398a665ff5b3ca1e",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "bdb25674ae43281801739ce6bdbf9f95",
       "target_kind": "node",
       "key": "proof_anchors",
@@ -93960,14 +94741,14 @@
       "target_id": "bfca4dd037cf2f89229312866d9bbe15",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "02f42fe1aeb12da4",
+      "value": "1f46df45f92aa721",
       "truth_class": "asserted"
     },
     {
       "target_id": "bfca4dd037cf2f89229312866d9bbe15",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2e1c104fdaf896a595f4f75ab3d19ad4",
+      "value": "cb1955576eec9258d27f8223d3714c30",
       "truth_class": "asserted"
     },
     {
@@ -94193,6 +94974,13 @@
       "key": "de_facto",
       "value": "{\"demonstrated_in\":null,\"proven_by\":\"the cold path stops the campaign and hands back to seeding\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "c396233636e7827e497151e71108da91",
+      "target_kind": "node",
+      "key": "journey_exemption",
+      "value": "{\"human_decision_digest\":\"54692d7d914b3e1c\",\"kind\":\"repository_maintenance\",\"reason\":\"a failure case of the loom-driver skill, which the human exempted as dev tooling rather than a product journey\"}",
+      "truth_class": "asserted"
     },
     {
       "target_id": "c396233636e7827e497151e71108da91",
@@ -94741,6 +95529,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "cdb1452e007a66c67611534a0d03c418",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "5b97bc005b7f5990",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cdb1452e007a66c67611534a0d03c418",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "1f46df45f92aa721",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cdb1452e007a66c67611534a0d03c418",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "cb1955576eec9258d27f8223d3714c30",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cdb1452e007a66c67611534a0d03c418",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cdb1452e007a66c67611534a0d03c418",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"inspect-checkpoint-readiness\":\"239c30623b9254d5\",\"review-commit-recommendation\":\"5d5fb0d7c6ad9cef\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cdb1452e007a66c67611534a0d03c418",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"inspect-checkpoint-readiness\",\"review-commit-recommendation\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "ce18d8bc4c0672d94c479f8597d65c88",
       "target_kind": "edge",
       "key": "binding_hashes",
@@ -94808,6 +95638,20 @@
       "target_kind": "edge",
       "key": "step_ids",
       "value": "[\"attach-anchor\",\"reject-invalid-anchor\"]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cf0c814ec8e2e92c02dc8744e58a68a9",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"Keeping the checkpoint local on drift is the refusal half of the gate that binds a push decision to the exact commit.\",\"relationship_id\":\"push-drift-requires-push-gate\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cf0c814ec8e2e92c02dc8744e58a68a9",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
       "truth_class": "asserted"
     },
     {
@@ -95816,6 +96660,48 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d84058294c920cc05d480e2a8ee289d1",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "5b97bc005b7f5990",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d84058294c920cc05d480e2a8ee289d1",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "1f46df45f92aa721",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d84058294c920cc05d480e2a8ee289d1",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "cb1955576eec9258d27f8223d3714c30",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d84058294c920cc05d480e2a8ee289d1",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "Reuses the existing implemented, grounded Intent that already names this degraded path; creating it again would duplicate the same criterion.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d84058294c920cc05d480e2a8ee289d1",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"decide-commit-checkpoint\":\"cb261f578f1dfd9a\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "d84058294c920cc05d480e2a8ee289d1",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"decide-commit-checkpoint\"]",
       "truth_class": "asserted"
     },
     {
@@ -97516,14 +98402,14 @@
       "target_id": "e81fa4789ba8aeb64b4d4a0aee77ad08",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "02f42fe1aeb12da4",
+      "value": "1f46df45f92aa721",
       "truth_class": "asserted"
     },
     {
       "target_id": "e81fa4789ba8aeb64b4d4a0aee77ad08",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2e1c104fdaf896a595f4f75ab3d19ad4",
+      "value": "cb1955576eec9258d27f8223d3714c30",
       "truth_class": "asserted"
     },
     {
@@ -98433,7 +99319,7 @@
       "target_id": "f31053e408896375b87039d1c8794f4d",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"2e1c104fdaf896a595f4f75ab3d19ad4\":{\"manifest_hash\":\"02f42fe1aeb12da4\",\"rationale\":\"A push decision can be requested only for a concrete local checkpoint that the LLM already chose from a ready recommendation.\",\"relationship_id\":\"push-gate-requires-local-checkpoint-decision\"}}",
+      "value": "{\"cb1955576eec9258d27f8223d3714c30\":{\"manifest_hash\":\"1f46df45f92aa721\",\"rationale\":\"A push decision can be requested only for a concrete local checkpoint that the LLM already chose from a ready recommendation.\",\"relationship_id\":\"push-gate-requires-local-checkpoint-decision\"}}",
       "truth_class": "asserted"
     },
     {
@@ -100852,6 +101738,60 @@
         "human_decision": {
           "mode": "mediated",
           "response": "i give u authority to finish them all up"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786787444907-95626-2",
+      "ts": "1786787444907",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "8e768135da3f1d9dd85940650749726b",
+      "payload": {
+        "batch_id": "1786787444903-95626-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept v3, then delete the 3 dupes"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786787444914-95626-3",
+      "ts": "1786787444914",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "be0fe713b672af342bdf003d5d1ad51b",
+      "payload": {
+        "batch_id": "1786787444903-95626-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept v3, then delete the 3 dupes"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786787444920-95626-4",
+      "ts": "1786787444920",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "8c3ea9a8365a6927ac7f27088ac645b2",
+      "payload": {
+        "batch_id": "1786787444903-95626-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'semantic-commit-recommendation' derivation at semantic hash 5b97bc005b7f5990 from canonical manifest 1f46df45f92aa721",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept v3, then delete the 3 dupes"
         },
         "presence": "host-mediated",
         "ratified_by": "human"
