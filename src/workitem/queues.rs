@@ -1637,8 +1637,19 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
         )?,
         scorecard: None,
         truth_gap: crate::truth::TruthAxis::Risk.gap(),
-        next_step: "make ONE move, then re-run `loom deepen` — the ranking will have changed"
-            .into(),
+        // Only true while the move can still change the grade. `rank` orders by
+        // proof strength and S3 is the highest grade assigned today, so the
+        // baseline move leaves the ranking exactly as it was and this item
+        // returns — which reads as failure to anyone who just did the work
+        // correctly.
+        next_step: if c.next_move == crate::risk::Move::FreezeBaseline {
+            "freeze the baseline for the shape guarantee, then move on: S3 is the highest \
+             grade currently assigned, so this item will rank first again and that is not \
+             a sign you did it wrong"
+                .into()
+        } else {
+            "make ONE move, then re-run `loom deepen` — the ranking will have changed".into()
+        },
     }))
 }
 

@@ -72,7 +72,10 @@ impl Move {
             }
             Move::FreezeBaseline => {
                 "freeze a baseline so a change in the SHAPE of the output is noticed, \
-                 not just a change in pass/fail"
+                 not just a change in pass/fail — this guards the output, it does not \
+                 raise the grade: S3 is the highest grade currently assigned, because \
+                 the retired runner/baseline API cannot honestly establish S4 or S5 \
+                 (src/proofstrength.rs), so the item stays served after you freeze"
             }
             Move::ReplayAndRefreeze => {
                 "the baseline has not been replayed — a baseline nobody replays is a fossil"

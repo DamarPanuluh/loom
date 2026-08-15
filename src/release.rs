@@ -521,11 +521,51 @@ pub(crate) struct ColdJourneyRehearsalReport {
 /// The sole Journey-facing release façade. Source validation is deliberately
 /// performed before candidate allocation; all candidate and trust-boundary
 /// machinery remains private to this module.
+/// Refuse a cold rehearsal in a repository whose shape the release plane does
+/// not support, before anything expensive or obscure happens.
+///
+/// The release plane assumes loom's own layout in ways that are not policy a
+/// target repository can adopt: surface manifests live at a fixed path; the
+/// canonical reserved and secret lists cannot be relaxed by a manifest
+/// (`validate_inventory_manifest` refuses that outright); and snapshot
+/// verification walks the working tree without reading `.gitignore`, while the
+/// candidate file plan asks Git for `--exclude-standard`. Any repository with
+/// ignored build output outside the eight reserved components therefore has two
+/// irreconcilable file sets and no manifest can satisfy both — loom's own repo
+/// escapes only because its build output is confined to `target/`.
+///
+/// A conforming target repository met four validator errors in sequence, each
+/// more obscure than the last, before reaching the one with no workaround. One
+/// honest sentence up front is worth more than that trail.
+fn refuse_unsupported_cold_rehearsal_layout(root: &Path) -> Result<()> {
+    if root.join(SURFACE_MANIFEST_ROOT).is_dir() {
+        return Ok(());
+    }
+    bail!(
+        "cold rehearsal is not supported in this repository's layout: it expects surface \
+         manifests at '{SURFACE_MANIFEST_ROOT}/', which does not exist here.\n\
+         \n\
+         `journey rehearse-cold` currently assumes loom's own repository shape, and the \
+         assumptions are not ones a target repository can declare its way out of:\n\
+         \x20 - surface manifests must live at '{SURFACE_MANIFEST_ROOT}/'\n\
+         \x20 - no tracked file may enter a reserved component ({reserved}) or match a \
+         secret pattern such as '.env.*'\n\
+         \x20 - ignored build output must be confined to those reserved components, because \
+         snapshot verification walks the working tree without reading .gitignore while the \
+         candidate file plan asks Git to honour it\n\
+         \n\
+         The rest of loom — lint, compile, run, status, sync — has no such requirement. Use \
+         `loom journey lint` and `loom journey diagnose` here instead.",
+        reserved = INVENTORY_RESERVED_COMPONENTS.join(", "),
+    )
+}
+
 pub(crate) fn rehearse_cold_journey(
     root: &Path,
     journey_id: &str,
 ) -> Result<ColdJourneyRehearsalReport> {
     let root = root.canonicalize()?;
+    refuse_unsupported_cold_rehearsal_layout(&root)?;
     let inventory = load_source_inventory(&root)?.0;
     if journey_id == RELEASE_JOURNEY_ID {
         bail!("Journey 'release-workflow' cannot be cold-rehearsed");
