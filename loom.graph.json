@@ -44868,12 +44868,12 @@
       "subject_kind": "node",
       "subject_id": "f26c6e6fae653d394f3f65a3dff547fd",
       "claim": "adjudication",
-      "state": "blocked",
-      "criterion": "repair requires re-authoring an accepted Journey surface manifest, which only the human can authorize through loom journey surface-accept. The pointer at journeys/surfaces/pagination.surface.json:39 must change from /items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id to a positional pointer so the generic ^[0-9a-f]{32}$ matcher at :38 asserts row shape rather than one graph content. Until then pagination:proof stays red and the proven rung stays blocked.",
-      "verification": "expired",
+      "state": "resolved",
+      "criterion": "the pointer is repinned to /items/0/id so the generic matcher asserts row shape, and pagination:proof now passes 6 assertions with 0 failed; proven and measured both went green",
+      "verification": "cited",
       "confidence": 1.0,
       "asserted_by": "llm:analyzer",
-      "asserted_at": "2026-08-15T10:42:04.642Z",
+      "asserted_at": "2026-08-15T10:51:26.360Z",
       "decision_mode": "individual"
     },
     {
@@ -65167,18 +65167,18 @@
         "file": "journeys/surfaces/pagination.surface.json",
         "start": 39,
         "end": 39,
-        "hash": "8628789eea47aa13"
+        "hash": "80c577912039f366"
       },
-      "recorded_at": "2026-08-15T10:42:04.642Z"
+      "recorded_at": "2026-08-15T10:51:26.360Z"
     },
     {
-      "id": "e5f8fc792e3bac9f7",
+      "id": "edeaef0fa269a10e8",
       "fact_id": "f7c1274833cdee3da",
       "payload": {
         "kind": "claim",
-        "text": "repair requires re-authoring an accepted Journey surface manifest, which only the human can authorize through loom journey surface-accept. The pointer at journeys/surfaces/pagination.surface.json:39 must change from /items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id to a positional pointer so the generic ^[0-9a-f]{32}$ matcher at :38 asserts row shape rather than one graph content. Until then pagination:proof stays red and the proven rung stays blocked."
+        "text": "journeys/surfaces/pagination.surface.json:39 now reads \"/items/0/id\"; loom journey run pagination --profile proof reports passed (6 assertion(s) passed, 0 failed) and loom status shows proven green at 78 registered / 78 passed; committed as 0744492"
       },
-      "recorded_at": "2026-08-15T10:42:04.642Z"
+      "recorded_at": "2026-08-15T10:51:26.360Z"
     },
     {
       "id": "ee9cdef28b923460a",
@@ -104662,7 +104662,7 @@
       "target_id": "f26c6e6fae653d394f3f65a3dff547fd",
       "target_kind": "node",
       "key": "adjudication_stamp",
-      "value": "{\"at\":\"2026-08-15T10:42:04.645Z\",\"hash\":\"96854510adf58de6\",\"metric\":12}",
+      "value": "{\"at\":\"2026-08-15T10:51:26.362Z\",\"hash\":\"96854510adf58de6\",\"metric\":12}",
       "truth_class": "derived"
     },
     {
