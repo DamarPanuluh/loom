@@ -358,11 +358,16 @@ fn unstable_proof_smells(snap: &Snapshot) -> Vec<Smell> {
 /// legitimate shape, so this wants a verdict with a reason — the same way
 /// measured structural debt is judged rather than auto-blocked.
 fn shared_proof_command_smells(snap: &Snapshot) -> Vec<Smell> {
-    // validation id -> the intent it validates
-    let mut proves: BTreeMap<&str, &str> = BTreeMap::new();
+    // validation id -> EVERY intent it validates. One Validation may carry
+    // several Validates edges; keeping only the last one would attribute its
+    // command to a single behavior and hide the very collision this reports.
+    let mut proves: BTreeMap<&str, BTreeSet<&str>> = BTreeMap::new();
     for e in &snap.edges {
         if e.kind == EdgeKind::Validates {
-            proves.insert(e.from_id.as_str(), e.to_id.as_str());
+            proves
+                .entry(e.from_id.as_str())
+                .or_default()
+                .insert(e.to_id.as_str());
         }
     }
     // command -> the distinct behaviors leaning on it
@@ -377,8 +382,8 @@ fn shared_proof_command_smells(snap: &Snapshot) -> Vec<Smell> {
         if command.trim().is_empty() {
             continue;
         }
-        if let Some(intent) = proves.get(n.id.as_str()) {
-            by_command.entry(command).or_default().insert(intent);
+        if let Some(intents) = proves.get(n.id.as_str()) {
+            by_command.entry(command).or_default().extend(intents);
         }
     }
 
@@ -1124,7 +1129,17 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
     // linked upstream (after `graph unlink` without `--prune`). The node
     // persists deliberately so re-link can reattach, but the unlinked state is
     // a hard integrity issue until disposed via `graph prune-orphans`.
-    if let Ok(entries) = crate::federation::read_upstream_entries(store) {
+    // An unreadable registry is itself an integrity problem: swallowing the Err
+    // here would skip every orphan check below and report the graph clean, which
+    // is the one thing doctor must never do.
+    match crate::federation::read_upstream_entries(store) {
+        Err(e) => issues.push(DoctorIssue {
+            kind: "unreadable_upstream_registry".into(),
+            message: format!(
+                "the linked-upstream registry could not be read, so orphaned upstream intents cannot be checked: {e:#}"
+            ),
+        }),
+        Ok(entries) => {
         let linked_aliases: std::collections::BTreeSet<&str> =
             entries.iter().map(|e| e.alias.as_str()).collect();
         for n in &snap.nodes {
@@ -1141,6 +1156,7 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
                     ),
                 });
             }
+        }
         }
     }
     // Keep the complete aggregate deterministic without hiding repeated

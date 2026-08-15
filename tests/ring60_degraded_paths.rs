@@ -118,10 +118,7 @@ fn an_offset_past_the_end_returns_an_empty_page_with_no_continuation() {
     assert_eq!(total, 3);
 
     let past = (total + 50).to_string();
-    let (ok, page, raw) = json_cli(
-        tmp.path(),
-        &["intent", "list", "--offset", &past, "--json"],
-    );
+    let (ok, page, raw) = json_cli(tmp.path(), &["intent", "list", "--offset", &past, "--json"]);
     assert!(ok, "an offset past the end is not an error: {raw}");
     assert_eq!(page["items"].as_array().unwrap().len(), 0);
     assert_eq!(page["pagination"]["returned"], 0);

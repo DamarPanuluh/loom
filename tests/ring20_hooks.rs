@@ -161,11 +161,9 @@ fn pre_push_refuses_escape_non_executable_and_foreign_hook_without_partial_insta
 
 #[test]
 fn local_ci_builds_the_adapter_then_runs_the_isolated_dogfood_gate() {
-    let script = std::fs::read_to_string(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/scripts/local-ci.sh"
-    ))
-    .unwrap();
+    let script =
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/scripts/local-ci.sh"))
+            .unwrap();
     let build = script
         .find("cargo build")
         .expect("local CI must build the trusted local adapter");

@@ -8285,6 +8285,20 @@
       "updated_at": "2026-08-13T05:06:25.193Z"
     },
     {
+      "id": "5c8df0f7556614bba6a27bc150ae021b",
+      "type": "validation",
+      "name": "an unreadable upstream registry is reported, not read as clean",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring61_signal_repairs an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-08-15T12:56:48.156Z",
+      "updated_at": "2026-08-15T12:56:51.312Z"
+    },
+    {
       "id": "5d337c0cb683b2c0c34a39a969c85874",
       "type": "note",
       "name": "note:ratify",
@@ -18210,6 +18224,20 @@
       "updated_at": "2026-08-13T13:41:22.571Z"
     },
     {
+      "id": "c3804f3aa1c8cbdbbe6b49dd418e4a32",
+      "type": "validation",
+      "name": "one proof validating two behaviors still raises a shared-command smell",
+      "description": "",
+      "status": "passed",
+      "truth_class": "asserted",
+      "body": {
+        "command": "cargo test --test ring61_signal_repairs one_proof_validating_two_behaviors_still_raises_a_shared_command_smell -- --exact",
+        "type": "test"
+      },
+      "created_at": "2026-08-15T12:56:48.171Z",
+      "updated_at": "2026-08-15T12:56:51.562Z"
+    },
+    {
       "id": "c396233636e7827e497151e71108da91",
       "type": "intent",
       "name": "A cold graph ends the campaign instead of authoring meaning in batch",
@@ -21802,12 +21830,12 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "1953 lines (> 600)",
+      "description": "1969 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
-        "metric": 1953,
+        "metric": 1969,
         "symbol": ""
       },
       "created_at": "",
@@ -22990,12 +23018,12 @@
       "id": "da43f58c15170d3fa",
       "type": "finding",
       "name": "src/signal.rs::doctor is long",
-      "description": "214 lines (> 120)",
+      "description": "225 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "large_symbol",
-        "metric": 214,
+        "metric": 225,
         "symbol": "doctor"
       },
       "created_at": "",
@@ -30581,12 +30609,12 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "'graph integrity violations are reported' is implemented in src/signal.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
-      "confidence": 0.85,
+      "criterion": "'graph integrity violations are reported' is implemented in src/signal.rs: doctor runs the integrity checks and now reports the case where a check itself could not run, instead of skipping it silently.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T15:47:24.690Z",
-      "updated_at": "2026-08-15T11:24:06.284Z"
+      "updated_at": "2026-08-15T12:57:50.480Z"
     },
     {
       "id": "3de13c3ea03f7d8b52cc2fb920366462",
@@ -30765,12 +30793,12 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "'Loom diagnoses shared proof risk' is implemented in src/signal.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
-      "confidence": 0.85,
+      "criterion": "'Loom diagnoses shared proof risk' is implemented in src/signal.rs: shared_proof_command_smells groups commands by every behavior they prove and reports only those with more than one.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T14:52:01.270Z",
-      "updated_at": "2026-08-15T11:24:29.739Z"
+      "updated_at": "2026-08-15T12:57:57.556Z"
     },
     {
       "id": "432bbcbef810f6b4ce6fc503b27d56ba",
@@ -32279,12 +32307,12 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "'A validation proving no behavior is excluded from shared-proof risk' is implemented in src/signal.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
-      "confidence": 0.85,
+      "criterion": "'A validation proving no behavior is excluded from shared-proof risk' is implemented in src/signal.rs: a Validation with a command but no Validates edge contributes nothing to the grouping.",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-15T08:00:48.994Z",
-      "updated_at": "2026-08-15T11:25:04.891Z"
+      "updated_at": "2026-08-15T12:58:04.636Z"
     },
     {
       "id": "6f604002d330b2df1380f4b0ad045caa",
@@ -32679,6 +32707,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-14T22:22:56.333Z",
       "updated_at": "2026-08-15T10:58:59.445Z"
+    },
+    {
+      "id": "7bf507ef507b4802d119b0e20e82f662",
+      "from_id": "5c8df0f7556614bba6a27bc150ae021b",
+      "to_id": "bbd0126142a517757982cc9ba1d27a0d",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T12:56:48.156Z",
+      "updated_at": "2026-08-15T12:56:51.310Z"
     },
     {
       "id": "7c937cfa6d6628cd2eea2e75c35fbdf8",
@@ -33155,6 +33197,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T12:54:20.853Z",
       "updated_at": "2026-08-15T11:13:55.954Z"
+    },
+    {
+      "id": "88d9839b660c27f547faf70934f13738",
+      "from_id": "c3804f3aa1c8cbdbbe6b49dd418e4a32",
+      "to_id": "d07d180c7138297956c1cb6badbcf1ec",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "proof",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T12:56:48.171Z",
+      "updated_at": "2026-08-15T12:56:51.560Z"
     },
     {
       "id": "8908ed81ace93353d05a3156eb3d77d5",
@@ -42650,11 +42706,11 @@
       "subject_id": "3da0c50ae0e6571b3c4a61fa597d3178",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "'graph integrity violations are reported' is implemented in src/signal.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
+      "criterion": "'graph integrity violations are reported' is implemented in src/signal.rs: doctor runs the integrity checks and now reports the case where a check itself could not run, instead of skipping it silently.",
       "verification": "verified",
-      "confidence": 0.85,
+      "confidence": 0.9,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:24:06.262Z",
+      "asserted_at": "2026-08-15T12:57:50.468Z",
       "decision_mode": "individual"
     },
     {
@@ -44377,6 +44433,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T23:17:08.060Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f3f9cbc24777e72fe",
+      "subject_kind": "edge",
+      "subject_id": "88d9839b660c27f547faf70934f13738",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "proof",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T12:56:51.560Z",
       "decision_mode": "individual"
     },
     {
@@ -46304,12 +46373,12 @@
       "subject_kind": "node",
       "subject_id": "122d56db2e9fa7ae624baa35b03db388",
       "claim": "adjudication",
-      "state": "needed",
-      "criterion": "confirmed by reading the code: src/signal.rs:1127 guards the orphaned-upstream-intent check with an if-let-Ok over crate::federation::read_upstream_entries(store), so when that read fails the whole check at :1130-1145 is skipped, no issue is pushed, and doctor reports clean. That is exactly the 'silently treating an invalid graph as clean' the intent forbids. Fix at root cause: surface the read failure as its own DoctorIssue (an unreadable upstream registry is itself an integrity problem) instead of swallowing the Err. The adversarial reviewer's counterexample holds and is now independently verified.",
+      "state": "resolved",
+      "criterion": "repaired at root cause: the if-let-Ok that swallowed a failed registry read is now a match, and the Err arm pushes an unreadable_upstream_registry DoctorIssue naming the check it could not run. doctor can no longer report a graph clean that it never checked.",
       "verification": "cited",
       "confidence": 1.0,
       "asserted_by": "llm:analyzer",
-      "asserted_at": "2026-08-15T12:26:54.425Z",
+      "asserted_at": "2026-08-15T12:57:06.350Z",
       "decision_mode": "individual"
     },
     {
@@ -46349,6 +46418,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-15T10:31:05.794Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f7308eb7d5e089066",
+      "subject_kind": "edge",
+      "subject_id": "7bf507ef507b4802d119b0e20e82f662",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "proof",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T12:56:51.310Z",
       "decision_mode": "individual"
     },
     {
@@ -47289,11 +47371,11 @@
       "subject_id": "42dfe933ee7e0ad79ca5b9563403ab1e",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "'Loom diagnoses shared proof risk' is implemented in src/signal.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
+      "criterion": "'Loom diagnoses shared proof risk' is implemented in src/signal.rs: shared_proof_command_smells groups commands by every behavior they prove and reports only those with more than one.",
       "verification": "verified",
-      "confidence": 0.85,
+      "confidence": 0.9,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:24:29.712Z",
+      "asserted_at": "2026-08-15T12:57:57.540Z",
       "decision_mode": "individual"
     },
     {
@@ -51819,12 +51901,12 @@
       "subject_kind": "node",
       "subject_id": "3371466ca3b06cc1718bea26f8c7038d",
       "claim": "adjudication",
-      "state": "needed",
-      "criterion": "confirmed: the shared-proof detector silently undercounts when one Validation proves more than one behavior. src/signal.rs:362-367 builds proves as a BTreeMap keyed by validation id and inserts e.to_id for every Validates edge, so a validation with two Validates edges keeps only the last intent; the grouping at :380-382 then attributes that command to one behavior instead of two, and the len < 2 guard at :387-388 can drop the collision entirely. That is the exact risk the intent exists to report. Fix at root cause: make proves a multimap from validation id to the set of intents it validates.",
+      "state": "resolved",
+      "criterion": "repaired at root cause: proves is now a multimap from validation id to the set of intents it validates, so a proof wired to two behaviors contributes both to the shared-command grouping instead of whichever Validates edge landed last.",
       "verification": "cited",
       "confidence": 1.0,
       "asserted_by": "llm:analyzer",
-      "asserted_at": "2026-08-15T12:27:57.399Z",
+      "asserted_at": "2026-08-15T12:57:13.395Z",
       "decision_mode": "individual"
     },
     {
@@ -51859,11 +51941,11 @@
       "subject_id": "6f2ded1540263b1cb07749a4ce53ae42",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "'A validation proving no behavior is excluded from shared-proof risk' is implemented in src/signal.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
+      "criterion": "'A validation proving no behavior is excluded from shared-proof risk' is implemented in src/signal.rs: a Validation with a command but no Validates edge contributes nothing to the grouping.",
       "verification": "verified",
-      "confidence": 0.85,
+      "confidence": 0.9,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:25:04.875Z",
+      "asserted_at": "2026-08-15T12:58:04.620Z",
       "decision_mode": "individual"
     },
     {
@@ -54961,16 +55043,22 @@
       "recorded_at": "2026-08-14T07:16:39.614Z"
     },
     {
-      "id": "e84579d75e3680173",
+      "id": "e6e01fabbb353e45f",
       "fact_id": "f109590b300bff370",
       "payload": {
-        "kind": "claim",
-        "text": "loom edge show 3da0c50a records locator 'doctor' on src/signal.rs; each named symbol resolves to a definition at doctor@src/signal.rs:937. Edge status is uninspected. Intent criterion: Running Loom's doctor audit completes deterministically and reports every detected graph-integrity violation without silently treating an invalid graph as clean."
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 1127,
+        "end": 1137,
+        "hash": "729c3aaf0793642b",
+        "symbol": "doctor",
+        "symbol_hash": "d4cf2ff659963b8f",
+        "symbol_offset": 185
       },
-      "recorded_at": "2026-08-15T11:24:06.262Z"
+      "recorded_at": "2026-08-15T12:57:50.468Z"
     },
     {
-      "id": "ea2cf7a196816469f",
+      "id": "e8dec5f16ae23c707",
       "fact_id": "f109590b300bff370",
       "payload": {
         "kind": "run",
@@ -54978,19 +55066,70 @@
         "command": "resolve 'doctor' in src/signal.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "188604a80538ba0b",
+        "stdout_hash": "1cbd95c788a4f1d7",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'doctor' in src/signal.rs (1 match) [9d9b752202963333]",
+        "stdout_excerpt": "function 'doctor' in src/signal.rs (1 match) [d4cf2ff659963b8f]",
         "covered": {
-          "src/signal.rs": "0083c3058cdcea76"
+          "src/signal.rs": "f7e25254591f6606"
         },
         "assertions": 1,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786793046283",
+        "ran_at": "1786798670480",
         "loom_version": "0.33.0"
       },
-      "recorded_at": "2026-08-15T11:24:06.262Z"
+      "recorded_at": "2026-08-15T12:57:50.468Z"
+    },
+    {
+      "id": "e8e7a29e2f8e7c5a3",
+      "fact_id": "f109590b300bff370",
+      "payload": {
+        "kind": "claim",
+        "text": "src/signal.rs:937 pub fn doctor collects DoctorIssue values across the edge, node and Journey checks; src/signal.rs:1127-1137 now matches on read_upstream_entries and pushes an unreadable_upstream_registry issue on Err rather than skipping the orphan loop at :1138-1153; src/signal.rs:1157 sorts the aggregate deterministically. Proven by tests/ring61_signal_repairs.rs:12."
+      },
+      "recorded_at": "2026-08-15T12:57:50.468Z"
+    },
+    {
+      "id": "eaf8a0237eb300946",
+      "fact_id": "f109590b300bff370",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 937,
+        "end": 937,
+        "hash": "615a6a76fba0eb41",
+        "symbol": "triage_findings",
+        "symbol_hash": "04245b7aec5375a7",
+        "symbol_offset": 4
+      },
+      "recorded_at": "2026-08-15T12:57:50.468Z"
+    },
+    {
+      "id": "eb237e8ba9a3b5704",
+      "fact_id": "f109590b300bff370",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 1157,
+        "end": 1157,
+        "hash": "5672174c23a44eb8",
+        "symbol": "doctor",
+        "symbol_hash": "d4cf2ff659963b8f",
+        "symbol_offset": 215
+      },
+      "recorded_at": "2026-08-15T12:57:50.468Z"
+    },
+    {
+      "id": "eb49e4beb51c1f13a",
+      "fact_id": "f109590b300bff370",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring61_signal_repairs.rs",
+        "start": 12,
+        "end": 12,
+        "hash": "8db55b88f514c726"
+      },
+      "recorded_at": "2026-08-15T12:57:50.468Z"
     },
     {
       "id": "eeb5e3e026170e18e",
@@ -62045,6 +62184,39 @@
         "text": "compiled Journey 'wantedness:proof' observed passed with 16 typed assertion(s)"
       },
       "recorded_at": "2026-08-14T23:17:08.060Z"
+    },
+    {
+      "id": "e1471ca7213df677a",
+      "fact_id": "f3f9cbc24777e72fe",
+      "payload": {
+        "kind": "claim",
+        "text": "`cargo test --test ring61_signal_repairs one_proof_validating_two_behaviors_still_raises_a_shared_command_smell -- --exact` exit 0"
+      },
+      "recorded_at": "2026-08-15T12:56:51.560Z"
+    },
+    {
+      "id": "e250cab08d490d77c",
+      "fact_id": "f3f9cbc24777e72fe",
+      "payload": {
+        "kind": "run",
+        "producer": "command",
+        "command": "cargo test --test ring61_signal_repairs one_proof_validating_two_behaviors_still_raises_a_shared_command_smell -- --exact",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "4c4f52288f7ca093",
+        "stderr_hash": "b0e6d06d7ee857f2",
+        "stdout_excerpt": "\nrunning 1 test\ntest one_proof_validating_two_behaviors_still_raises_a_shared_command_smell ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.01s\n\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.12s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-0fb13628b0a45995)\n",
+        "covered": {
+          "src/signal.rs": "f7e25254591f6606"
+        },
+        "assertions": 0,
+        "locally_minted": false,
+        "duration_ms": 195,
+        "ran_at": "1786798611558",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T12:56:51.560Z"
     },
     {
       "id": "e8f8e70d0dcb31a85",
@@ -69989,43 +70161,40 @@
       "recorded_at": "2026-08-14T07:16:39.762Z"
     },
     {
-      "id": "e385e1821181d5e58",
-      "fact_id": "f72469b5bcd717d24",
-      "payload": {
-        "kind": "claim",
-        "text": "src/signal.rs:1127 opens the guard with no else branch, and src/signal.rs:1130-1145 is the only producer of orphaned_upstream_intent issues, so an Err silently yields zero findings"
-      },
-      "recorded_at": "2026-08-15T12:26:54.425Z"
-    },
-    {
-      "id": "e46d8b96c2d7fbeda",
+      "id": "e2d6bb26ca45c8df2",
       "fact_id": "f72469b5bcd717d24",
       "payload": {
         "kind": "span",
-        "file": "src/signal.rs",
-        "start": 1130,
-        "end": 1145,
-        "hash": "b0dc1936bc443942",
-        "symbol": "doctor",
-        "symbol_hash": "9d9b752202963333",
-        "symbol_offset": 193
+        "file": "tests/ring61_signal_repairs.rs",
+        "start": 12,
+        "end": 12,
+        "hash": "8db55b88f514c726"
       },
-      "recorded_at": "2026-08-15T12:26:54.425Z"
+      "recorded_at": "2026-08-15T12:57:06.350Z"
     },
     {
-      "id": "e885de8772dee626e",
+      "id": "e5d25bcfc6302c9c4",
+      "fact_id": "f72469b5bcd717d24",
+      "payload": {
+        "kind": "claim",
+        "text": "src/signal.rs:1127-1137 replaces the guard with a match whose Err arm pushes the new issue kind; tests/ring61_signal_repairs.rs:12 corrupts the registry and asserts the issue is raised, and it FAILS against the pre-repair code (verified by git stash) and passes after"
+      },
+      "recorded_at": "2026-08-15T12:57:06.350Z"
+    },
+    {
+      "id": "e885a68772deb5317",
       "fact_id": "f72469b5bcd717d24",
       "payload": {
         "kind": "span",
         "file": "src/signal.rs",
         "start": 1127,
-        "end": 1127,
-        "hash": "96846338adfb4c43",
+        "end": 1137,
+        "hash": "729c3aaf0793642b",
         "symbol": "doctor",
-        "symbol_hash": "9d9b752202963333",
-        "symbol_offset": 190
+        "symbol_hash": "d4cf2ff659963b8f",
+        "symbol_offset": 185
       },
-      "recorded_at": "2026-08-15T12:26:54.425Z"
+      "recorded_at": "2026-08-15T12:57:06.350Z"
     },
     {
       "id": "e00b1c5a3cd4fca54",
@@ -70210,6 +70379,39 @@
         "text": "compiled Journey 'writes-graph:proof' observed passed with 20 typed assertion(s)"
       },
       "recorded_at": "2026-08-15T10:31:05.794Z"
+    },
+    {
+      "id": "e140496403ed1b729",
+      "fact_id": "f7308eb7d5e089066",
+      "payload": {
+        "kind": "claim",
+        "text": "`cargo test --test ring61_signal_repairs an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean -- --exact` exit 0"
+      },
+      "recorded_at": "2026-08-15T12:56:51.310Z"
+    },
+    {
+      "id": "e2350a1da60093d5e",
+      "fact_id": "f7308eb7d5e089066",
+      "payload": {
+        "kind": "run",
+        "producer": "command",
+        "command": "cargo test --test ring61_signal_repairs an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean -- --exact",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "1815b47120fe446a",
+        "stderr_hash": "474ac3e2ee10d6e6",
+        "stdout_excerpt": "\nrunning 1 test\ntest an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.02s\n\n",
+        "stderr_excerpt": "   Compiling loom v0.33.0 (/Users/laptopdp/Developer/damarpanuluh/loom)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.42s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-0fb13628b0a45995)\n",
+        "covered": {
+          "src/signal.rs": "f7e25254591f6606"
+        },
+        "assertions": 0,
+        "locally_minted": false,
+        "duration_ms": 3125,
+        "ran_at": "1786798611308",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T12:56:51.310Z"
     },
     {
       "id": "e053a0b7205f5601e",
@@ -73904,7 +74106,42 @@
       "recorded_at": "2026-08-14T22:48:42.036Z"
     },
     {
-      "id": "e39978b2b418d9b09",
+      "id": "e285a0238b8069c7c",
+      "fact_id": "f8d5706e505a52c34",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring61_signal_repairs.rs",
+        "start": 44,
+        "end": 44,
+        "hash": "8db55b88f514c726"
+      },
+      "recorded_at": "2026-08-15T12:57:57.540Z"
+    },
+    {
+      "id": "e8f7690ca2c282f6e",
+      "fact_id": "f8d5706e505a52c34",
+      "payload": {
+        "kind": "claim",
+        "text": "src/signal.rs:360 fn shared_proof_command_smells; :362-372 builds proves as a multimap so a Validation with several Validates edges contributes all its intents; :374-390 groups by trimmed command; :392-394 skips commands with fewer than two behaviors, which is the exclusion of unique mechanisms the criterion requires. Proven by tests/ring61_signal_repairs.rs:44."
+      },
+      "recorded_at": "2026-08-15T12:57:57.540Z"
+    },
+    {
+      "id": "e9c73302f9b79ff6a",
+      "fact_id": "f8d5706e505a52c34",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 360,
+        "end": 360,
+        "hash": "a60eeb15108b323c",
+        "symbol": "shared_proof_command_smells",
+        "symbol_hash": "4f851c317be5d000"
+      },
+      "recorded_at": "2026-08-15T12:57:57.540Z"
+    },
+    {
+      "id": "ea43f7727b513e31d",
       "fact_id": "f8d5706e505a52c34",
       "payload": {
         "kind": "run",
@@ -73912,28 +74149,19 @@
         "command": "resolve 'shared_proof_command_smells' in src/signal.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "fd087466a2fe4381",
+        "stdout_hash": "c1b0bf3cb0d17c80",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'shared_proof_command_smells' in src/signal.rs (1 match) [b132e1d3d59951fe]",
+        "stdout_excerpt": "function 'shared_proof_command_smells' in src/signal.rs (1 match) [4f851c317be5d000]",
         "covered": {
-          "src/signal.rs": "0083c3058cdcea76"
+          "src/signal.rs": "f7e25254591f6606"
         },
         "assertions": 1,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786793069736",
+        "ran_at": "1786798677555",
         "loom_version": "0.33.0"
       },
-      "recorded_at": "2026-08-15T11:24:29.712Z"
-    },
-    {
-      "id": "eb89c0e7830b5746b",
-      "fact_id": "f8d5706e505a52c34",
-      "payload": {
-        "kind": "claim",
-        "text": "loom edge show 42dfe933 records locator 'shared_proof_command_smells' on src/signal.rs; each named symbol resolves to a definition at shared_proof_command_smells@src/signal.rs:360. Edge status is uninspected. Intent criterion: Loom reports only behaviors sharing a proof mechanism, recommends narrowing their proofs, and excludes behaviors whose mechanisms are unique."
-      },
-      "recorded_at": "2026-08-15T11:24:29.712Z"
+      "recorded_at": "2026-08-15T12:57:57.540Z"
     },
     {
       "id": "e8fac28604678fda6",
@@ -86670,6 +86898,20 @@
       "recorded_at": "2026-08-15T11:36:34.041Z"
     },
     {
+      "id": "e8ac0f036af4f105f",
+      "fact_id": "fd83317e8c9ba93b2",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 942,
+        "end": 942,
+        "hash": "e57e117e55f465cf",
+        "symbol": "doctor",
+        "symbol_hash": "9d9b752202963333"
+      },
+      "recorded_at": "2026-08-15T11:36:34.041Z"
+    },
+    {
       "id": "edc1692bb1b2efd61",
       "fact_id": "fd83317e8c9ba93b2",
       "payload": {
@@ -86680,20 +86922,6 @@
         "hash": "9acf9c0cb57d2d36",
         "symbol": "assess_readiness",
         "symbol_hash": "c6742c8a98ad9f5d"
-      },
-      "recorded_at": "2026-08-15T11:36:34.041Z"
-    },
-    {
-      "id": "eed635a2fa5dba73b",
-      "fact_id": "fd83317e8c9ba93b2",
-      "payload": {
-        "kind": "span",
-        "file": "src/signal.rs",
-        "start": 937,
-        "end": 937,
-        "hash": "e57e117e55f465cf",
-        "symbol": "doctor",
-        "symbol_hash": "9d9b752202963333"
       },
       "recorded_at": "2026-08-15T11:36:34.041Z"
     },
@@ -93339,28 +93567,40 @@
       "recorded_at": "2026-08-14T07:29:18.922Z"
     },
     {
-      "id": "e3267ac6eb37f845f",
+      "id": "e32642a6eb37c71a2",
       "fact_id": "ffd217c54d3d48a6f",
       "payload": {
         "kind": "span",
         "file": "src/signal.rs",
         "start": 362,
-        "end": 362,
-        "hash": "94bedbe3592574a2",
+        "end": 372,
+        "hash": "7d25bda3f5b1616a",
         "symbol": "shared_proof_command_smells",
-        "symbol_hash": "b132e1d3d59951fe",
+        "symbol_hash": "4f851c317be5d000",
         "symbol_offset": 2
       },
-      "recorded_at": "2026-08-15T12:27:57.399Z"
+      "recorded_at": "2026-08-15T12:57:13.395Z"
     },
     {
-      "id": "e5e81bda360d2bce2",
+      "id": "e6fe0f2ad0f7771b3",
       "fact_id": "ffd217c54d3d48a6f",
       "payload": {
         "kind": "claim",
-        "text": "src/signal.rs:362 declares proves as BTreeMap<&str,&str>; :365 inserts one to_id per from_id inside the Validates loop, overwriting any earlier entry; :380-382 reads proves.get(n.id) to attribute the command to a single intent"
+        "text": "src/signal.rs:362-372 declares proves as BTreeMap<&str, BTreeSet<&str>> and inserts every to_id; :383-385 extends by_command with the whole set; tests/ring61_signal_repairs.rs:44 wires one Validation to two Intents and asserts exactly one shared_proof_command smell counting 2 behaviors — it FAILS against the pre-repair code and passes after"
       },
-      "recorded_at": "2026-08-15T12:27:57.399Z"
+      "recorded_at": "2026-08-15T12:57:13.395Z"
+    },
+    {
+      "id": "ebcf685823da0fd97",
+      "fact_id": "ffd217c54d3d48a6f",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring61_signal_repairs.rs",
+        "start": 44,
+        "end": 44,
+        "hash": "8db55b88f514c726"
+      },
+      "recorded_at": "2026-08-15T12:57:13.395Z"
     },
     {
       "id": "e4aa05e52bf300f15",
@@ -93525,7 +93765,7 @@
       "recorded_at": "2026-08-14T07:16:41.234Z"
     },
     {
-      "id": "e04dfaee79b9fa361",
+      "id": "e684c38928188d295",
       "fact_id": "ffe3a5eda0715a175",
       "payload": {
         "kind": "run",
@@ -93533,28 +93773,43 @@
         "command": "resolve 'shared_proof_command_smells' in src/signal.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "fd087466a2fe4381",
+        "stdout_hash": "c1b0bf3cb0d17c80",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'shared_proof_command_smells' in src/signal.rs (1 match) [b132e1d3d59951fe]",
+        "stdout_excerpt": "function 'shared_proof_command_smells' in src/signal.rs (1 match) [4f851c317be5d000]",
         "covered": {
-          "src/signal.rs": "0083c3058cdcea76"
+          "src/signal.rs": "f7e25254591f6606"
         },
         "assertions": 1,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786793104891",
+        "ran_at": "1786798684636",
         "loom_version": "0.33.0"
       },
-      "recorded_at": "2026-08-15T11:25:04.875Z"
+      "recorded_at": "2026-08-15T12:58:04.620Z"
     },
     {
-      "id": "e60d4a7295432c605",
+      "id": "e940e89d2175d8bf3",
       "fact_id": "ffe3a5eda0715a175",
       "payload": {
         "kind": "claim",
-        "text": "loom edge show 6f2ded15 records locator 'shared_proof_command_smells' on src/signal.rs; each named symbol resolves to a definition at shared_proof_command_smells@src/signal.rs:360. Edge status is uninspected. Intent criterion: A Validation node with a command but no Validates edge contributes nothing to the shared-command grouping, so an orphan proof never raises shared-proof risk on its own."
+        "text": "src/signal.rs:385-387 only extends by_command when proves.get(n.id) resolves, and proves at :362-372 is built solely from Validates edges — so a Validation node with no such edge is absent from the map and its command never enters the grouping at :374-390."
       },
-      "recorded_at": "2026-08-15T11:25:04.875Z"
+      "recorded_at": "2026-08-15T12:58:04.620Z"
+    },
+    {
+      "id": "eef1fba0f60fa7468",
+      "fact_id": "ffe3a5eda0715a175",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 385,
+        "end": 387,
+        "hash": "adc2e4b2eb3b2a9e",
+        "symbol": "shared_proof_command_smells",
+        "symbol_hash": "4f851c317be5d000",
+        "symbol_offset": 25
+      },
+      "recorded_at": "2026-08-15T12:58:04.620Z"
     },
     {
       "id": "e240c233ed8282038",
@@ -93699,6 +93954,21 @@
       "recorded_at": "2026-08-14T07:36:24.990Z"
     },
     {
+      "id": "e83880509a785d123",
+      "fact_id": "ffea1e98e307bdb66",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 1118,
+        "end": 1118,
+        "hash": "0b42608ecbc23b82",
+        "symbol": "doctor",
+        "symbol_hash": "9d9b752202963333",
+        "symbol_offset": 176
+      },
+      "recorded_at": "2026-08-14T07:36:24.990Z"
+    },
+    {
       "id": "e8ad8c9542f4e1535",
       "fact_id": "ffea1e98e307bdb66",
       "payload": {
@@ -93734,21 +94004,6 @@
         "symbol": "intent_reject",
         "symbol_hash": "c925e1472f708b6e",
         "symbol_offset": 8
-      },
-      "recorded_at": "2026-08-14T07:36:24.990Z"
-    },
-    {
-      "id": "eca41e652f5d14be5",
-      "fact_id": "ffea1e98e307bdb66",
-      "payload": {
-        "kind": "span",
-        "file": "src/signal.rs",
-        "start": 1113,
-        "end": 1113,
-        "hash": "0b42608ecbc23b82",
-        "symbol": "doctor",
-        "symbol_hash": "9d9b752202963333",
-        "symbol_offset": 176
       },
       "recorded_at": "2026-08-14T07:36:24.990Z"
     },
@@ -95781,7 +96036,7 @@
       "target_id": "122d56db2e9fa7ae624baa35b03db388",
       "target_kind": "node",
       "key": "adjudication_stamp",
-      "value": "{\"at\":\"2026-08-15T12:26:54.427Z\",\"hash\":\"0083c3058cdcea76\",\"metric\":3}",
+      "value": "{\"at\":\"2026-08-15T12:57:06.351Z\",\"hash\":\"f7e25254591f6606\",\"metric\":3}",
       "truth_class": "derived"
     },
     {
@@ -98175,7 +98430,7 @@
       "target_id": "3371466ca3b06cc1718bea26f8c7038d",
       "target_kind": "node",
       "key": "adjudication_stamp",
-      "value": "{\"at\":\"2026-08-15T12:27:57.400Z\",\"hash\":\"0083c3058cdcea76\",\"metric\":42}",
+      "value": "{\"at\":\"2026-08-15T12:57:13.397Z\",\"hash\":\"f7e25254591f6606\",\"metric\":42}",
       "truth_class": "derived"
     },
     {
@@ -98783,6 +99038,13 @@
     {
       "target_id": "3da0c50ae0e6571b3c4a61fa597d3178",
       "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/signal.rs\",\"start\":937,\"end\":937,\"hash\":\"615a6a76fba0eb41\",\"symbol\":\"triage_findings\",\"symbol_hash\":\"04245b7aec5375a7\",\"symbol_offset\":4},{\"file\":\"src/signal.rs\",\"start\":1127,\"end\":1137,\"hash\":\"729c3aaf0793642b\",\"symbol\":\"doctor\",\"symbol_hash\":\"d4cf2ff659963b8f\",\"symbol_offset\":185},{\"file\":\"src/signal.rs\",\"start\":1157,\"end\":1157,\"hash\":\"5672174c23a44eb8\",\"symbol\":\"doctor\",\"symbol_hash\":\"d4cf2ff659963b8f\",\"symbol_offset\":215},{\"file\":\"tests/ring61_signal_repairs.rs\",\"start\":12,\"end\":12,\"hash\":\"8db55b88f514c726\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "3da0c50ae0e6571b3c4a61fa597d3178",
+      "target_kind": "edge",
       "key": "locator",
       "value": "doctor",
       "truth_class": "asserted"
@@ -99073,6 +99335,13 @@
       "key": "stale_cause",
       "value": "cargo test --lib checkpoint::tests::push_policy_requires_exact_current_human_authorization -- --exact no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "42dfe933ee7e0ad79ca5b9563403ab1e",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/signal.rs\",\"start\":360,\"end\":360,\"hash\":\"a60eeb15108b323c\",\"symbol\":\"shared_proof_command_smells\",\"symbol_hash\":\"4f851c317be5d000\"},{\"file\":\"tests/ring61_signal_repairs.rs\",\"start\":44,\"end\":44,\"hash\":\"8db55b88f514c726\"}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "42dfe933ee7e0ad79ca5b9563403ab1e",
@@ -101210,6 +101479,27 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "5c8df0f7556614bba6a27bc150ae021b",
+      "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"bbd0126142a517757982cc9ba1d27a0d\":\"src/signal.rs=f7e25254591f6606\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5c8df0f7556614bba6a27bc150ae021b",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "5c8df0f7556614bba6a27bc150ae021b",
+      "target_kind": "node",
+      "key": "proof_strength",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "5cc00ed47173326ad9b940eb05e828c6",
       "target_kind": "edge",
       "key": "journey_hash",
@@ -102825,6 +103115,13 @@
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "6f2ded1540263b1cb07749a4ce53ae42",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/signal.rs\",\"start\":385,\"end\":387,\"hash\":\"adc2e4b2eb3b2a9e\",\"symbol\":\"shared_proof_command_smells\",\"symbol_hash\":\"4f851c317be5d000\",\"symbol_offset\":25}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "6f2ded1540263b1cb07749a4ce53ae42",
@@ -108290,14 +108587,14 @@
       "target_id": "b3237aa330ebe743b658f541458ea333",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"active_intents>filter::collect\",\"active_intents>iter::filter\",\"active_intents>nodes::iter\",\"adjudication>Ok\",\"adjudication>Ok\",\"adjudication>Some\",\"adjudication>Subject::Node\",\"adjudication>and_then\",\"adjudication>and_then::unwrap_or_default\",\"adjudication>from_str::ok\",\"adjudication>node_id::to_string\",\"adjudication>serde_json::from_str\",\"adjudication>store::fact\",\"adjudication>store::get_facet\",\"adjudication_of>Ok\",\"adjudication_of>Ok\",\"adjudication_of>Ok\",\"adjudication_of>Some\",\"adjudication_of>adjudication\",\"adjudication_of>as_str\",\"adjudication_of>matches\",\"compiled_journey_provenance_problem>Some\",\"compiled_journey_provenance_problem>format\",\"compiled_journey_provenance_problem>journey_exercises::expected_projection\",\"compiled_journey_provenance_problem>journey_exercises::topology_problems\",\"compiled_journey_provenance_problem>problems::is_empty\",\"compiled_journey_provenance_problem>problems::join\",\"compiled_journey_provenance_problem>then\",\"compiled_journey_provenance_problem>topology_problems::ok\",\"consumer_owned_file_smells>Vec::new\",\"consumer_owned_file_smells>dir_cluster\",\"consumer_owned_file_smells>dir_cluster\",\"consumer_owned_file_smells>dir_cluster::to_string\",\"consumer_owned_file_smells>edge::map\",\"consumer_owned_file_smells>edge_is_superseded\",\"consumer_owned_file_smells>edge_role\",\"consumer_owned_file_smells>files_by_intent\",\"consumer_owned_file_smells>files_by_intent::get\",\"consumer_owned_file_smells>filter::all\",\"consumer_owned_file_smells>format\",\"consumer_owned_file_smells>format\",\"consumer_owned_file_smells>format\",\"consumer_owned_file_smells>implements_edges\",\"consumer_owned_file_smells>implements_edges::find\",\"consumer_owned_file_smells>intent_ids::len\",\"consumer_owned_file_smells>into\",\"consumer_owned_file_smells>iter::filter\",\"consumer_owned_file_smells>map::unwrap_or\",\"consumer_owned_file_smells>model::short\",\"consumer_owned_file_smells>node_name\",\"consumer_owned_file_smells>node_name\",\"consumer_owned_file_smells>node_name\",\"consumer_owned_file_smells>out::push\",\"consumer_owned_file_smells>owner_files::iter\",\"consumer_owned_file_smells>owner_files::len\",\"crate_name_of_root>dir::rsplit\",\"crate_name_of_root>next::unwrap_or\",\"crate_name_of_root>root::strip_suffix\",\"crate_name_of_root>rsplit::next\",\"crate_name_of_root>strip_suffix::unwrap_or\",\"crate_name_of_root>strip_suffix::unwrap_or\",\"crate_name_of_root>trimmed::strip_suffix\",\"crate_src_root>String::new\",\"crate_src_root>format\",\"crate_src_root>format\",\"crate_src_root>iter::position\",\"crate_src_root>join\",\"crate_src_root>path::split\",\"crate_src_root>segs\",\"crate_src_root>segs\",\"crate_src_root>segs::iter\",\"crate_src_root>segs::len\",\"crate_src_root>split::collect\",\"criterion_names_seam>SEAM_HINTS::iter\",\"criterion_names_seam>c::contains\",\"criterion_names_seam>criterion::to_lowercase\",\"criterion_names_seam>facets::iter\",\"criterion_names_seam>iter::any\",\"criterion_names_seam>iter::any\",\"criterion_names_seam>trim::is_empty\",\"criterion_names_seam>value::trim\",\"dir_cluster>next::unwrap_or\",\"dir_cluster>path::split\",\"dir_cluster>split::next\",\"disclosure_smells>Vec::new\",\"disclosure_smells>filter::count\",\"disclosure_smells>filter::count\",\"disclosure_smells>format\",\"disclosure_smells>id::as_str\",\"disclosure_smells>intents::iter\",\"disclosure_smells>intents::iter\",\"disclosure_smells>into\",\"disclosure_smells>into\",\"disclosure_smells>into\",\"disclosure_smells>iter::filter\",\"disclosure_smells>iter::filter\",\"disclosure_smells>out::push\",\"disclosure_smells>tags_by_intent::contains_key\",\"doctor>Err\",\"doctor>Err\",\"doctor>Ok\",\"doctor>Some\",\"doctor>Some\",\"doctor>Some\",\"doctor>Vec::new\",\"doctor>alias::as_str\",\"doctor>and_then::unwrap_or\",\"doctor>anyhow::anyhow\",\"doctor>anyhow::anyhow\",\"doctor>body::get\",\"doctor>cmp::then_with\",\"doctor>criterion_names_seam\",\"doctor>edge_role\",\"doctor>entries::iter\",\"doctor>facet_value\",\"doctor>federation::read_upstream_entries\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>from_id::as_str\",\"doctor>get::and_then\",\"doctor>grammar::excised_proof_level_name\",\"doctor>hierarchy_cycle_issues\",\"doctor>id::as_str\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>issues::extend\",\"doctor>issues::extend\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::sort_by\",\"doctor>iter::map\",\"doctor>iter::map\",\"doctor>journey_integrity_issues\",\"doctor>kind::cmp\",\"doctor>kind::into\",\"doctor>linked_aliases::contains\",\"doctor>locator::is_anchor_locator\",\"doctor>locator::validate_for_codefile\",\"doctor>map::collect\",\"doctor>map::collect\",\"doctor>matches\",\"doctor>matches\",\"doctor>message::cmp\",\"doctor>model::is_placeholder\",\"doctor>node_types::get\",\"doctor>node_types::get\",\"doctor>nodes::iter\",\"doctor>registry::spec\",\"doctor>spec::allows_to\",\"doctor>spec::allows_truth_class\",\"doctor>store::edge_verdict_verification\",\"doctor>store::get_node\",\"doctor>store::snapshot\",\"doctor>to_display\",\"doctor>to_id::as_str\",\"doctor>to_string\",\"doctor>to_string\",\"doctor>to_string\",\"doctor>v::as_str\",\"duplicated_responsibility_smells>Vec::new\",\"duplicated_responsibility_smells>cloned::unwrap_or_default\",\"duplicated_responsibility_smells>cloned::unwrap_or_default\",\"duplicated_responsibility_smells>edge_between\",\"duplicated_responsibility_smells>fa::is_disjoint\",\"duplicated_responsibility_smells>files_by_intent\",\"duplicated_responsibility_smells>files_by_intent::get\",\"duplicated_responsibility_smells>files_by_intent::get\",\"duplicated_responsibility_smells>format\",\"duplicated_responsibility_smells>format\",\"duplicated_responsibility_smells>get::cloned\",\"duplicated_responsibility_smells>get::cloned\",\"duplicated_responsibility_smells>id::as_str\",\"duplicated_responsibility_smells>intent_ids::len\",\"duplicated_responsibility_smells>intent_ids::len\",\"duplicated_responsibility_smells>intents::iter\",\"duplicated_responsibility_smells>intersection::collect\",\"duplicated_responsibility_smells>into\",\"duplicated_responsibility_smells>into\",\"duplicated_responsibility_smells>iter::map\",\"duplicated_responsibility_smells>map::collect\",\"duplicated_responsibility_smells>node_name\",\"duplicated_responsibility_smells>out::push\",\"duplicated_responsibility_smells>shared\",\"duplicated_responsibility_smells>shared\",\"duplicated_responsibility_smells>shared::is_empty\",\"duplicated_responsibility_smells>ta::intersection\",\"duplicated_responsibility_smells>tags_by_intent::get\",\"duplicated_responsibility_smells>tags_by_intent::get\",\"edge_between>adj::get\",\"edge_between>get::is_some_and\",\"edge_between>s::contains\",\"edge_is_superseded>facets::iter\",\"edge_is_superseded>iter::any\",\"edge_role>and_then::unwrap_or\",\"edge_role>facets::iter\",\"edge_role>find::and_then\",\"edge_role>iter::find\",\"edge_role>parse::ok\",\"edge_role>value::parse\",\"extern_crate_root>crate_name_of_root\",\"extern_crate_root>crate_name_of_root::replace\",\"extern_crate_root>crate_src_root\",\"extern_crate_root>filter::collect\",\"extern_crate_root>head::replace\",\"extern_crate_root>into_iter::next\",\"extern_crate_root>keys::map\",\"extern_crate_root>map::filter\",\"extern_crate_root>path_to_id::keys\",\"extern_crate_root>roots::into_iter\",\"extern_crate_root>roots::len\",\"facet_map>facets::iter\",\"facet_map>filter::map\",\"facet_map>iter::filter\",\"facet_map>map::collect\",\"facet_map>target_id::as_str\",\"facet_map>value::clone\",\"facet_value>facets::iter\",\"facet_value>find::map\",\"facet_value>iter::find\",\"facet_value>value::as_str\",\"files_by_intent>BTreeMap::new\",\"files_by_intent>entry::or_default\",\"files_by_intent>or_default::insert\",\"files_by_intent>out::entry\",\"findings_view>Ok\",\"findings_view>Some\",\"findings_view>Some\",\"findings_view>String::new\",\"findings_view>String::new\",\"findings_view>Vec::new\",\"findings_view>adjudication\",\"findings_view>as_str\",\"findings_view>cmp::then\",\"findings_view>current_hash::as_ref\",\"findings_view>current_hash::as_ref\",\"findings_view>hash::is_empty\",\"findings_view>into\",\"findings_view>into\",\"findings_view>matches\",\"findings_view>name::cmp\",\"findings_view>out::push\",\"findings_view>out::push\",\"findings_view>out::push\",\"findings_view>out::sort_by\",\"findings_view>resolving_is_stale\",\"findings_view>resolving_verdict\",\"findings_view>state::cmp\",\"findings_view>store::finding_codefile_hash\",\"findings_view>store::finding_metric\",\"findings_view>store::list_nodes\",\"hierarchy_cycle_issues>BTreeMap::new\",\"hierarchy_cycle_issues>BTreeSet::new\",\"hierarchy_cycle_issues>DiGraph::new\",\"hierarchy_cycle_issues>Vec::new\",\"hierarchy_cycle_issues>component::iter\",\"hierarchy_cycle_issues>component::len\",\"hierarchy_cycle_issues>edges::iter\",\"hierarchy_cycle_issues>entry::or_insert_with\",\"hierarchy_cycle_issues>entry::or_insert_with\",\"hierarchy_cycle_issues>format\",\"hierarchy_cycle_issues>format\",\"hierarchy_cycle_issues>from_id::as_str\",\"hierarchy_cycle_issues>from_id::as_str\",\"hierarchy_cycle_issues>from_id::as_str\",\"hierarchy_cycle_issues>graph::add_edge\",\"hierarchy_cycle_issues>graph::add_node\",\"hierarchy_cycle_issues>graph::add_node\",\"hierarchy_cycle_issues>indices::entry\",\"hierarchy_cycle_issues>indices::entry\",\"hierarchy_cycle_issues>into\",\"hierarchy_cycle_issues>into\",\"hierarchy_cycle_issues>issues::push\",\"hierarchy_cycle_issues>issues::push\",\"hierarchy_cycle_issues>issues::sort_by\",\"hierarchy_cycle_issues>iter::filter\",\"hierarchy_cycle_issues>iter::map\",\"hierarchy_cycle_issues>join\",\"hierarchy_cycle_issues>map::collect\",\"hierarchy_cycle_issues>message::cmp\",\"hierarchy_cycle_issues>names::sort\",\"hierarchy_cycle_issues>node_name\",\"hierarchy_cycle_issues>node_name\",\"hierarchy_cycle_issues>self_loops::insert\",\"hierarchy_cycle_issues>tarjan_scc\",\"hierarchy_cycle_issues>to_id::as_str\",\"hierarchy_cycle_issues>to_id::as_str\",\"implements_edges>edges::iter\",\"implements_edges>iter::filter\",\"imports_by_file>BTreeMap::new\",\"imports_by_file>from_str::unwrap_or_default\",\"imports_by_file>list::is_empty\",\"imports_by_file>out::insert\",\"imports_by_file>serde_json::from_str\",\"imports_by_file>target_id::clone\",\"is_module_tree_edge>a::starts_with\",\"is_module_tree_edge>b::starts_with\",\"is_module_tree_edge>crate_src_root\",\"is_module_tree_edge>crate_src_root\",\"is_module_tree_edge>self_dir\",\"is_module_tree_edge>self_dir\",\"journey_integrity_issues>BTreeMap::new\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Vec::new\",\"journey_integrity_issues>and_then::cloned\",\"journey_integrity_issues>and_then::into_iter\",\"journey_integrity_issues>and_then::into_iter\",\"journey_integrity_issues>and_then::is_some\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>artifact::is_none\",\"journey_integrity_issues>as_deref::unwrap_or_default\",\"journey_integrity_issues>as_ref::is_some_and\",\"journey_integrity_issues>as_ref::is_some_and\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>bound_steps::as_ref\",\"journey_integrity_issues>by_profile::entry\",\"journey_integrity_issues>clone::any\",\"journey_integrity_issues>cloned::and_then\",\"journey_integrity_issues>collect::len\",\"journey_integrity_issues>compiled_journey_provenance_problem\",\"journey_integrity_issues>completeness::exact_surface_bindings\",\"journey_integrity_issues>copied::collect\",\"journey_integrity_issues>derives::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::len\",\"journey_integrity_issues>entry::or_default\",\"journey_integrity_issues>exposes::clone\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value::and_then\",\"journey_integrity_issues>facet_value::and_then\",\"journey_integrity_issues>facet_value::is_some_and\",\"journey_integrity_issues>facet_value::is_some_and\",\"journey_integrity_issues>filter::collect\",\"journey_integrity_issues>filter::collect\",\"journey_integrity_issues>filter::collect\",\"journey_integrity_issues>filter_map::collect\",\"journey_integrity_issues>filter_map::collect\",\"journey_integrity_issues>flatten::filter_map\",\"journey_integrity_issues>flatten::filter_map\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>from_id::as_str\",\"journey_integrity_issues>from_str::ok\",\"journey_integrity_issues>from_value::ok\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::is_some\",\"journey_integrity_issues>get::is_some\",\"journey_integrity_issues>get::is_some_and\",\"journey_integrity_issues>hash::as_str\",\"journey_integrity_issues>id::as_str\",\"journey_integrity_issues>id::as_str\",\"journey_integrity_issues>ids::is_empty\",\"journey_integrity_issues>ids::iter\",\"journey_integrity_issues>ids::iter\",\"journey_integrity_issues>ids::len\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into_iter::flatten\",\"journey_integrity_issues>into_iter::flatten\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>iter::all\",\"journey_integrity_issues>iter::all\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::collect\",\"journey_integrity_issues>iter::copied\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::map\",\"journey_integrity_issues>iter::map\",\"journey_integrity_issues>join\",\"journey_integrity_issues>join\",\"journey_integrity_issues>journey::parse\",\"journey_integrity_issues>len\",\"journey_integrity_issues>map::collect\",\"journey_integrity_issues>map::collect\",\"journey_integrity_issues>map::unwrap_or_default\",\"journey_integrity_issues>name::as_str\",\"journey_integrity_issues>nodes::get\",\"journey_integrity_issues>nodes::get\",\"journey_integrity_issues>nodes::get\",\"journey_integrity_issues>nodes::iter\",\"journey_integrity_issues>nodes::iter\",\"journey_integrity_issues>ok::as_deref\",\"journey_integrity_issues>operations::as_deref\",\"journey_integrity_issues>operations::as_ref\",\"journey_integrity_issues>operations::clone\",\"journey_integrity_issues>or_default::push\",\"journey_integrity_issues>profile::is_empty\",\"journey_integrity_issues>provenance_problem::is_some\",\"journey_integrity_issues>provenance_problem::map\",\"journey_integrity_issues>ratification::ok\",\"journey_integrity_issues>root::join\",\"journey_integrity_issues>semantic_hash::is_none\",\"journey_integrity_issues>serde_json::from_str\",\"journey_integrity_issues>serde_json::from_value\",\"journey_integrity_issues>spec::semantic_hash\",\"journey_integrity_issues>spec::step_ids\",\"journey_integrity_issues>step_ids::contains\",\"journey_integrity_issues>step_ids::is_empty\",\"journey_integrity_issues>step_ids::iter\",\"journey_integrity_issues>step_order::iter\",\"journey_integrity_issues>store::ratification\",\"journey_integrity_issues>store::root\",\"journey_integrity_issues>surfaces::iter\",\"journey_integrity_issues>target::and_then\",\"journey_integrity_issues>target::is_some_and\",\"journey_integrity_issues>to_id::as_str\",\"journey_integrity_issues>to_id::as_str\",\"journey_integrity_issues>trim::is_empty\",\"journey_integrity_issues>trim::is_empty\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>validate\",\"journey_integrity_issues>validate::is_ok\",\"journey_integrity_issues>value::as_array\",\"journey_integrity_issues>value::as_array\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::trim\",\"journey_integrity_issues>value::trim\",\"journey_proof_smells>BTreeMap::new\",\"journey_proof_smells>Some\",\"journey_proof_smells>Vec::new\",\"journey_proof_smells>cloned::unwrap_or_default\",\"journey_proof_smells>entry::or_default\",\"journey_proof_smells>facet_map\",\"journey_proof_smells>format\",\"journey_proof_smells>format\",\"journey_proof_smells>format\",\"journey_proof_smells>from_id::as_str\",\"journey_proof_smells>get::cloned\",\"journey_proof_smells>get::map\",\"journey_proof_smells>id::as_str\",\"journey_proof_smells>id::as_str\",\"journey_proof_smells>id::as_str\",\"journey_proof_smells>into\",\"journey_proof_smells>iter::any\",\"journey_proof_smells>iter::map\",\"journey_proof_smells>kind::into\",\"journey_proof_smells>map::collect\",\"journey_proof_smells>nodes::iter\",\"journey_proof_smells>nodes_by_id::get\",\"journey_proof_smells>or_default::push\",\"journey_proof_smells>out::push\",\"journey_proof_smells>strength_from\",\"journey_proof_smells>to_id::as_str\",\"journey_proof_smells>validations::is_empty\",\"journey_proof_smells>validations::is_empty\",\"journey_proof_smells>validations::iter\",\"journey_proof_smells>validations_by_intent::entry\",\"journey_proof_smells>validations_by_intent::get\",\"journey_proof_smells>visibility::get\",\"layer_order>Ok\",\"layer_order>Ok\",\"layer_order>Some\",\"layer_order>format\",\"layer_order>from_str::with_context\",\"layer_order>layers::is_empty\",\"layer_order>serde_json::from_str\",\"layer_order>store::get_meta\",\"layering_smells>Ok\",\"layering_smells>Ok\",\"layering_smells>Vec::new\",\"layering_smells>a_layers::is_empty\",\"layering_smells>a_layers::iter\",\"layering_smells>a_owners::iter\",\"layering_smells>b_layers::iter\",\"layering_smells>b_owners::iter\",\"layering_smells>enumerate::map\",\"layering_smells>facet_map\",\"layering_smells>file_id::as_str\",\"layering_smells>file_id::as_str\",\"layering_smells>file_id::as_str\",\"layering_smells>filter_map::collect\",\"layering_smells>filter_map::collect\",\"layering_smells>filter_map::max\",\"layering_smells>filter_map::min\",\"layering_smells>format\",\"layering_smells>format\",\"layering_smells>get::copied\",\"layering_smells>get::copied\",\"layering_smells>get::map\",\"layering_smells>get::map\",\"layering_smells>id_to_path::get\",\"layering_smells>id_to_path::get\",\"layering_smells>into\",\"layering_smells>into\",\"layering_smells>is_module_tree_edge\",\"layering_smells>iter::enumerate\",\"layering_smells>iter::filter_map\",\"layering_smells>iter::filter_map\",\"layering_smells>iter::filter_map\",\"layering_smells>iter::filter_map\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>layer_of::get\",\"layering_smells>layer_of::get\",\"layering_smells>layer_order\",\"layering_smells>map::collect\",\"layering_smells>node_name\",\"layering_smells>order::iter\",\"layering_smells>out::push\",\"layering_smells>owners::get\",\"layering_smells>owners::get\",\"layering_smells>rank::get\",\"layering_smells>rank::get\",\"layering_smells>resolve_import\",\"node_name>find::map\",\"node_name>id::to_string\",\"node_name>iter::find\",\"node_name>map::unwrap_or_else\",\"node_name>name::clone\",\"node_name>nodes::iter\",\"owners_connected>BTreeSet::new\",\"owners_connected>copied::collect\",\"owners_connected>edge_between\",\"owners_connected>ids::iter\",\"owners_connected>ids::len\",\"owners_connected>iter::copied\",\"owners_connected>seen::insert\",\"owners_connected>seen::len\",\"owners_connected>set::len\",\"owners_connected>stack::pop\",\"owners_connected>stack::push\",\"owners_connected>vec\",\"ownership_smells>Vec::new\",\"ownership_smells>format\",\"ownership_smells>format\",\"ownership_smells>format\",\"ownership_smells>ids\",\"ownership_smells>ids::len\",\"ownership_smells>ids::len\",\"ownership_smells>into\",\"ownership_smells>into\",\"ownership_smells>len\",\"ownership_smells>node_name\",\"ownership_smells>node_name\",\"ownership_smells>out::push\",\"ownership_smells>owners_connected\",\"pack_drift_smells>BTreeMap::new\",\"pack_drift_smells>body::get\",\"pack_drift_smells>drifted::entry\",\"pack_drift_smells>drifted::into_iter\",\"pack_drift_smells>entry::or_default\",\"pack_drift_smells>format\",\"pack_drift_smells>format\",\"pack_drift_smells>format\",\"pack_drift_smells>get::and_then\",\"pack_drift_smells>into\",\"pack_drift_smells>into_iter::map\",\"pack_drift_smells>iter::find\",\"pack_drift_smells>map::collect\",\"pack_drift_smells>pack::iter\",\"pack_drift_smells>pack_name::to_string\",\"pack_drift_smells>packs::pack\",\"pack_drift_smells>packs::rule_body\",\"pack_drift_smells>v::as_str\",\"parent_dir>String::new\",\"parent_dir>dir::strip_suffix\",\"parent_dir>format\",\"parent_dir>strip_suffix::unwrap_or\",\"parent_dir>unwrap_or::rsplit_once\",\"relationship_adjacency>BTreeMap::new\",\"relationship_adjacency>adj::entry\",\"relationship_adjacency>adj::entry\",\"relationship_adjacency>entry::or_default\",\"relationship_adjacency>entry::or_default\",\"relationship_adjacency>from_id::as_str\",\"relationship_adjacency>from_id::as_str\",\"relationship_adjacency>matches\",\"relationship_adjacency>or_default::insert\",\"relationship_adjacency>or_default::insert\",\"relationship_adjacency>to_id::as_str\",\"relationship_adjacency>to_id::as_str\",\"resolve_import>Some\",\"resolve_import>best::map\",\"resolve_import>best::map\",\"resolve_import>imp::contains\",\"resolve_import>imp::contains\",\"resolve_import>importer::ends_with\",\"resolve_import>map::unwrap_or\",\"resolve_import>p::contains\",\"resolve_import>p::len\",\"resolve_import>p::len\",\"resolve_import>resolve_rust_module\",\"resolve_rust_module>Some\",\"resolve_rust_module>c::is_lowercase\",\"resolve_rust_module>cand::as_str\",\"resolve_rust_module>chars::next\",\"resolve_rust_module>copied::take_while\",\"resolve_rust_module>crate_src_root\",\"resolve_rust_module>extern_crate_root\",\"resolve_rust_module>format\",\"resolve_rust_module>format\",\"resolve_rust_module>imp::split\",\"resolve_rust_module>iter::copied\",\"resolve_rust_module>iter::take_while\",\"resolve_rust_module>join\",\"resolve_rust_module>map::take_while\",\"resolve_rust_module>matches\",\"resolve_rust_module>mods::len\",\"resolve_rust_module>next::is_some_and\",\"resolve_rust_module>parent_dir\",\"resolve_rust_module>path_to_id::get\",\"resolve_rust_module>rest::iter\",\"resolve_rust_module>rev\",\"resolve_rust_module>s::chars\",\"resolve_rust_module>s::is_empty\",\"resolve_rust_module>s::starts_with\",\"resolve_rust_module>segs::first\",\"resolve_rust_module>segs::iter\",\"resolve_rust_module>self_dir\",\"resolve_rust_module>self_dir\",\"resolve_rust_module>split::map\",\"resolve_rust_module>take_while::collect\",\"resolve_rust_module>take_while::collect\",\"resolve_rust_module>take_while::count\",\"resolving_is_stale>RESOLVING_METRIC_FLOOR::max\",\"resolving_is_stale>Some\",\"resolving_is_stale>ceil\",\"resolving_is_stale>hash::is_empty\",\"resolving_is_stale>recorded::saturating_add\",\"resolving_verdict>matches\",\"self_dir>String::new\",\"self_dir>dir::is_empty\",\"self_dir>format\",\"self_dir>format\",\"self_dir>matches\",\"self_dir>path::rsplit_once\",\"self_dir>rsplit_once::unwrap_or\",\"self_dir>strip_suffix\",\"self_dir>unwrap_or\",\"shared_proof_command_smells>BTreeMap::new\",\"shared_proof_command_smells>BTreeMap::new\",\"shared_proof_command_smells>Vec::new\",\"shared_proof_command_smells>body::get\",\"shared_proof_command_smells>by_command::entry\",\"shared_proof_command_smells>command::trim\",\"shared_proof_command_smells>entry::or_default\",\"shared_proof_command_smells>format\",\"shared_proof_command_smells>format\",\"shared_proof_command_smells>from_id::as_str\",\"shared_proof_command_smells>get::and_then\",\"shared_proof_command_smells>id::as_str\",\"shared_proof_command_smells>intents::len\",\"shared_proof_command_smells>into\",\"shared_proof_command_smells>into\",\"shared_proof_command_smells>len\",\"shared_proof_command_smells>or_default::insert\",\"shared_proof_command_smells>out::push\",\"shared_proof_command_smells>proves::get\",\"shared_proof_command_smells>proves::insert\",\"shared_proof_command_smells>to_id::as_str\",\"shared_proof_command_smells>trim::is_empty\",\"shared_proof_command_smells>v::as_str\",\"smell_det_key>format\",\"smell_has_resolving_adjudication>Ok\",\"smell_has_resolving_adjudication>Some\",\"smell_has_resolving_adjudication>Store::derived_node_id\",\"smell_has_resolving_adjudication>adjudication_of\",\"smell_has_resolving_adjudication>as_str\",\"smell_has_resolving_adjudication>matches\",\"smell_has_resolving_adjudication>smell_det_key\",\"smells>BTreeMap::new\",\"smells>Ok\",\"smells>Vec::new\",\"smells>active_ids::contains\",\"smells>active_intents\",\"smells>consumer_owned_file_smells\",\"smells>disclosure_smells\",\"smells>duplicated_responsibility_smells\",\"smells>edge_is_superseded\",\"smells>edge_role\",\"smells>entry::or_default\",\"smells>filter::map\",\"smells>filter::map\",\"smells>from_id::as_str\",\"smells>from_id::as_str\",\"smells>id::as_str\",\"smells>id::as_str\",\"smells>id::as_str\",\"smells>implements_edges\",\"smells>imports_by_file\",\"smells>intents::iter\",\"smells>iter::filter\",\"smells>iter::filter\",\"smells>iter::map\",\"smells>journey_proof_smells\",\"smells>layering_smells\",\"smells>map::collect\",\"smells>map::collect\",\"smells>map::collect\",\"smells>name::as_str\",\"smells>name::as_str\",\"smells>nodes::iter\",\"smells>nodes::iter\",\"smells>or_default::push\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>owners::entry\",\"smells>ownership_smells\",\"smells>pack_drift_smells\",\"smells>relationship_adjacency\",\"smells>shared_proof_command_smells\",\"smells>store::snapshot\",\"smells>tags_by_node\",\"smells>to_id::as_str\",\"smells>undeclared_coupling_smells\",\"smells>unstable_proof_smells\",\"smells>vague_intent_smells\",\"stale_findings>Ok\",\"stale_findings>filter::collect\",\"stale_findings>findings_view\",\"stale_findings>into_iter\",\"stale_findings>into_iter::filter\",\"strength_from>Strength::parse\",\"strength_from>and_then::and_then\",\"strength_from>and_then::unwrap_or\",\"strength_from>facets::iter\",\"strength_from>find::and_then\",\"strength_from>from_str::ok\",\"strength_from>iter::find\",\"strength_from>serde_json::from_str\",\"tags_by_node>BTreeMap::new\",\"tags_by_node>entry::or_default\",\"tags_by_node>or_default::insert\",\"tags_by_node>out::entry\",\"tags_by_node>target_id::as_str\",\"tags_by_node>term::clone\",\"triage_findings>Ok\",\"triage_findings>filter::collect\",\"triage_findings>findings_view\",\"triage_findings>into_iter\",\"triage_findings>into_iter::filter\",\"undeclared_coupling_smells>Vec::new\",\"undeclared_coupling_smells>a_owners::iter\",\"undeclared_coupling_smells>b_owners::iter\",\"undeclared_coupling_smells>edge_between\",\"undeclared_coupling_smells>file_id::as_str\",\"undeclared_coupling_smells>file_id::as_str\",\"undeclared_coupling_smells>file_id::as_str\",\"undeclared_coupling_smells>format\",\"undeclared_coupling_smells>format\",\"undeclared_coupling_smells>get::copied\",\"undeclared_coupling_smells>id_to_path::get\",\"undeclared_coupling_smells>into\",\"undeclared_coupling_smells>into\",\"undeclared_coupling_smells>iter::any\",\"undeclared_coupling_smells>iter::any\",\"undeclared_coupling_smells>node_name\",\"undeclared_coupling_smells>out::push\",\"undeclared_coupling_smells>owners::get\",\"undeclared_coupling_smells>owners::get\",\"undeclared_coupling_smells>resolve_import\",\"unstable_proof_smells>Vec::new\",\"unstable_proof_smells>facet_map\",\"unstable_proof_smells>flagged::get\",\"unstable_proof_smells>format\",\"unstable_proof_smells>format\",\"unstable_proof_smells>id::as_str\",\"unstable_proof_smells>into\",\"unstable_proof_smells>into\",\"unstable_proof_smells>out::push\",\"untriaged_findings>Ok\",\"untriaged_findings>filter::collect\",\"untriaged_findings>findings_view\",\"untriaged_findings>into_iter\",\"untriaged_findings>into_iter::filter\",\"vague_intent_smells>HEDGE_TERMS::contains\",\"vague_intent_smells>OUTCOME_STEMS::iter\",\"vague_intent_smells>Vec::new\",\"vague_intent_smells>c::is_ascii_alphanumeric\",\"vague_intent_smells>c::is_ascii_digit\",\"vague_intent_smells>chars::any\",\"vague_intent_smells>desc::chars\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::split\",\"vague_intent_smells>description::to_lowercase\",\"vague_intent_smells>ends_with\",\"vague_intent_smells>filter::collect\",\"vague_intent_smells>format\",\"vague_intent_smells>format\",\"vague_intent_smells>into\",\"vague_intent_smells>into\",\"vague_intent_smells>iter\",\"vague_intent_smells>iter::any\",\"vague_intent_smells>iter::any\",\"vague_intent_smells>iter::any\",\"vague_intent_smells>iter::find\",\"vague_intent_smells>out::push\",\"vague_intent_smells>split::filter\",\"vague_intent_smells>w::is_empty\",\"vague_intent_smells>w::starts_with\",\"vague_intent_smells>windows::any\",\"vague_intent_smells>words::iter\",\"vague_intent_smells>words::iter\",\"vague_intent_smells>words::windows\"]",
+      "value": "[\"active_intents>filter::collect\",\"active_intents>iter::filter\",\"active_intents>nodes::iter\",\"adjudication>Ok\",\"adjudication>Ok\",\"adjudication>Some\",\"adjudication>Subject::Node\",\"adjudication>and_then\",\"adjudication>and_then::unwrap_or_default\",\"adjudication>from_str::ok\",\"adjudication>node_id::to_string\",\"adjudication>serde_json::from_str\",\"adjudication>store::fact\",\"adjudication>store::get_facet\",\"adjudication_of>Ok\",\"adjudication_of>Ok\",\"adjudication_of>Ok\",\"adjudication_of>Some\",\"adjudication_of>adjudication\",\"adjudication_of>as_str\",\"adjudication_of>matches\",\"compiled_journey_provenance_problem>Some\",\"compiled_journey_provenance_problem>format\",\"compiled_journey_provenance_problem>journey_exercises::expected_projection\",\"compiled_journey_provenance_problem>journey_exercises::topology_problems\",\"compiled_journey_provenance_problem>problems::is_empty\",\"compiled_journey_provenance_problem>problems::join\",\"compiled_journey_provenance_problem>then\",\"compiled_journey_provenance_problem>topology_problems::ok\",\"consumer_owned_file_smells>Vec::new\",\"consumer_owned_file_smells>dir_cluster\",\"consumer_owned_file_smells>dir_cluster\",\"consumer_owned_file_smells>dir_cluster::to_string\",\"consumer_owned_file_smells>edge::map\",\"consumer_owned_file_smells>edge_is_superseded\",\"consumer_owned_file_smells>edge_role\",\"consumer_owned_file_smells>files_by_intent\",\"consumer_owned_file_smells>files_by_intent::get\",\"consumer_owned_file_smells>filter::all\",\"consumer_owned_file_smells>format\",\"consumer_owned_file_smells>format\",\"consumer_owned_file_smells>format\",\"consumer_owned_file_smells>implements_edges\",\"consumer_owned_file_smells>implements_edges::find\",\"consumer_owned_file_smells>intent_ids::len\",\"consumer_owned_file_smells>into\",\"consumer_owned_file_smells>iter::filter\",\"consumer_owned_file_smells>map::unwrap_or\",\"consumer_owned_file_smells>model::short\",\"consumer_owned_file_smells>node_name\",\"consumer_owned_file_smells>node_name\",\"consumer_owned_file_smells>node_name\",\"consumer_owned_file_smells>out::push\",\"consumer_owned_file_smells>owner_files::iter\",\"consumer_owned_file_smells>owner_files::len\",\"crate_name_of_root>dir::rsplit\",\"crate_name_of_root>next::unwrap_or\",\"crate_name_of_root>root::strip_suffix\",\"crate_name_of_root>rsplit::next\",\"crate_name_of_root>strip_suffix::unwrap_or\",\"crate_name_of_root>strip_suffix::unwrap_or\",\"crate_name_of_root>trimmed::strip_suffix\",\"crate_src_root>String::new\",\"crate_src_root>format\",\"crate_src_root>format\",\"crate_src_root>iter::position\",\"crate_src_root>join\",\"crate_src_root>path::split\",\"crate_src_root>segs\",\"crate_src_root>segs\",\"crate_src_root>segs::iter\",\"crate_src_root>segs::len\",\"crate_src_root>split::collect\",\"criterion_names_seam>SEAM_HINTS::iter\",\"criterion_names_seam>c::contains\",\"criterion_names_seam>criterion::to_lowercase\",\"criterion_names_seam>facets::iter\",\"criterion_names_seam>iter::any\",\"criterion_names_seam>iter::any\",\"criterion_names_seam>trim::is_empty\",\"criterion_names_seam>value::trim\",\"dir_cluster>next::unwrap_or\",\"dir_cluster>path::split\",\"dir_cluster>split::next\",\"disclosure_smells>Vec::new\",\"disclosure_smells>filter::count\",\"disclosure_smells>filter::count\",\"disclosure_smells>format\",\"disclosure_smells>id::as_str\",\"disclosure_smells>intents::iter\",\"disclosure_smells>intents::iter\",\"disclosure_smells>into\",\"disclosure_smells>into\",\"disclosure_smells>into\",\"disclosure_smells>iter::filter\",\"disclosure_smells>iter::filter\",\"disclosure_smells>out::push\",\"disclosure_smells>tags_by_intent::contains_key\",\"doctor>Err\",\"doctor>Err\",\"doctor>Ok\",\"doctor>Some\",\"doctor>Some\",\"doctor>Some\",\"doctor>Vec::new\",\"doctor>alias::as_str\",\"doctor>and_then::unwrap_or\",\"doctor>anyhow::anyhow\",\"doctor>anyhow::anyhow\",\"doctor>body::get\",\"doctor>cmp::then_with\",\"doctor>criterion_names_seam\",\"doctor>edge_role\",\"doctor>entries::iter\",\"doctor>facet_value\",\"doctor>federation::read_upstream_entries\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>format\",\"doctor>from_id::as_str\",\"doctor>get::and_then\",\"doctor>grammar::excised_proof_level_name\",\"doctor>hierarchy_cycle_issues\",\"doctor>id::as_str\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>into\",\"doctor>issues::extend\",\"doctor>issues::extend\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::push\",\"doctor>issues::sort_by\",\"doctor>iter::map\",\"doctor>iter::map\",\"doctor>journey_integrity_issues\",\"doctor>kind::cmp\",\"doctor>kind::into\",\"doctor>linked_aliases::contains\",\"doctor>locator::is_anchor_locator\",\"doctor>locator::validate_for_codefile\",\"doctor>map::collect\",\"doctor>map::collect\",\"doctor>matches\",\"doctor>matches\",\"doctor>message::cmp\",\"doctor>model::is_placeholder\",\"doctor>node_types::get\",\"doctor>node_types::get\",\"doctor>nodes::iter\",\"doctor>registry::spec\",\"doctor>spec::allows_to\",\"doctor>spec::allows_truth_class\",\"doctor>store::edge_verdict_verification\",\"doctor>store::get_node\",\"doctor>store::snapshot\",\"doctor>to_display\",\"doctor>to_id::as_str\",\"doctor>to_string\",\"doctor>to_string\",\"doctor>to_string\",\"doctor>v::as_str\",\"duplicated_responsibility_smells>Vec::new\",\"duplicated_responsibility_smells>cloned::unwrap_or_default\",\"duplicated_responsibility_smells>cloned::unwrap_or_default\",\"duplicated_responsibility_smells>edge_between\",\"duplicated_responsibility_smells>fa::is_disjoint\",\"duplicated_responsibility_smells>files_by_intent\",\"duplicated_responsibility_smells>files_by_intent::get\",\"duplicated_responsibility_smells>files_by_intent::get\",\"duplicated_responsibility_smells>format\",\"duplicated_responsibility_smells>format\",\"duplicated_responsibility_smells>get::cloned\",\"duplicated_responsibility_smells>get::cloned\",\"duplicated_responsibility_smells>id::as_str\",\"duplicated_responsibility_smells>intent_ids::len\",\"duplicated_responsibility_smells>intent_ids::len\",\"duplicated_responsibility_smells>intents::iter\",\"duplicated_responsibility_smells>intersection::collect\",\"duplicated_responsibility_smells>into\",\"duplicated_responsibility_smells>into\",\"duplicated_responsibility_smells>iter::map\",\"duplicated_responsibility_smells>map::collect\",\"duplicated_responsibility_smells>node_name\",\"duplicated_responsibility_smells>out::push\",\"duplicated_responsibility_smells>shared\",\"duplicated_responsibility_smells>shared\",\"duplicated_responsibility_smells>shared::is_empty\",\"duplicated_responsibility_smells>ta::intersection\",\"duplicated_responsibility_smells>tags_by_intent::get\",\"duplicated_responsibility_smells>tags_by_intent::get\",\"edge_between>adj::get\",\"edge_between>get::is_some_and\",\"edge_between>s::contains\",\"edge_is_superseded>facets::iter\",\"edge_is_superseded>iter::any\",\"edge_role>and_then::unwrap_or\",\"edge_role>facets::iter\",\"edge_role>find::and_then\",\"edge_role>iter::find\",\"edge_role>parse::ok\",\"edge_role>value::parse\",\"extern_crate_root>crate_name_of_root\",\"extern_crate_root>crate_name_of_root::replace\",\"extern_crate_root>crate_src_root\",\"extern_crate_root>filter::collect\",\"extern_crate_root>head::replace\",\"extern_crate_root>into_iter::next\",\"extern_crate_root>keys::map\",\"extern_crate_root>map::filter\",\"extern_crate_root>path_to_id::keys\",\"extern_crate_root>roots::into_iter\",\"extern_crate_root>roots::len\",\"facet_map>facets::iter\",\"facet_map>filter::map\",\"facet_map>iter::filter\",\"facet_map>map::collect\",\"facet_map>target_id::as_str\",\"facet_map>value::clone\",\"facet_value>facets::iter\",\"facet_value>find::map\",\"facet_value>iter::find\",\"facet_value>value::as_str\",\"files_by_intent>BTreeMap::new\",\"files_by_intent>entry::or_default\",\"files_by_intent>or_default::insert\",\"files_by_intent>out::entry\",\"findings_view>Ok\",\"findings_view>Some\",\"findings_view>Some\",\"findings_view>String::new\",\"findings_view>String::new\",\"findings_view>Vec::new\",\"findings_view>adjudication\",\"findings_view>as_str\",\"findings_view>cmp::then\",\"findings_view>current_hash::as_ref\",\"findings_view>current_hash::as_ref\",\"findings_view>hash::is_empty\",\"findings_view>into\",\"findings_view>into\",\"findings_view>matches\",\"findings_view>name::cmp\",\"findings_view>out::push\",\"findings_view>out::push\",\"findings_view>out::push\",\"findings_view>out::sort_by\",\"findings_view>resolving_is_stale\",\"findings_view>resolving_verdict\",\"findings_view>state::cmp\",\"findings_view>store::finding_codefile_hash\",\"findings_view>store::finding_metric\",\"findings_view>store::list_nodes\",\"hierarchy_cycle_issues>BTreeMap::new\",\"hierarchy_cycle_issues>BTreeSet::new\",\"hierarchy_cycle_issues>DiGraph::new\",\"hierarchy_cycle_issues>Vec::new\",\"hierarchy_cycle_issues>component::iter\",\"hierarchy_cycle_issues>component::len\",\"hierarchy_cycle_issues>edges::iter\",\"hierarchy_cycle_issues>entry::or_insert_with\",\"hierarchy_cycle_issues>entry::or_insert_with\",\"hierarchy_cycle_issues>format\",\"hierarchy_cycle_issues>format\",\"hierarchy_cycle_issues>from_id::as_str\",\"hierarchy_cycle_issues>from_id::as_str\",\"hierarchy_cycle_issues>from_id::as_str\",\"hierarchy_cycle_issues>graph::add_edge\",\"hierarchy_cycle_issues>graph::add_node\",\"hierarchy_cycle_issues>graph::add_node\",\"hierarchy_cycle_issues>indices::entry\",\"hierarchy_cycle_issues>indices::entry\",\"hierarchy_cycle_issues>into\",\"hierarchy_cycle_issues>into\",\"hierarchy_cycle_issues>issues::push\",\"hierarchy_cycle_issues>issues::push\",\"hierarchy_cycle_issues>issues::sort_by\",\"hierarchy_cycle_issues>iter::filter\",\"hierarchy_cycle_issues>iter::map\",\"hierarchy_cycle_issues>join\",\"hierarchy_cycle_issues>map::collect\",\"hierarchy_cycle_issues>message::cmp\",\"hierarchy_cycle_issues>names::sort\",\"hierarchy_cycle_issues>node_name\",\"hierarchy_cycle_issues>node_name\",\"hierarchy_cycle_issues>self_loops::insert\",\"hierarchy_cycle_issues>tarjan_scc\",\"hierarchy_cycle_issues>to_id::as_str\",\"hierarchy_cycle_issues>to_id::as_str\",\"implements_edges>edges::iter\",\"implements_edges>iter::filter\",\"imports_by_file>BTreeMap::new\",\"imports_by_file>from_str::unwrap_or_default\",\"imports_by_file>list::is_empty\",\"imports_by_file>out::insert\",\"imports_by_file>serde_json::from_str\",\"imports_by_file>target_id::clone\",\"is_module_tree_edge>a::starts_with\",\"is_module_tree_edge>b::starts_with\",\"is_module_tree_edge>crate_src_root\",\"is_module_tree_edge>crate_src_root\",\"is_module_tree_edge>self_dir\",\"is_module_tree_edge>self_dir\",\"journey_integrity_issues>BTreeMap::new\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Some\",\"journey_integrity_issues>Vec::new\",\"journey_integrity_issues>and_then::cloned\",\"journey_integrity_issues>and_then::into_iter\",\"journey_integrity_issues>and_then::into_iter\",\"journey_integrity_issues>and_then::is_some\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>and_then::unwrap_or\",\"journey_integrity_issues>artifact::is_none\",\"journey_integrity_issues>as_deref::unwrap_or_default\",\"journey_integrity_issues>as_ref::is_some_and\",\"journey_integrity_issues>as_ref::is_some_and\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>body::get\",\"journey_integrity_issues>bound_steps::as_ref\",\"journey_integrity_issues>by_profile::entry\",\"journey_integrity_issues>clone::any\",\"journey_integrity_issues>cloned::and_then\",\"journey_integrity_issues>collect::len\",\"journey_integrity_issues>compiled_journey_provenance_problem\",\"journey_integrity_issues>completeness::exact_surface_bindings\",\"journey_integrity_issues>copied::collect\",\"journey_integrity_issues>derives::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::iter\",\"journey_integrity_issues>edges::len\",\"journey_integrity_issues>entry::or_default\",\"journey_integrity_issues>exposes::clone\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value\",\"journey_integrity_issues>facet_value::and_then\",\"journey_integrity_issues>facet_value::and_then\",\"journey_integrity_issues>facet_value::is_some_and\",\"journey_integrity_issues>facet_value::is_some_and\",\"journey_integrity_issues>filter::collect\",\"journey_integrity_issues>filter::collect\",\"journey_integrity_issues>filter::collect\",\"journey_integrity_issues>filter_map::collect\",\"journey_integrity_issues>filter_map::collect\",\"journey_integrity_issues>flatten::filter_map\",\"journey_integrity_issues>flatten::filter_map\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>format\",\"journey_integrity_issues>from_id::as_str\",\"journey_integrity_issues>from_str::ok\",\"journey_integrity_issues>from_value::ok\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::and_then\",\"journey_integrity_issues>get::is_some\",\"journey_integrity_issues>get::is_some\",\"journey_integrity_issues>get::is_some_and\",\"journey_integrity_issues>hash::as_str\",\"journey_integrity_issues>id::as_str\",\"journey_integrity_issues>id::as_str\",\"journey_integrity_issues>ids::is_empty\",\"journey_integrity_issues>ids::iter\",\"journey_integrity_issues>ids::iter\",\"journey_integrity_issues>ids::len\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into\",\"journey_integrity_issues>into_iter::flatten\",\"journey_integrity_issues>into_iter::flatten\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>issues::push\",\"journey_integrity_issues>iter::all\",\"journey_integrity_issues>iter::all\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::any\",\"journey_integrity_issues>iter::collect\",\"journey_integrity_issues>iter::copied\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::filter\",\"journey_integrity_issues>iter::map\",\"journey_integrity_issues>iter::map\",\"journey_integrity_issues>join\",\"journey_integrity_issues>join\",\"journey_integrity_issues>journey::parse\",\"journey_integrity_issues>len\",\"journey_integrity_issues>map::collect\",\"journey_integrity_issues>map::collect\",\"journey_integrity_issues>map::unwrap_or_default\",\"journey_integrity_issues>name::as_str\",\"journey_integrity_issues>nodes::get\",\"journey_integrity_issues>nodes::get\",\"journey_integrity_issues>nodes::get\",\"journey_integrity_issues>nodes::iter\",\"journey_integrity_issues>nodes::iter\",\"journey_integrity_issues>ok::as_deref\",\"journey_integrity_issues>operations::as_deref\",\"journey_integrity_issues>operations::as_ref\",\"journey_integrity_issues>operations::clone\",\"journey_integrity_issues>or_default::push\",\"journey_integrity_issues>profile::is_empty\",\"journey_integrity_issues>provenance_problem::is_some\",\"journey_integrity_issues>provenance_problem::map\",\"journey_integrity_issues>ratification::ok\",\"journey_integrity_issues>root::join\",\"journey_integrity_issues>semantic_hash::is_none\",\"journey_integrity_issues>serde_json::from_str\",\"journey_integrity_issues>serde_json::from_value\",\"journey_integrity_issues>spec::semantic_hash\",\"journey_integrity_issues>spec::step_ids\",\"journey_integrity_issues>step_ids::contains\",\"journey_integrity_issues>step_ids::is_empty\",\"journey_integrity_issues>step_ids::iter\",\"journey_integrity_issues>step_order::iter\",\"journey_integrity_issues>store::ratification\",\"journey_integrity_issues>store::root\",\"journey_integrity_issues>surfaces::iter\",\"journey_integrity_issues>target::and_then\",\"journey_integrity_issues>target::is_some_and\",\"journey_integrity_issues>to_id::as_str\",\"journey_integrity_issues>to_id::as_str\",\"journey_integrity_issues>trim::is_empty\",\"journey_integrity_issues>trim::is_empty\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>unwrap_or::into\",\"journey_integrity_issues>validate\",\"journey_integrity_issues>validate::is_ok\",\"journey_integrity_issues>value::as_array\",\"journey_integrity_issues>value::as_array\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::as_str\",\"journey_integrity_issues>value::trim\",\"journey_integrity_issues>value::trim\",\"journey_proof_smells>BTreeMap::new\",\"journey_proof_smells>Some\",\"journey_proof_smells>Vec::new\",\"journey_proof_smells>cloned::unwrap_or_default\",\"journey_proof_smells>entry::or_default\",\"journey_proof_smells>facet_map\",\"journey_proof_smells>format\",\"journey_proof_smells>format\",\"journey_proof_smells>format\",\"journey_proof_smells>from_id::as_str\",\"journey_proof_smells>get::cloned\",\"journey_proof_smells>get::map\",\"journey_proof_smells>id::as_str\",\"journey_proof_smells>id::as_str\",\"journey_proof_smells>id::as_str\",\"journey_proof_smells>into\",\"journey_proof_smells>iter::any\",\"journey_proof_smells>iter::map\",\"journey_proof_smells>kind::into\",\"journey_proof_smells>map::collect\",\"journey_proof_smells>nodes::iter\",\"journey_proof_smells>nodes_by_id::get\",\"journey_proof_smells>or_default::push\",\"journey_proof_smells>out::push\",\"journey_proof_smells>strength_from\",\"journey_proof_smells>to_id::as_str\",\"journey_proof_smells>validations::is_empty\",\"journey_proof_smells>validations::is_empty\",\"journey_proof_smells>validations::iter\",\"journey_proof_smells>validations_by_intent::entry\",\"journey_proof_smells>validations_by_intent::get\",\"journey_proof_smells>visibility::get\",\"layer_order>Ok\",\"layer_order>Ok\",\"layer_order>Some\",\"layer_order>format\",\"layer_order>from_str::with_context\",\"layer_order>layers::is_empty\",\"layer_order>serde_json::from_str\",\"layer_order>store::get_meta\",\"layering_smells>Ok\",\"layering_smells>Ok\",\"layering_smells>Vec::new\",\"layering_smells>a_layers::is_empty\",\"layering_smells>a_layers::iter\",\"layering_smells>a_owners::iter\",\"layering_smells>b_layers::iter\",\"layering_smells>b_owners::iter\",\"layering_smells>enumerate::map\",\"layering_smells>facet_map\",\"layering_smells>file_id::as_str\",\"layering_smells>file_id::as_str\",\"layering_smells>file_id::as_str\",\"layering_smells>filter_map::collect\",\"layering_smells>filter_map::collect\",\"layering_smells>filter_map::max\",\"layering_smells>filter_map::min\",\"layering_smells>format\",\"layering_smells>format\",\"layering_smells>get::copied\",\"layering_smells>get::copied\",\"layering_smells>get::map\",\"layering_smells>get::map\",\"layering_smells>id_to_path::get\",\"layering_smells>id_to_path::get\",\"layering_smells>into\",\"layering_smells>into\",\"layering_smells>is_module_tree_edge\",\"layering_smells>iter::enumerate\",\"layering_smells>iter::filter_map\",\"layering_smells>iter::filter_map\",\"layering_smells>iter::filter_map\",\"layering_smells>iter::filter_map\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>l::as_str\",\"layering_smells>layer_of::get\",\"layering_smells>layer_of::get\",\"layering_smells>layer_order\",\"layering_smells>map::collect\",\"layering_smells>node_name\",\"layering_smells>order::iter\",\"layering_smells>out::push\",\"layering_smells>owners::get\",\"layering_smells>owners::get\",\"layering_smells>rank::get\",\"layering_smells>rank::get\",\"layering_smells>resolve_import\",\"node_name>find::map\",\"node_name>id::to_string\",\"node_name>iter::find\",\"node_name>map::unwrap_or_else\",\"node_name>name::clone\",\"node_name>nodes::iter\",\"owners_connected>BTreeSet::new\",\"owners_connected>copied::collect\",\"owners_connected>edge_between\",\"owners_connected>ids::iter\",\"owners_connected>ids::len\",\"owners_connected>iter::copied\",\"owners_connected>seen::insert\",\"owners_connected>seen::len\",\"owners_connected>set::len\",\"owners_connected>stack::pop\",\"owners_connected>stack::push\",\"owners_connected>vec\",\"ownership_smells>Vec::new\",\"ownership_smells>format\",\"ownership_smells>format\",\"ownership_smells>format\",\"ownership_smells>ids\",\"ownership_smells>ids::len\",\"ownership_smells>ids::len\",\"ownership_smells>into\",\"ownership_smells>into\",\"ownership_smells>len\",\"ownership_smells>node_name\",\"ownership_smells>node_name\",\"ownership_smells>out::push\",\"ownership_smells>owners_connected\",\"pack_drift_smells>BTreeMap::new\",\"pack_drift_smells>body::get\",\"pack_drift_smells>drifted::entry\",\"pack_drift_smells>drifted::into_iter\",\"pack_drift_smells>entry::or_default\",\"pack_drift_smells>format\",\"pack_drift_smells>format\",\"pack_drift_smells>format\",\"pack_drift_smells>get::and_then\",\"pack_drift_smells>into\",\"pack_drift_smells>into_iter::map\",\"pack_drift_smells>iter::find\",\"pack_drift_smells>map::collect\",\"pack_drift_smells>pack::iter\",\"pack_drift_smells>pack_name::to_string\",\"pack_drift_smells>packs::pack\",\"pack_drift_smells>packs::rule_body\",\"pack_drift_smells>v::as_str\",\"parent_dir>String::new\",\"parent_dir>dir::strip_suffix\",\"parent_dir>format\",\"parent_dir>strip_suffix::unwrap_or\",\"parent_dir>unwrap_or::rsplit_once\",\"relationship_adjacency>BTreeMap::new\",\"relationship_adjacency>adj::entry\",\"relationship_adjacency>adj::entry\",\"relationship_adjacency>entry::or_default\",\"relationship_adjacency>entry::or_default\",\"relationship_adjacency>from_id::as_str\",\"relationship_adjacency>from_id::as_str\",\"relationship_adjacency>matches\",\"relationship_adjacency>or_default::insert\",\"relationship_adjacency>or_default::insert\",\"relationship_adjacency>to_id::as_str\",\"relationship_adjacency>to_id::as_str\",\"resolve_import>Some\",\"resolve_import>best::map\",\"resolve_import>best::map\",\"resolve_import>imp::contains\",\"resolve_import>imp::contains\",\"resolve_import>importer::ends_with\",\"resolve_import>map::unwrap_or\",\"resolve_import>p::contains\",\"resolve_import>p::len\",\"resolve_import>p::len\",\"resolve_import>resolve_rust_module\",\"resolve_rust_module>Some\",\"resolve_rust_module>c::is_lowercase\",\"resolve_rust_module>cand::as_str\",\"resolve_rust_module>chars::next\",\"resolve_rust_module>copied::take_while\",\"resolve_rust_module>crate_src_root\",\"resolve_rust_module>extern_crate_root\",\"resolve_rust_module>format\",\"resolve_rust_module>format\",\"resolve_rust_module>imp::split\",\"resolve_rust_module>iter::copied\",\"resolve_rust_module>iter::take_while\",\"resolve_rust_module>join\",\"resolve_rust_module>map::take_while\",\"resolve_rust_module>matches\",\"resolve_rust_module>mods::len\",\"resolve_rust_module>next::is_some_and\",\"resolve_rust_module>parent_dir\",\"resolve_rust_module>path_to_id::get\",\"resolve_rust_module>rest::iter\",\"resolve_rust_module>rev\",\"resolve_rust_module>s::chars\",\"resolve_rust_module>s::is_empty\",\"resolve_rust_module>s::starts_with\",\"resolve_rust_module>segs::first\",\"resolve_rust_module>segs::iter\",\"resolve_rust_module>self_dir\",\"resolve_rust_module>self_dir\",\"resolve_rust_module>split::map\",\"resolve_rust_module>take_while::collect\",\"resolve_rust_module>take_while::collect\",\"resolve_rust_module>take_while::count\",\"resolving_is_stale>RESOLVING_METRIC_FLOOR::max\",\"resolving_is_stale>Some\",\"resolving_is_stale>ceil\",\"resolving_is_stale>hash::is_empty\",\"resolving_is_stale>recorded::saturating_add\",\"resolving_verdict>matches\",\"self_dir>String::new\",\"self_dir>dir::is_empty\",\"self_dir>format\",\"self_dir>format\",\"self_dir>matches\",\"self_dir>path::rsplit_once\",\"self_dir>rsplit_once::unwrap_or\",\"self_dir>strip_suffix\",\"self_dir>unwrap_or\",\"shared_proof_command_smells>BTreeMap::new\",\"shared_proof_command_smells>BTreeMap::new\",\"shared_proof_command_smells>Vec::new\",\"shared_proof_command_smells>body::get\",\"shared_proof_command_smells>by_command::entry\",\"shared_proof_command_smells>command::trim\",\"shared_proof_command_smells>entry::or_default\",\"shared_proof_command_smells>entry::or_default\",\"shared_proof_command_smells>format\",\"shared_proof_command_smells>format\",\"shared_proof_command_smells>from_id::as_str\",\"shared_proof_command_smells>get::and_then\",\"shared_proof_command_smells>id::as_str\",\"shared_proof_command_smells>intents::len\",\"shared_proof_command_smells>into\",\"shared_proof_command_smells>into\",\"shared_proof_command_smells>len\",\"shared_proof_command_smells>or_default::extend\",\"shared_proof_command_smells>or_default::insert\",\"shared_proof_command_smells>out::push\",\"shared_proof_command_smells>proves::entry\",\"shared_proof_command_smells>proves::get\",\"shared_proof_command_smells>to_id::as_str\",\"shared_proof_command_smells>trim::is_empty\",\"shared_proof_command_smells>v::as_str\",\"smell_det_key>format\",\"smell_has_resolving_adjudication>Ok\",\"smell_has_resolving_adjudication>Some\",\"smell_has_resolving_adjudication>Store::derived_node_id\",\"smell_has_resolving_adjudication>adjudication_of\",\"smell_has_resolving_adjudication>as_str\",\"smell_has_resolving_adjudication>matches\",\"smell_has_resolving_adjudication>smell_det_key\",\"smells>BTreeMap::new\",\"smells>Ok\",\"smells>Vec::new\",\"smells>active_ids::contains\",\"smells>active_intents\",\"smells>consumer_owned_file_smells\",\"smells>disclosure_smells\",\"smells>duplicated_responsibility_smells\",\"smells>edge_is_superseded\",\"smells>edge_role\",\"smells>entry::or_default\",\"smells>filter::map\",\"smells>filter::map\",\"smells>from_id::as_str\",\"smells>from_id::as_str\",\"smells>id::as_str\",\"smells>id::as_str\",\"smells>id::as_str\",\"smells>implements_edges\",\"smells>imports_by_file\",\"smells>intents::iter\",\"smells>iter::filter\",\"smells>iter::filter\",\"smells>iter::map\",\"smells>journey_proof_smells\",\"smells>layering_smells\",\"smells>map::collect\",\"smells>map::collect\",\"smells>map::collect\",\"smells>name::as_str\",\"smells>name::as_str\",\"smells>nodes::iter\",\"smells>nodes::iter\",\"smells>or_default::push\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>out::extend\",\"smells>owners::entry\",\"smells>ownership_smells\",\"smells>pack_drift_smells\",\"smells>relationship_adjacency\",\"smells>shared_proof_command_smells\",\"smells>store::snapshot\",\"smells>tags_by_node\",\"smells>to_id::as_str\",\"smells>undeclared_coupling_smells\",\"smells>unstable_proof_smells\",\"smells>vague_intent_smells\",\"stale_findings>Ok\",\"stale_findings>filter::collect\",\"stale_findings>findings_view\",\"stale_findings>into_iter\",\"stale_findings>into_iter::filter\",\"strength_from>Strength::parse\",\"strength_from>and_then::and_then\",\"strength_from>and_then::unwrap_or\",\"strength_from>facets::iter\",\"strength_from>find::and_then\",\"strength_from>from_str::ok\",\"strength_from>iter::find\",\"strength_from>serde_json::from_str\",\"tags_by_node>BTreeMap::new\",\"tags_by_node>entry::or_default\",\"tags_by_node>or_default::insert\",\"tags_by_node>out::entry\",\"tags_by_node>target_id::as_str\",\"tags_by_node>term::clone\",\"triage_findings>Ok\",\"triage_findings>filter::collect\",\"triage_findings>findings_view\",\"triage_findings>into_iter\",\"triage_findings>into_iter::filter\",\"undeclared_coupling_smells>Vec::new\",\"undeclared_coupling_smells>a_owners::iter\",\"undeclared_coupling_smells>b_owners::iter\",\"undeclared_coupling_smells>edge_between\",\"undeclared_coupling_smells>file_id::as_str\",\"undeclared_coupling_smells>file_id::as_str\",\"undeclared_coupling_smells>file_id::as_str\",\"undeclared_coupling_smells>format\",\"undeclared_coupling_smells>format\",\"undeclared_coupling_smells>get::copied\",\"undeclared_coupling_smells>id_to_path::get\",\"undeclared_coupling_smells>into\",\"undeclared_coupling_smells>into\",\"undeclared_coupling_smells>iter::any\",\"undeclared_coupling_smells>iter::any\",\"undeclared_coupling_smells>node_name\",\"undeclared_coupling_smells>out::push\",\"undeclared_coupling_smells>owners::get\",\"undeclared_coupling_smells>owners::get\",\"undeclared_coupling_smells>resolve_import\",\"unstable_proof_smells>Vec::new\",\"unstable_proof_smells>facet_map\",\"unstable_proof_smells>flagged::get\",\"unstable_proof_smells>format\",\"unstable_proof_smells>format\",\"unstable_proof_smells>id::as_str\",\"unstable_proof_smells>into\",\"unstable_proof_smells>into\",\"unstable_proof_smells>out::push\",\"untriaged_findings>Ok\",\"untriaged_findings>filter::collect\",\"untriaged_findings>findings_view\",\"untriaged_findings>into_iter\",\"untriaged_findings>into_iter::filter\",\"vague_intent_smells>HEDGE_TERMS::contains\",\"vague_intent_smells>OUTCOME_STEMS::iter\",\"vague_intent_smells>Vec::new\",\"vague_intent_smells>c::is_ascii_alphanumeric\",\"vague_intent_smells>c::is_ascii_digit\",\"vague_intent_smells>chars::any\",\"vague_intent_smells>desc::chars\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::contains\",\"vague_intent_smells>desc::split\",\"vague_intent_smells>description::to_lowercase\",\"vague_intent_smells>ends_with\",\"vague_intent_smells>filter::collect\",\"vague_intent_smells>format\",\"vague_intent_smells>format\",\"vague_intent_smells>into\",\"vague_intent_smells>into\",\"vague_intent_smells>iter\",\"vague_intent_smells>iter::any\",\"vague_intent_smells>iter::any\",\"vague_intent_smells>iter::any\",\"vague_intent_smells>iter::find\",\"vague_intent_smells>out::push\",\"vague_intent_smells>split::filter\",\"vague_intent_smells>w::is_empty\",\"vague_intent_smells>w::starts_with\",\"vague_intent_smells>windows::any\",\"vague_intent_smells>words::iter\",\"vague_intent_smells>words::iter\",\"vague_intent_smells>words::windows\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "b3237aa330ebe743b658f541458ea333",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "0083c3058cdcea76",
+      "value": "f7e25254591f6606",
       "truth_class": "derived"
     },
     {
@@ -108318,7 +108615,7 @@
       "target_id": "b3237aa330ebe743b658f541458ea333",
       "target_kind": "node",
       "key": "loc",
-      "value": "1953",
+      "value": "1969",
       "truth_class": "derived"
     },
     {
@@ -108339,7 +108636,7 @@
       "target_id": "b3237aa330ebe743b658f541458ea333",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Adjudication\":\"ab0e9a7cc3a62ffe\",\"AdjudicationStamp\":\"8f956579232df75d\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"HEDGE_TERMS\":\"cddd1407b3693a7a\",\"OUTCOME_STEMS\":\"d21b8940455504b9\",\"RESOLVING_METRIC_BAND\":\"adc9a22062977ee7\",\"RESOLVING_METRIC_FLOOR\":\"5cd16983d287d58d\",\"RelAdjacency\":\"4eedd5c92027a202\",\"SEAM_HINTS\":\"c0c0f26530aad606\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication\":\"ab747c10d722c982\",\"adjudication_of\":\"e37a4423875aafbb\",\"compiled_journey_provenance_problem\":\"3a43e179c99e8a91\",\"consumer_owned_file_smells\":\"57b999da7df90160\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"9d9b752202963333\",\"duplicated_responsibility_smells\":\"d731a514ad7a2a36\",\"edge_between\":\"f493536093ace585\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"facet_value\":\"11f9e8ec90e6ffc4\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"8775aeab110d8ca6\",\"hierarchy_cycle_issues\":\"1e98ee7de886906a\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"9e1fb026842e0bbd\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_integrity_issues\":\"e06ff9d4a7eec3f8\",\"journey_proof_smells\":\"d91b1b8752e98b33\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"node_name\":\"7f49570215d4f5a7\",\"owners_connected\":\"bdb49e791cc1c94e\",\"ownership_smells\":\"4f81e061efba6d2c\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"relationship_adjacency\":\"026887a00ef21deb\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"resolving_is_stale\":\"ce95db4b93de0b19\",\"resolving_verdict\":\"bc56a4e890b36703\",\"self_dir\":\"cc099cf5d4a21388\",\"shared_proof_command_smells\":\"b132e1d3d59951fe\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_has_resolving_adjudication\":\"dbefd712e28dddd5\",\"smells\":\"262adeeddccdd762\",\"stale_findings\":\"b9bd1abf6df97a44\",\"strength_from\":\"e52669befe05c6a8\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"a47735ffdd813086\",\"unstable_proof_smells\":\"fb484722bcf54603\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
+      "value": "{\"Adjudication\":\"ab0e9a7cc3a62ffe\",\"AdjudicationStamp\":\"8f956579232df75d\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"HEDGE_TERMS\":\"cddd1407b3693a7a\",\"OUTCOME_STEMS\":\"d21b8940455504b9\",\"RESOLVING_METRIC_BAND\":\"adc9a22062977ee7\",\"RESOLVING_METRIC_FLOOR\":\"5cd16983d287d58d\",\"RelAdjacency\":\"4eedd5c92027a202\",\"SEAM_HINTS\":\"c0c0f26530aad606\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication\":\"ab747c10d722c982\",\"adjudication_of\":\"e37a4423875aafbb\",\"compiled_journey_provenance_problem\":\"3a43e179c99e8a91\",\"consumer_owned_file_smells\":\"57b999da7df90160\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"d4cf2ff659963b8f\",\"duplicated_responsibility_smells\":\"d731a514ad7a2a36\",\"edge_between\":\"f493536093ace585\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"facet_value\":\"11f9e8ec90e6ffc4\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"8775aeab110d8ca6\",\"hierarchy_cycle_issues\":\"1e98ee7de886906a\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"9e1fb026842e0bbd\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_integrity_issues\":\"e06ff9d4a7eec3f8\",\"journey_proof_smells\":\"d91b1b8752e98b33\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"node_name\":\"7f49570215d4f5a7\",\"owners_connected\":\"bdb49e791cc1c94e\",\"ownership_smells\":\"4f81e061efba6d2c\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"relationship_adjacency\":\"026887a00ef21deb\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"resolving_is_stale\":\"ce95db4b93de0b19\",\"resolving_verdict\":\"bc56a4e890b36703\",\"self_dir\":\"cc099cf5d4a21388\",\"shared_proof_command_smells\":\"4f851c317be5d000\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_has_resolving_adjudication\":\"dbefd712e28dddd5\",\"smells\":\"262adeeddccdd762\",\"stale_findings\":\"b9bd1abf6df97a44\",\"strength_from\":\"e52669befe05c6a8\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"a47735ffdd813086\",\"unstable_proof_smells\":\"fb484722bcf54603\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
       "truth_class": "derived"
     },
     {
@@ -109587,6 +109884,27 @@
       "key": "step_ids",
       "value": "[\"recover-product-purpose\"]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "c3804f3aa1c8cbdbbe6b49dd418e4a32",
+      "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"d07d180c7138297956c1cb6badbcf1ec\":\"src/signal.rs=f7e25254591f6606\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c3804f3aa1c8cbdbbe6b49dd418e4a32",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "c3804f3aa1c8cbdbbe6b49dd418e4a32",
+      "target_kind": "node",
+      "key": "proof_strength",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "truth_class": "derived"
     },
     {
       "target_id": "c396233636e7827e497151e71108da91",

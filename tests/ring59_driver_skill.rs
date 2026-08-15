@@ -14,10 +14,16 @@ fn driver_skill_encodes_the_grilled_campaign_decisions() {
         ("one-shot per invocation", "this\nskill is one-shot"),
         ("cold graph stops early", "**Cold graph**"),
         ("human gates batch to one end sitting", "one sitting"),
-        ("checkpoints stage exact paths only", "git add -- <included_paths only>"),
+        (
+            "checkpoints stage exact paths only",
+            "git add -- <included_paths only>",
+        ),
         ("checkpoints stay local", "**leave the commit local**"),
         ("never push autonomously", "never push on your own"),
-        ("the packet outranks the skill", "The served packet outranks this file"),
+        (
+            "the packet outranks the skill",
+            "The served packet outranks this file",
+        ),
     ] {
         assert!(
             SKILL.contains(marker),
