@@ -34149,13 +34149,13 @@
       "to_id": "56d44edf69fdfa63987c0569d22a37c3",
       "kind": "scenario_of",
       "truth_class": "asserted",
-      "status": "failing",
-      "criterion": "'Loom emits a nonblocking proof collision diagnostic' claims to be a scenario of 'Loom detects proof command collisions' but carries no aspect facet, so the completeness model cannot count it as one.",
+      "status": "passing",
+      "criterion": "'Loom emits a nonblocking proof collision diagnostic' is a fallback scenario of 'Loom detects proof command collisions': detection is the happy path, and warning-without-blocking is the reduced mode it falls back to rather than refusing the registration.",
       "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-13T13:41:20.375Z",
-      "updated_at": "2026-08-15T11:22:10.198Z"
+      "updated_at": "2026-08-15T11:54:32.824Z"
     },
     {
       "id": "a3954ee9b6861259b4a285129525fe65",
@@ -48843,12 +48843,12 @@
       "subject_kind": "edge",
       "subject_id": "a34d122daa2dcb6d3fa2a34653138f33",
       "claim": "verdict",
-      "state": "failing",
-      "criterion": "'Loom emits a nonblocking proof collision diagnostic' claims to be a scenario of 'Loom detects proof command collisions' but carries no aspect facet, so the completeness model cannot count it as one.",
+      "state": "passing",
+      "criterion": "'Loom emits a nonblocking proof collision diagnostic' is a fallback scenario of 'Loom detects proof command collisions': detection is the happy path, and warning-without-blocking is the reduced mode it falls back to rather than refusing the registration.",
       "verification": "cited",
       "confidence": 0.85,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:22:10.196Z",
+      "asserted_at": "2026-08-15T11:54:32.823Z",
       "decision_mode": "individual"
     },
     {
@@ -79687,6 +79687,36 @@
       "recorded_at": "2026-08-15T10:30:43.605Z"
     },
     {
+      "id": "e229e6012a4a899f4",
+      "fact_id": "fb6b30084bf253041",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/proof_cmd.rs",
+        "start": 799,
+        "end": 800,
+        "hash": "f22fe20212a1f47e",
+        "symbol": "warn_if_command_already_proves_another",
+        "symbol_hash": "4ec5e9fc41086702",
+        "symbol_offset": 36
+      },
+      "recorded_at": "2026-08-15T11:54:32.823Z"
+    },
+    {
+      "id": "e6a1ab449a7529f4f",
+      "fact_id": "fb6b30084bf253041",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/proof_cmd.rs",
+        "start": 773,
+        "end": 786,
+        "hash": "ed74b82dcfe457ab",
+        "symbol": "warn_if_command_already_proves_another",
+        "symbol_hash": "4ec5e9fc41086702",
+        "symbol_offset": 10
+      },
+      "recorded_at": "2026-08-15T11:54:32.823Z"
+    },
+    {
       "id": "e75a667a01a3d4d9b",
       "fact_id": "fb6b30084bf253041",
       "payload": {
@@ -79699,16 +79729,16 @@
         "symbol_hash": "62130107c0fdd74c",
         "symbol_offset": 32
       },
-      "recorded_at": "2026-08-15T11:22:10.196Z"
+      "recorded_at": "2026-08-15T11:54:32.823Z"
     },
     {
-      "id": "eff91bf84204c8255",
+      "id": "e9d0ffc2dda854e51",
       "fact_id": "fb6b30084bf253041",
       "payload": {
         "kind": "claim",
-        "text": "loom intent show 'Loom emits a nonblocking proof collision diagnostic' reports aspect=None; src/completeness.rs:819 only records a family member's aspect when get_facet(member,'aspect') returns a value, so this ScenarioOf edge contributes nothing to the parent's scenarios axis at :824-828. The edge asserts a relationship the axis cannot see."
+        "text": "the child now carries aspect=fallback (human decision this session), so src/completeness.rs:819 records it and :824-828 counts it toward the parent scenarios axis. The behavior is realized at src/commands/proof_cmd.rs:799-800, where warn_if_command_already_proves_another calls collision.warn() and still returns Ok, leaving the registration valid; the parent detection half is the prior_behaviors lookup at src/commands/proof_cmd.rs:773-786."
       },
-      "recorded_at": "2026-08-15T11:22:10.196Z"
+      "recorded_at": "2026-08-15T11:54:32.823Z"
     },
     {
       "id": "e04a1acd92c3091f2",
@@ -97066,6 +97096,13 @@
     {
       "target_id": "284ec4b8f0ae2be0374d73fb6f947ebb",
       "target_kind": "node",
+      "key": "aspect",
+      "value": "fallback",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "284ec4b8f0ae2be0374d73fb6f947ebb",
+      "target_kind": "node",
       "key": "de_facto",
       "value": "{\"demonstrated_in\":\"src/commands/proof_cmd.rs\",\"proven_by\":\"journey:duplicate-command-warn:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
@@ -106839,7 +106876,7 @@
       "target_id": "a34d122daa2dcb6d3fa2a34653138f33",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/completeness.rs\",\"start\":819,\"end\":819,\"hash\":\"346a4be3a242632a\",\"symbol\":\"scenarios_axis\",\"symbol_hash\":\"62130107c0fdd74c\",\"symbol_offset\":32}]",
+      "value": "[{\"file\":\"src/completeness.rs\",\"start\":819,\"end\":819,\"hash\":\"346a4be3a242632a\",\"symbol\":\"scenarios_axis\",\"symbol_hash\":\"62130107c0fdd74c\",\"symbol_offset\":32},{\"file\":\"src/commands/proof_cmd.rs\",\"start\":799,\"end\":800,\"hash\":\"f22fe20212a1f47e\",\"symbol\":\"warn_if_command_already_proves_another\",\"symbol_hash\":\"4ec5e9fc41086702\",\"symbol_offset\":36},{\"file\":\"src/commands/proof_cmd.rs\",\"start\":773,\"end\":786,\"hash\":\"ed74b82dcfe457ab\",\"symbol\":\"warn_if_command_already_proves_another\",\"symbol_hash\":\"4ec5e9fc41086702\",\"symbol_offset\":10}]",
       "truth_class": "asserted"
     },
     {
