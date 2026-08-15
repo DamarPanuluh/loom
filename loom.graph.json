@@ -29597,13 +29597,13 @@
       "to_id": "10a8c9994a8bcfdc654d83a5d5b6ee7a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "failing",
-      "criterion": "the grounding is correct but unverifiable: this behavior is realized by prose in skills/loom-driver/SKILL.md, and loom Implements floor can only certify a resolvable code symbol.",
-      "confidence": 0.8,
+      "status": "passing",
+      "criterion": "a human-gated packet met mid-drain is deferred and never answered: the driver neither works it nor blocks on it, and records a question or judgment proposal instead of supplying a decision.",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-15T07:45:19.048Z",
-      "updated_at": "2026-08-15T11:29:58.364Z"
+      "updated_at": "2026-08-15T11:52:29.788Z"
     },
     {
       "id": "21ad6edd9512df508af099bdcb16e17f",
@@ -31380,13 +31380,13 @@
       "to_id": "10a8c9994a8bcfdc654d83a5d5b6ee7a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "failing",
-      "criterion": "the grounding is correct but unverifiable: the skill behavior is realized by prose in skills/loom-driver/SKILL.md, and the Implements floor can only certify a resolvable code symbol.",
-      "confidence": 0.8,
+      "status": "passing",
+      "criterion": "the loom-driver skill behavior is realized by the normative rules written in skills/loom-driver/SKILL.md: orient, choose seeding or draining, drain the autonomous lanes packet by packet, batch the human-gated remainder into one sitting, checkpoint and export, and end with a before/after ladder report.",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-15T07:30:49.545Z",
-      "updated_at": "2026-08-15T11:39:25.167Z"
+      "updated_at": "2026-08-15T11:52:11.896Z"
     },
     {
       "id": "530eeb479d3e6960ea73852b550d510e",
@@ -32292,13 +32292,13 @@
       "to_id": "10a8c9994a8bcfdc654d83a5d5b6ee7a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "failing",
-      "criterion": "the grounding is correct but unverifiable: this behavior is realized by prose in skills/loom-driver/SKILL.md, and loom Implements floor can only certify a resolvable code symbol.",
-      "confidence": 0.8,
+      "status": "passing",
+      "criterion": "an absent human at the end sitting receives a printed remainder rather than an inferred answer: the driver records no question answer, ratification, or judgment confirmation.",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-15T07:45:23.074Z",
-      "updated_at": "2026-08-15T11:29:58.383Z"
+      "updated_at": "2026-08-15T11:52:29.801Z"
     },
     {
       "id": "6f6e1ca89a60ecfcf9aef44b92a993b8",
@@ -41625,13 +41625,13 @@
       "to_id": "10a8c9994a8bcfdc654d83a5d5b6ee7a",
       "kind": "implements",
       "truth_class": "asserted",
-      "status": "failing",
-      "criterion": "the grounding is correct but unverifiable: this behavior is realized by prose in skills/loom-driver/SKILL.md, and loom Implements floor can only certify a resolvable code symbol.",
-      "confidence": 0.8,
+      "status": "passing",
+      "criterion": "a cold graph ends the campaign: the skill reports the cold state, points at the interactive seeding path, and forbids authoring product meaning in batch mode.",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-15T07:45:14.583Z",
-      "updated_at": "2026-08-15T11:29:58.397Z"
+      "updated_at": "2026-08-15T11:52:29.775Z"
     },
     {
       "id": "f273d682bd9530d2a004d87b61cffef9",
@@ -45842,12 +45842,12 @@
       "subject_kind": "edge",
       "subject_id": "213360f77a498479c024957ca706f19d",
       "claim": "verdict",
-      "state": "failing",
-      "criterion": "the grounding is correct but unverifiable: this behavior is realized by prose in skills/loom-driver/SKILL.md, and loom Implements floor can only certify a resolvable code symbol.",
+      "state": "passing",
+      "criterion": "a human-gated packet met mid-drain is deferred and never answered: the driver neither works it nor blocks on it, and records a question or judgment proposal instead of supplying a decision.",
       "verification": "cited",
-      "confidence": 0.8,
+      "confidence": 0.85,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:29:58.361Z",
+      "asserted_at": "2026-08-15T11:52:29.787Z",
       "decision_mode": "individual"
     },
     {
@@ -47421,12 +47421,12 @@
       "subject_kind": "edge",
       "subject_id": "f2006b92904de3f40d8c209ae5ad6963",
       "claim": "verdict",
-      "state": "failing",
-      "criterion": "the grounding is correct but unverifiable: this behavior is realized by prose in skills/loom-driver/SKILL.md, and loom Implements floor can only certify a resolvable code symbol.",
+      "state": "passing",
+      "criterion": "a cold graph ends the campaign: the skill reports the cold state, points at the interactive seeding path, and forbids authoring product meaning in batch mode.",
       "verification": "cited",
-      "confidence": 0.8,
+      "confidence": 0.85,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:29:58.396Z",
+      "asserted_at": "2026-08-15T11:52:29.772Z",
       "decision_mode": "individual"
     },
     {
@@ -49838,12 +49838,12 @@
       "subject_kind": "edge",
       "subject_id": "6f604002d330b2df1380f4b0ad045caa",
       "claim": "verdict",
-      "state": "failing",
-      "criterion": "the grounding is correct but unverifiable: this behavior is realized by prose in skills/loom-driver/SKILL.md, and loom Implements floor can only certify a resolvable code symbol.",
+      "state": "passing",
+      "criterion": "an absent human at the end sitting receives a printed remainder rather than an inferred answer: the driver records no question answer, ratification, or judgment confirmation.",
       "verification": "cited",
-      "confidence": 0.8,
+      "confidence": 0.85,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:29:58.381Z",
+      "asserted_at": "2026-08-15T11:52:29.800Z",
       "decision_mode": "individual"
     },
     {
@@ -51227,6 +51227,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "ff0c73532e866d529",
+      "subject_kind": "node",
+      "subject_id": "e99fd4eb7afe445327515340441b8a9b",
+      "claim": "adjudication",
+      "state": "rejected",
+      "criterion": "false positive — I mistook my own bad evidence for a model limitation. The Implements floor is Verification::Cited, not \"a resolvable code symbol\": it wants a span in a file realizing the endpoint. My rejected attempts cited src/anchor.rs, not the realizing file. Citing spans in the prose itself satisfies it, and all four SKILL.md groundings are now passing.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T11:52:50.954Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "ff0cb853592a3f7c2",
       "subject_kind": "edge",
       "subject_id": "f4a1c6ff882ffa288502a8b0edccf747",
@@ -51585,12 +51598,12 @@
       "subject_kind": "edge",
       "subject_id": "52d78fcec992d2678cdb8d0e3d46551f",
       "claim": "verdict",
-      "state": "failing",
-      "criterion": "the grounding is correct but unverifiable: the skill behavior is realized by prose in skills/loom-driver/SKILL.md, and the Implements floor can only certify a resolvable code symbol.",
+      "state": "passing",
+      "criterion": "the loom-driver skill behavior is realized by the normative rules written in skills/loom-driver/SKILL.md: orient, choose seeding or draining, drain the autonomous lanes packet by packet, batch the human-gated remainder into one sitting, checkpoint and export, and end with a before/after ladder report.",
       "verification": "cited",
-      "confidence": 0.8,
+      "confidence": 0.85,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:39:25.166Z",
+      "asserted_at": "2026-08-15T11:52:11.893Z",
       "decision_mode": "individual"
     },
     {
@@ -67973,28 +67986,25 @@
       "recorded_at": "2026-08-14T22:26:22.225Z"
     },
     {
-      "id": "e17e753b29b5767a9",
+      "id": "e3159044f471d6267",
       "fact_id": "f63c636ed906bd159",
       "payload": {
         "kind": "span",
-        "file": "src/anchor.rs",
-        "start": 148,
-        "end": 150,
-        "hash": "8981251c6e291c35",
-        "symbol": "verdict_floor",
-        "symbol_hash": "132832f60a28d3e7",
-        "symbol_offset": 29
+        "file": "skills/loom-driver/SKILL.md",
+        "start": 64,
+        "end": 66,
+        "hash": "d24b10fe113ae23b"
       },
-      "recorded_at": "2026-08-15T11:29:58.361Z"
+      "recorded_at": "2026-08-15T11:52:29.787Z"
     },
     {
-      "id": "e55cb7887832b9417",
+      "id": "eb4649078f43f0af6",
       "fact_id": "f63c636ed906bd159",
       "payload": {
         "kind": "claim",
-        "text": "loom codefile show skills/loom-driver/SKILL.md reports language=other, symbol_count=0, so no locator can resolve; src/anchor.rs:148-150 sets the Implements/Realizes floor to CURRENT_GROUNDING requiring a symbol that performs the behavior, and the ground verdict is refused with \"passing needs cited evidence but this is only claimed\". Recorded as finding e99fd4eb — the edge points at the right file, the model has no way to certify prose."
+        "text": "skills/loom-driver/SKILL.md:64-66 defines a gated packet as mode ratify, a non-null human_gate, or an ask-and-WAIT contract and says \"do not work it and do not wait on it\"; :69-70 states the wait happens at the end, batched, not mid-drain; :102-111 routes a product decision to loom question add and a ratify candidate to loom judgment propose, closing with \"Silence is never an answer.\""
       },
-      "recorded_at": "2026-08-15T11:29:58.361Z"
+      "recorded_at": "2026-08-15T11:52:29.787Z"
     },
     {
       "id": "e3e0db61c6cfded9f",
@@ -74319,28 +74329,25 @@
       "recorded_at": "2026-08-15T11:33:04.908Z"
     },
     {
-      "id": "e5a73049a5764ed95",
+      "id": "e4993c1d4c038bc2c",
       "fact_id": "f918cabf4ad0934b7",
       "payload": {
         "kind": "claim",
-        "text": "loom codefile show skills/loom-driver/SKILL.md reports language=other, symbol_count=0, so no locator can resolve; src/anchor.rs:148-150 sets the Implements/Realizes floor to CURRENT_GROUNDING requiring a symbol that performs the behavior, and the ground verdict is refused with \"passing needs cited evidence but this is only claimed\". Recorded as finding e99fd4eb — the edge points at the right file, the model has no way to certify prose."
+        "text": "skills/loom-driver/SKILL.md:45-46 opens \"Cold graph — no authored Journey roots, nothing routed: stop early, honestly\"; :46-49 directs the reader to loom bootstrap suggest and to the interactive seeding path (/grill-with-loom) and to re-invoke once the graph routes work; :50 states \"Grill seeds; driver drains. Do not author product meaning in batch mode.\""
       },
-      "recorded_at": "2026-08-15T11:29:58.396Z"
+      "recorded_at": "2026-08-15T11:52:29.772Z"
     },
     {
-      "id": "e7f4076e69842a2b3",
+      "id": "e649b9f9fe7c492d8",
       "fact_id": "f918cabf4ad0934b7",
       "payload": {
         "kind": "span",
-        "file": "src/anchor.rs",
-        "start": 148,
-        "end": 150,
-        "hash": "8981251c6e291c35",
-        "symbol": "verdict_floor",
-        "symbol_hash": "132832f60a28d3e7",
-        "symbol_offset": 29
+        "file": "skills/loom-driver/SKILL.md",
+        "start": 45,
+        "end": 46,
+        "hash": "c91ae1982fba38d8"
       },
-      "recorded_at": "2026-08-15T11:29:58.396Z"
+      "recorded_at": "2026-08-15T11:52:29.772Z"
     },
     {
       "id": "e8a83cbf36d8bf1cd",
@@ -84275,28 +84282,25 @@
       "recorded_at": "2026-08-13T13:45:44.603Z"
     },
     {
-      "id": "eb2deaafd7288f7dd",
+      "id": "e661b7c04312f94c9",
       "fact_id": "fccc28a35658f770c",
       "payload": {
         "kind": "claim",
-        "text": "loom codefile show skills/loom-driver/SKILL.md reports language=other, symbol_count=0, so no locator can resolve; src/anchor.rs:148-150 sets the Implements/Realizes floor to CURRENT_GROUNDING requiring a symbol that performs the behavior, and the ground verdict is refused with \"passing needs cited evidence but this is only claimed\". Recorded as finding e99fd4eb — the edge points at the right file, the model has no way to certify prose."
+        "text": "skills/loom-driver/SKILL.md:149-150 states \"If the human is absent, do not wait and do not infer: print the remainder with the exact command for each item, and exit\"; :144-147 confines the mediated write-backs (loom question answer, loom judgment confirm, ratify packets) to the present-human branch and forbids paraphrasing an answer into the gate."
       },
-      "recorded_at": "2026-08-15T11:29:58.381Z"
+      "recorded_at": "2026-08-15T11:52:29.800Z"
     },
     {
-      "id": "edf0bd53fe7d07e1b",
+      "id": "ea632dad2357dc1bf",
       "fact_id": "fccc28a35658f770c",
       "payload": {
         "kind": "span",
-        "file": "src/anchor.rs",
-        "start": 148,
+        "file": "skills/loom-driver/SKILL.md",
+        "start": 149,
         "end": 150,
-        "hash": "8981251c6e291c35",
-        "symbol": "verdict_floor",
-        "symbol_hash": "132832f60a28d3e7",
-        "symbol_offset": 29
+        "hash": "7ca92aaface0155d"
       },
-      "recorded_at": "2026-08-15T11:29:58.381Z"
+      "recorded_at": "2026-08-15T11:52:29.800Z"
     },
     {
       "id": "ea833a0653c222126",
@@ -91190,6 +91194,29 @@
       "recorded_at": "2026-08-14T23:17:08.058Z"
     },
     {
+      "id": "ea3324ee961f681e8",
+      "fact_id": "ff0c73532e866d529",
+      "payload": {
+        "kind": "claim",
+        "text": "src/anchor.rs:234 defines CURRENT_GROUNDING as Verification::Cited; edges 52d78fce, f2006b92, 213360f7 and 6f604002 all recorded passing once their evidence cited skills/loom-driver/SKILL.md line spans (:45-50 cold-graph stop, :64-70 and :102-111 gate deferral, :149-150 absent-human remainder, :34-154 the whole campaign protocol) instead of citing anchor.rs. loom codefile show reporting symbol_count=0 never blocked the verdict."
+      },
+      "recorded_at": "2026-08-15T11:52:50.954Z"
+    },
+    {
+      "id": "ebe5157d6f594f8c4",
+      "fact_id": "ff0c73532e866d529",
+      "payload": {
+        "kind": "span",
+        "file": "src/anchor.rs",
+        "start": 234,
+        "end": 234,
+        "hash": "4b16448f64577752",
+        "symbol": "CURRENT_GROUNDING",
+        "symbol_hash": "4b16448f64577752"
+      },
+      "recorded_at": "2026-08-15T11:52:50.954Z"
+    },
+    {
       "id": "e3acbde12947782a5",
       "fact_id": "ff0cb853592a3f7c2",
       "payload": {
@@ -92416,28 +92443,26 @@
       "recorded_at": "2026-08-14T10:54:59.612Z"
     },
     {
-      "id": "e9edd41004aaa76c5",
-      "fact_id": "ffa921ecabdfe4bd1",
-      "payload": {
-        "kind": "span",
-        "file": "src/anchor.rs",
-        "start": 148,
-        "end": 150,
-        "hash": "8981251c6e291c35",
-        "symbol": "verdict_floor",
-        "symbol_hash": "132832f60a28d3e7",
-        "symbol_offset": 29
-      },
-      "recorded_at": "2026-08-15T11:39:25.166Z"
-    },
-    {
-      "id": "ee89da2bbf873e9b9",
+      "id": "e55b2d02d88c3502c",
       "fact_id": "ffa921ecabdfe4bd1",
       "payload": {
         "kind": "claim",
-        "text": "loom codefile show skills/loom-driver/SKILL.md reports language=other, symbol_count=0, so no locator can resolve; src/anchor.rs:148-150 sets the Implements/Realizes floor to CURRENT_GROUNDING requiring a symbol that performs the behavior. Same cause as edges 213360f7, 6f604002 and f2006b92, recorded as finding e99fd4eb."
+        "text": "skills/loom-driver/SKILL.md:34-41 is the Orient step; :43-52 chooses cold-graph stop versus warm-graph drain; :54-81 is the packet-by-packet drain loop with the lane list at :80-81; :102-111 defers human gates without answering them; :113-126 bounds checkpoints to exact included paths and forbids pushing; :128-154 is the one end sitting and the before/after report; :152-154 states the one-shot rule."
       },
-      "recorded_at": "2026-08-15T11:39:25.166Z"
+      "recorded_at": "2026-08-15T11:52:11.893Z"
+    },
+    {
+      "id": "e9a89337def3ab47b",
+      "fact_id": "ffa921ecabdfe4bd1",
+      "payload": {
+        "kind": "span",
+        "file": "skills/loom-driver/SKILL.md",
+        "start": 34,
+        "end": 41,
+        "hash": "e4dd448280e33614",
+        "file_hash": "41cf3cf3f98e8c6f"
+      },
+      "recorded_at": "2026-08-15T11:52:11.893Z"
     },
     {
       "id": "e4126cbcec0c46fe3",
@@ -94886,7 +94911,7 @@
       "target_id": "0d0cfe4a0497a60b7f286d64d8a7723b",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"loom-driver SKILL.md asserts the grilled decisions, the lane list, and the push prohibition\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"skills/loom-driver/SKILL.md\",\"proven_by\":\"loom-driver SKILL.md asserts the grilled decisions, the lane list, and the push prohibition\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -95992,7 +96017,7 @@
       "target_id": "197dfd42886e121e6ca822065e390648",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"a gated packet is neither worked nor waited on mid-drain\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"skills/loom-driver/SKILL.md\",\"proven_by\":\"a gated packet is neither worked nor waited on mid-drain\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -96601,7 +96626,7 @@
       "target_id": "213360f77a498479c024957ca706f19d",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/anchor.rs\",\"start\":148,\"end\":150,\"hash\":\"8981251c6e291c35\",\"symbol\":\"verdict_floor\",\"symbol_hash\":\"132832f60a28d3e7\",\"symbol_offset\":29}]",
+      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":64,\"end\":66,\"hash\":\"d24b10fe113ae23b\"}]",
       "truth_class": "asserted"
     },
     {
@@ -99982,7 +100007,7 @@
       "target_id": "52d78fcec992d2678cdb8d0e3d46551f",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/anchor.rs\",\"start\":148,\"end\":150,\"hash\":\"8981251c6e291c35\",\"symbol\":\"verdict_floor\",\"symbol_hash\":\"132832f60a28d3e7\",\"symbol_offset\":29}]",
+      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":34,\"end\":41,\"hash\":\"e4dd448280e33614\"}]",
       "truth_class": "asserted"
     },
     {
@@ -100717,7 +100742,7 @@
       "target_id": "5af569f41f427877527d689962c05645",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"an absent human gets each item printed with its exact command\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"skills/loom-driver/SKILL.md\",\"proven_by\":\"an absent human gets each item printed with its exact command\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -102460,7 +102485,7 @@
       "target_id": "6f604002d330b2df1380f4b0ad045caa",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/anchor.rs\",\"start\":148,\"end\":150,\"hash\":\"8981251c6e291c35\",\"symbol\":\"verdict_floor\",\"symbol_hash\":\"132832f60a28d3e7\",\"symbol_offset\":29}]",
+      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":149,\"end\":150,\"hash\":\"7ca92aaface0155d\"}]",
       "truth_class": "asserted"
     },
     {
@@ -109201,7 +109226,7 @@
       "target_id": "c396233636e7827e497151e71108da91",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"the cold path stops the campaign and hands back to seeding\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"skills/loom-driver/SKILL.md\",\"proven_by\":\"the cold path stops the campaign and hands back to seeding\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -112936,6 +112961,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "e99fd4eb7afe445327515340441b8a9b",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T11:52:50.955Z\",\"hash\":\"e392ad414cbe8680\",\"metric\":100}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "e9d50d0cd0bf05a25e88f5ffa278cf8e",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -113653,7 +113685,7 @@
       "target_id": "f2006b92904de3f40d8c209ae5ad6963",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/anchor.rs\",\"start\":148,\"end\":150,\"hash\":\"8981251c6e291c35\",\"symbol\":\"verdict_floor\",\"symbol_hash\":\"132832f60a28d3e7\",\"symbol_offset\":29}]",
+      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":45,\"end\":46,\"hash\":\"c91ae1982fba38d8\"}]",
       "truth_class": "asserted"
     },
     {
