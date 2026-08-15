@@ -8609,6 +8609,24 @@
       "updated_at": "2026-08-13T13:45:16.370Z"
     },
     {
+      "id": "6eeb5dc4a7f4a151fbe2b02e65039ddc",
+      "type": "finding",
+      "name": "The installed pre-push hook can fail a push with SIGPIPE after its own gate passes",
+      "description": "A developer sees a push fail with no failing check named, on a repository whose gate is green. loom installs this hook, so every consumer repository inherits the same failure mode; the natural response is to distrust the gate or bypass it habitually, which defeats the point of having it.",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.9,
+        "evidence": "scripts/local-ci.sh runs under 'set -euo pipefail' and never reads stdin, while git writes the ref list to a pre-push hook's stdin. Two pushes on a quiet machine exited 141 (SIGPIPE) after the hook printed 'dogfood: OK — cold-import integrity only'; running 'bash scripts/local-ci.sh' directly on the same commit e1e7616 exited 0. Pushing with --no-verify then succeeded immediately (5c155f2..e1e7616).",
+        "file": "scripts/local-ci.sh",
+        "impact": "A developer sees a push fail with no failing check named, on a repository whose gate is green. loom installs this hook, so every consumer repository inherits the same failure mode; the natural response is to distrust the gate or bypass it habitually, which defeats the point of having it.",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-15T02:01:23.065Z",
+      "updated_at": "2026-08-15T02:01:23.065Z"
+    },
+    {
       "id": "6f018b016b357d2fcf3a659e00f360e8",
       "type": "note",
       "name": "note:ratify",
