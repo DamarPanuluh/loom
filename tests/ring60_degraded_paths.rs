@@ -76,3 +76,126 @@ fn a_push_needs_a_current_decision_bound_to_the_exact_commit() {
         );
     }
 }
+
+fn json_cli(root: &std::path::Path, args: &[&str]) -> (bool, serde_json::Value, String) {
+    let output = loom_command()
+        .arg("--graph")
+        .arg(root)
+        .args(args)
+        .output()
+        .expect("spawn loom");
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let value = serde_json::from_str(&stdout).unwrap_or(serde_json::Value::Null);
+    (output.status.success(), value, format!("{stdout}{stderr}"))
+}
+
+/// Seed a graph and release the write lock, so the spawned CLI can take it.
+fn intent_fixture(tmp: &Tmp, names: &[&str]) {
+    let store = loom::store::Store::init(tmp.path(), Some("t"), false).unwrap();
+    for name in names {
+        store
+            .add_node(
+                loom::model::NodeType::Intent,
+                name,
+                "",
+                "",
+                serde_json::json!({ "level": "feature" }),
+            )
+            .unwrap();
+    }
+    drop(store);
+}
+
+#[test]
+fn an_offset_past_the_end_returns_an_empty_page_with_no_continuation() {
+    let tmp = Tmp::new();
+    intent_fixture(&tmp, &["alpha", "beta", "gamma"]);
+
+    let (ok, page, raw) = json_cli(tmp.path(), &["intent", "list", "--offset", "0", "--json"]);
+    assert!(ok, "{raw}");
+    let total = page["pagination"]["total"].as_u64().expect("total");
+    assert_eq!(total, 3);
+
+    let past = (total + 50).to_string();
+    let (ok, page, raw) = json_cli(
+        tmp.path(),
+        &["intent", "list", "--offset", &past, "--json"],
+    );
+    assert!(ok, "an offset past the end is not an error: {raw}");
+    assert_eq!(page["items"].as_array().unwrap().len(), 0);
+    assert_eq!(page["pagination"]["returned"], 0);
+    assert_eq!(page["pagination"]["has_more"], false);
+    assert!(
+        page["pagination"]["next_offset"].is_null(),
+        "a page past the end must not offer a continuation: {page}"
+    );
+    assert_eq!(page["pagination"]["total"], total);
+}
+
+#[test]
+fn an_ambiguous_behavior_name_is_refused_rather_than_resolved_to_a_guess() {
+    let tmp = Tmp::new();
+    // Two active nodes carrying the exact same name.
+    intent_fixture(&tmp, &["twin", "twin", "unique"]);
+
+    let (ok, _v, raw) = json_cli(tmp.path(), &["intent", "show", "twin", "--json"]);
+    assert!(!ok, "an ambiguous exact name must not resolve: {raw}");
+    assert!(
+        raw.contains("ambiguous"),
+        "the refusal must say the name is ambiguous: {raw}"
+    );
+    assert!(
+        raw.contains('2'),
+        "the refusal must name how many nodes collide: {raw}"
+    );
+
+    // The unambiguous sibling still resolves, so the refusal is about the
+    // collision and not about lookup being broken.
+    let (ok, value, raw) = json_cli(tmp.path(), &["intent", "show", "unique", "--json"]);
+    assert!(ok, "{raw}");
+    assert_eq!(value["name"], "unique");
+}
+
+#[test]
+fn attesting_a_burst_that_does_not_exist_is_refused_before_any_human_seal() {
+    let tmp = Tmp::new();
+    intent_fixture(&tmp, &["alpha"]);
+
+    // Every other argument is supplied and well formed, so the only thing that
+    // can refuse this is the burst check itself.
+    let (ok, _v, raw) = json_cli(
+        tmp.path(),
+        &[
+            "audit",
+            "attest-burst",
+            "llm:analyzer@2026-08-15T00:00",
+            "--claim",
+            "adjudication",
+            "--criterion",
+            "host-mediated",
+            "--evidence",
+            "a table of judgments reviewed in the host conversation",
+            "--authority",
+            "human",
+            "--executor",
+            "llm:analyzer",
+            "--json",
+        ],
+    );
+    assert!(!ok, "attesting a nonexistent burst must fail: {raw}");
+    assert!(
+        raw.contains("no live judgment burst"),
+        "the refusal must name the missing burst: {raw}"
+    );
+    assert!(
+        raw.contains("found 0"),
+        "the refusal must report the count it actually found: {raw}"
+    );
+    // The human sealing challenge is never reached, so no authorization
+    // envelope may exist afterwards.
+    assert!(
+        !raw.contains("sealed"),
+        "no seal may be recorded for a burst that does not exist: {raw}"
+    );
+}
