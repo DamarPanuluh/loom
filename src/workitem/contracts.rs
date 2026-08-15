@@ -1288,8 +1288,24 @@ pub(super) fn inbox_triage_contract(id: &str) -> PromptContract {
 /// The deepen contract. Unlike every other lane, this one does not close a gap
 /// — it raises a floor that is already met, so the stop condition is a single
 /// move rather than an empty queue.
-pub(super) fn deepen_contract(id: &str, name: &str, next_move: &str) -> PromptContract {
+/// The deepen contract.
+///
+/// Whether the move can raise a grade decides what this contract may demand.
+/// `FreezeBaseline` is the move at S3, and S3 is the highest grade
+/// `proofstrength` assigns (see the comment at src/proofstrength.rs:1653), so
+/// asking for "a grade higher than the current one" as *acceptance criteria*
+/// asks for something no correct move can produce. `required_evidence` and
+/// `evidence_clauses` are the contract's acceptance criteria, not prose — a
+/// worker satisfying them literally cannot, and anything consuming the clauses
+/// programmatically inherits the impossible demand.
+pub(super) fn deepen_contract(
+    id: &str,
+    name: &str,
+    next_move: crate::risk::Move,
+) -> PromptContract {
     let name = q(name);
+    let raises_grade = next_move != crate::risk::Move::FreezeBaseline;
+    let next_move = next_move.as_str();
     PromptContract {
         role: "validator".into(),
         mindset: "This behavior is already green. You are not fixing it — you are making \
@@ -1315,10 +1331,22 @@ pub(super) fn deepen_contract(id: &str, name: &str, next_move: &str) -> PromptCo
         evidence_clauses: vec![
             EvidenceClause::CitesRun,
             EvidenceClause::Produces {
-                what: "a proof grade higher than the current one".into(),
+                what: if raises_grade {
+                    "a proof grade higher than the current one".into()
+                } else {
+                    "a frozen baseline that replays, so a change in the shape of the \
+                     output is noticed"
+                        .into()
+                },
             },
         ],
-        required_evidence: "a proof loom ran, whose new grade is higher than the old one".into(),
+        required_evidence: if raises_grade {
+            "a proof loom ran, whose new grade is higher than the old one".into()
+        } else {
+            "a proof loom ran, and a baseline frozen from it — the grade will not move, \
+             because S3 is the highest grade currently assigned"
+                .to_string()
+        },
         evidence_template: None,
         examples: None,
         pre_screen: None,
@@ -1328,11 +1356,24 @@ pub(super) fn deepen_contract(id: &str, name: &str, next_move: &str) -> PromptCo
              loom validation add --intent {name} --name '<what it proves>' --type test \
              --command '<cmd>' then loom validation run <name>; or loom journey add <spec> \
              for the behavior; or loom journey freeze <journey> to pin the baseline. \
-             loom sync then re-grades the proof and re-ranks this queue"
+             {closing}",
+            closing = if raises_grade {
+                "loom sync then re-grades the proof and re-ranks this queue"
+            } else {
+                "loom sync then re-reads the proof, but the grade stays at S3 and this \
+                 item ranks first again — that is the ceiling, not your move failing"
+            }
         ),
-        stop_condition: "stop after ONE move — this queue re-ranks after every change, \
-                         and the next-most-important thing is probably no longer this one"
-            .into(),
+        stop_condition: if raises_grade {
+            "stop after ONE move — this queue re-ranks after every change, and the \
+             next-most-important thing is probably no longer this one"
+                .into()
+        } else {
+            "stop after ONE move — and expect this same item back: the baseline move \
+             cannot change the ranking, because the grade it would raise is already at \
+             its ceiling"
+                .to_string()
+        },
         human_gate: None,
     }
 }

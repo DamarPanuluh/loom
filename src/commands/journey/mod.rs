@@ -2389,18 +2389,24 @@ fn blocked_report(
 }
 
 fn emit_report(report: &crate::journey_runtime::RuntimeReport, json_output: bool) -> Result<()> {
-    emit_runtime_value(
-        serde_json::to_value(report)?,
-        json_output,
-        &format!(
-            "Journey '{}:{}' {} ({} assertion(s) passed, {} failed)",
-            report.journey_id,
-            report.profile,
-            report.status.as_str(),
-            report.assertions_passed,
-            report.assertions_failed
-        ),
-    )
+    // A blocked run carries its cause in `detail` — a missing declared
+    // environment variable, a stale temporal hash, a refused setup. Printing
+    // only the counts turns "blocked (0 passed, 0 failed)" into a dead end that
+    // sends the reader to --json to learn anything at all, and `diagnose` is
+    // exactly where an operator lands when something already went wrong.
+    let headline = format!(
+        "Journey '{}:{}' {} ({} assertion(s) passed, {} failed)",
+        report.journey_id,
+        report.profile,
+        report.status.as_str(),
+        report.assertions_passed,
+        report.assertions_failed
+    );
+    let text = match report.detail.as_deref().map(str::trim) {
+        Some(detail) if !detail.is_empty() => format!("{headline}\n  {detail}"),
+        _ => headline,
+    };
+    emit_runtime_value(serde_json::to_value(report)?, json_output, &text)
 }
 
 fn emit_runtime_value(value: Value, json_output: bool, text: &str) -> Result<()> {

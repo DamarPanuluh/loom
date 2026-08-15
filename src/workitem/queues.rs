@@ -1629,7 +1629,7 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
         reason: format!("'{}' is at {} — {}", n.name, c.proof_strength, c.why),
         target: node_target(&n),
         stale_causes: Vec::new(),
-        prompt_contract: super::contracts::deepen_contract(short, &n.name, c.next_move.as_str()),
+        prompt_contract: super::contracts::deepen_contract(short, &n.name, c.next_move),
         context: node_context(
             store,
             &n,
