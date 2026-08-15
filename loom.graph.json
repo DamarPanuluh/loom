@@ -11572,6 +11572,117 @@
       "updated_at": "2026-08-09T12:54:12.021Z"
     },
     {
+      "id": "854967cb52da2fde346dff466200b7b6",
+      "type": "interface_surface",
+      "name": "loom-pagination-intents",
+      "description": "Loom Intent pagination",
+      "status": "declared",
+      "truth_class": "asserted",
+      "body": {
+        "codefile": "src/commands/intent.rs",
+        "identity": "loom intent list",
+        "kind": "cli",
+        "locator": "intent_list",
+        "operations": [
+          {
+            "arguments": [],
+            "argv": [
+              "loom",
+              "intent",
+              "list",
+              "--limit",
+              "1",
+              "--offset",
+              "0",
+              "--json"
+            ],
+            "id": "request-first-page",
+            "output": {
+              "assertions": [
+                {
+                  "id": "first-page-row-is-deterministic",
+                  "matches": "^[0-9a-f]{32}$",
+                  "pointer": "/items/0/id",
+                  "type": "string"
+                },
+                {
+                  "contains": {
+                    "has_more": true,
+                    "limit": 1,
+                    "next_offset": 1,
+                    "offset": 0,
+                    "returned": 1
+                  },
+                  "id": "first-page-can-continue",
+                  "pointer": "/pagination",
+                  "type": "json"
+                },
+                {
+                  "id": "first-page-total-is-positive",
+                  "not_equals": 0,
+                  "pointer": "/pagination/total",
+                  "type": "integer"
+                }
+              ],
+              "format": "json"
+            },
+            "read_only": true,
+            "summary": "Request the deterministic first bounded Intent page"
+          },
+          {
+            "arguments": [],
+            "argv": [
+              "loom",
+              "intent",
+              "list",
+              "--limit",
+              "1",
+              "--offset",
+              "1000",
+              "--json"
+            ],
+            "id": "request-page-past-end",
+            "output": {
+              "assertions": [
+                {
+                  "equals": [],
+                  "id": "past-end-page-is-empty",
+                  "pointer": "/items",
+                  "type": "json"
+                },
+                {
+                  "contains": {
+                    "has_more": false,
+                    "limit": 1,
+                    "next_offset": null,
+                    "offset": 1000,
+                    "returned": 0
+                  },
+                  "id": "past-end-page-cannot-continue",
+                  "pointer": "/pagination",
+                  "type": "json"
+                },
+                {
+                  "id": "past-end-total-is-positive",
+                  "not_equals": 0,
+                  "pointer": "/pagination/total",
+                  "type": "integer"
+                }
+              ],
+              "format": "json"
+            },
+            "read_only": true,
+            "summary": "Request an Intent page beyond the final row"
+          }
+        ],
+        "schema": "loom.interface-surface/v1",
+        "stable_id": "loom-pagination-intents",
+        "title": "Loom Intent pagination"
+      },
+      "created_at": "2026-08-15T10:50:31.399Z",
+      "updated_at": "2026-08-15T10:50:31.399Z"
+    },
+    {
       "id": "854bfbd44a69480235350698b28d8890",
       "type": "note",
       "name": "note:ratify",
@@ -15758,117 +15869,6 @@
       "updated_at": "2026-08-13T13:27:17.282Z"
     },
     {
-      "id": "a333d43ac3a32219088fa61e6d088efa",
-      "type": "interface_surface",
-      "name": "loom-pagination-intents",
-      "description": "Loom Intent pagination",
-      "status": "declared",
-      "truth_class": "asserted",
-      "body": {
-        "codefile": "src/commands/intent.rs",
-        "identity": "loom intent list",
-        "kind": "cli",
-        "locator": "intent_list",
-        "operations": [
-          {
-            "arguments": [],
-            "argv": [
-              "loom",
-              "intent",
-              "list",
-              "--limit",
-              "1",
-              "--offset",
-              "0",
-              "--json"
-            ],
-            "id": "request-first-page",
-            "output": {
-              "assertions": [
-                {
-                  "id": "first-page-row-is-deterministic",
-                  "matches": "^[0-9a-f]{32}$",
-                  "pointer": "/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id",
-                  "type": "string"
-                },
-                {
-                  "contains": {
-                    "has_more": true,
-                    "limit": 1,
-                    "next_offset": 1,
-                    "offset": 0,
-                    "returned": 1
-                  },
-                  "id": "first-page-can-continue",
-                  "pointer": "/pagination",
-                  "type": "json"
-                },
-                {
-                  "id": "first-page-total-is-positive",
-                  "not_equals": 0,
-                  "pointer": "/pagination/total",
-                  "type": "integer"
-                }
-              ],
-              "format": "json"
-            },
-            "read_only": true,
-            "summary": "Request the deterministic first bounded Intent page"
-          },
-          {
-            "arguments": [],
-            "argv": [
-              "loom",
-              "intent",
-              "list",
-              "--limit",
-              "1",
-              "--offset",
-              "1000",
-              "--json"
-            ],
-            "id": "request-page-past-end",
-            "output": {
-              "assertions": [
-                {
-                  "equals": [],
-                  "id": "past-end-page-is-empty",
-                  "pointer": "/items",
-                  "type": "json"
-                },
-                {
-                  "contains": {
-                    "has_more": false,
-                    "limit": 1,
-                    "next_offset": null,
-                    "offset": 1000,
-                    "returned": 0
-                  },
-                  "id": "past-end-page-cannot-continue",
-                  "pointer": "/pagination",
-                  "type": "json"
-                },
-                {
-                  "id": "past-end-total-is-positive",
-                  "not_equals": 0,
-                  "pointer": "/pagination/total",
-                  "type": "integer"
-                }
-              ],
-              "format": "json"
-            },
-            "read_only": true,
-            "summary": "Request an Intent page beyond the final row"
-          }
-        ],
-        "schema": "loom.interface-surface/v1",
-        "stable_id": "loom-pagination-intents",
-        "title": "Loom Intent pagination"
-      },
-      "created_at": "2026-08-14T22:23:30.772Z",
-      "updated_at": "2026-08-14T22:23:30.772Z"
-    },
-    {
       "id": "a38a77d63b16c824379aeb3d8e8180df",
       "type": "validation",
       "name": "a gated packet is neither worked nor waited on mid-drain",
@@ -15992,6 +15992,24 @@
       },
       "created_at": "2026-08-13T05:06:24.919Z",
       "updated_at": "2026-08-13T05:06:24.919Z"
+    },
+    {
+      "id": "a5517942ec8a71c742bdf0ddaa92ba4b",
+      "type": "finding",
+      "name": "an accepted interface surface cannot be revised: surface-accept refuses any changed definition and surface update cannot touch operations, so fixing one mis-authored assertion requires deleting the surface and recreating it",
+      "description": "repairing the brittle pagination assertion (finding f26c6e6f) has no in-place path — the only route is loom surface remove, which cascades its exposes/calls edges, followed by a fresh surface-accept, so a one-character authoring fix becomes a destructive graph operation",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.9,
+        "evidence": "src/commands/domain_cmd.rs:610-618 matches an existing InterfaceSurface by stable_id and bails 'already exists with a conflicting definition' whenever surface.body != wanted_body, with no update branch; loom surface update only edits kind/identity and the exposed codefile, and loom surface show loom-pagination-intents confirms the assertion pointers live inside body.operations",
+        "file": "src/commands/domain_cmd.rs",
+        "impact": "repairing the brittle pagination assertion (finding f26c6e6f) has no in-place path — the only route is loom surface remove, which cascades its exposes/calls edges, followed by a fresh surface-accept, so a one-character authoring fix becomes a destructive graph operation",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-15T10:47:14.703Z",
+      "updated_at": "2026-08-15T10:47:14.703Z"
     },
     {
       "id": "a56b7bd65fc2de871f8c55586cd8e493",
@@ -19556,21 +19574,6 @@
       "updated_at": ""
     },
     {
-      "id": "d154c955ca86c419d",
-      "type": "finding",
-      "name": "user-visible intent 'An offset past the end returns an empty page with no continuation' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:10ba438c486686f5477d2831208644d3",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d15525d893e5f558f",
       "type": "finding",
       "name": "src/candidate_surface_policy.rs::inspect_surface is long",
@@ -22747,7 +22750,7 @@
     {
       "id": "d9d4f21448130c652",
       "type": "finding",
-      "name": "proof 'journey:pagination:proof' reported passed then failed over unchanged code for 'Loom emits canonical page continuation', 'Loom retrieves a deterministic bounded page' — its outcome does not depend only on the code it covers",
+      "name": "proof 'journey:pagination:proof' reported failed then passed over unchanged code for 'An offset past the end returns an empty page with no continuation', 'Loom emits canonical page continuation', 'Loom retrieves a deterministic bounded page' — its outcome does not depend only on the code it covers",
       "description": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
       "status": "unstable_proof",
       "truth_class": "derived",
@@ -22755,21 +22758,6 @@
         "category": "smell",
         "identity": "unstable_proof:e6fb4ab80e7128cf0b77f1c35ae22b16",
         "kind": "unstable_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d9d97924fbe0b6a48",
-      "type": "finding",
-      "name": "user-visible intent 'Loom retrieves a deterministic bounded page' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:eb045fffecb04e70441f507d1a9e29d7",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -23144,21 +23132,6 @@
         "kind": "large_symbol",
         "metric": 133,
         "symbol": "guide"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "dae01fad242c4f3ae",
-      "type": "finding",
-      "name": "user-visible intent 'Loom emits canonical page continuation' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:95074e5e7a28c226aeb7f096691ecb77",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -26601,17 +26574,17 @@
       "type": "validation",
       "name": "journey:pagination:proof",
       "description": "compiler-owned Journey proof profile",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "compiler_version": "6",
         "journey_hash": "c27cf7514665164b",
         "profile": "proof",
-        "surface_hash": "6e31a87850708b3c",
+        "surface_hash": "078e88ef011100f3",
         "type": "journey"
       },
       "created_at": "2026-08-11T16:48:41.922Z",
-      "updated_at": ""
+      "updated_at": "2026-08-15T10:50:37.373Z"
     },
     {
       "id": "e6ffd99fcef7728d3955a1add7b45343",
@@ -28451,6 +28424,20 @@
       "updated_at": "2026-08-14T11:55:27.790Z"
     },
     {
+      "id": "07a39a1a303665e3530e80e295a7cdce",
+      "from_id": "55da5dc7e0395cb75514e30e37978267",
+      "to_id": "854967cb52da2fde346dff466200b7b6",
+      "kind": "surfaces",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:50:31.401Z",
+      "updated_at": "2026-08-15T10:50:31.401Z"
+    },
+    {
       "id": "07a7703e39e8b333202187acca41f8bd",
       "from_id": "55da5dc7e0395cb75514e30e37978267",
       "to_id": "eb045fffecb04e70441f507d1a9e29d7",
@@ -28477,20 +28464,6 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:19.476Z",
       "updated_at": "2026-08-09T12:54:19.476Z"
-    },
-    {
-      "id": "081aa10d0812d6352043ebb4ca4b2b78",
-      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
-      "to_id": "a333d43ac3a32219088fa61e6d088efa",
-      "kind": "calls",
-      "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-15T10:31:42.130Z",
-      "updated_at": "2026-08-15T10:36:16.672Z"
     },
     {
       "id": "08252ab20e90703945bc8082b5f3d126",
@@ -29627,6 +29600,20 @@
       "updated_at": "2026-08-15T10:14:03.050Z"
     },
     {
+      "id": "21bb784166037fa05aa041820fbb594d",
+      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
+      "to_id": "edfc72be1bbfa6f144e8494da3ac387b",
+      "kind": "exercises",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T10:50:37.133Z",
+      "updated_at": "2026-08-15T10:50:37.370Z"
+    },
+    {
       "id": "2222e9fd850c63efc0dd31f17c2b5598",
       "from_id": "be0fe713b672af342bdf003d5d1ad51b",
       "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
@@ -29807,6 +29794,20 @@
       "inspected_by": "",
       "created_at": "2026-08-15T10:12:44.425Z",
       "updated_at": "2026-08-15T10:12:44.425Z"
+    },
+    {
+      "id": "2813c4985f2d36bf4c06702afe0f5495",
+      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
+      "to_id": "95074e5e7a28c226aeb7f096691ecb77",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T10:50:37.132Z",
+      "updated_at": "2026-08-15T10:50:37.367Z"
     },
     {
       "id": "288cb1cf0701f653767d475d9fff86de",
@@ -30663,6 +30664,20 @@
       "updated_at": "2026-08-14T22:21:41.065Z"
     },
     {
+      "id": "4183d94ca97c7d2efa4f7183a391f887",
+      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
+      "to_id": "eb045fffecb04e70441f507d1a9e29d7",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T10:50:37.132Z",
+      "updated_at": "2026-08-15T10:50:37.368Z"
+    },
+    {
       "id": "4228c81843336199ecb57181137ac831",
       "from_id": "843d184eac16bd40fd8235e1fe696dbe",
       "to_id": "51a4785c64e0347fe90d5b6a0a686f4e",
@@ -31321,20 +31336,6 @@
       "updated_at": "2026-08-09T12:54:20.356Z"
     },
     {
-      "id": "526ed6c76392080e4ff6b54770e114d5",
-      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
-      "to_id": "95074e5e7a28c226aeb7f096691ecb77",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-15T10:31:42.130Z",
-      "updated_at": "2026-08-15T10:36:16.672Z"
-    },
-    {
       "id": "52d3a8b8efa9f647cccb7a2836d61e38",
       "from_id": "f7dd52bbf037ec53a1ce74a33f276b0a",
       "to_id": "0727320f47b30fd3f14c7f67b7b69eb7",
@@ -31851,20 +31852,6 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T22:23:39.875Z",
       "updated_at": "2026-08-14T22:23:49.066Z"
-    },
-    {
-      "id": "5e25c88b4b611c6d2fafdc3566747b75",
-      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
-      "to_id": "eb045fffecb04e70441f507d1a9e29d7",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-15T10:31:42.130Z",
-      "updated_at": "2026-08-15T10:36:16.672Z"
     },
     {
       "id": "5e8f837e3387a2911052b787b526673b",
@@ -33055,6 +33042,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-15T10:12:47.107Z",
       "updated_at": "2026-08-15T10:31:15.567Z"
+    },
+    {
+      "id": "8490173f35a1466c3a82b43821b0d6bc",
+      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
+      "to_id": "10ba438c486686f5477d2831208644d3",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T10:50:37.132Z",
+      "updated_at": "2026-08-15T10:50:37.369Z"
     },
     {
       "id": "85e54b3fcf6c5176c6139b30aa644b88",
@@ -34317,6 +34318,20 @@
       "updated_at": "2026-08-09T12:54:19.645Z"
     },
     {
+      "id": "a8e8b863399a0da0d4efcfa0bd8598f7",
+      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
+      "to_id": "55da5dc7e0395cb75514e30e37978267",
+      "kind": "proves",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T10:50:37.131Z",
+      "updated_at": "2026-08-15T10:50:37.369Z"
+    },
+    {
       "id": "a8f43f1beecd0229b6b1e6fbb1a14b51",
       "from_id": "a8b68c190362615aa838dd237ffef8fa",
       "to_id": "d54387b358a615d705c6a53599b2daf6",
@@ -35099,20 +35114,6 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:49.163Z",
       "updated_at": "2026-08-14T06:58:20.813Z"
-    },
-    {
-      "id": "c405cd47f1243226a48b1a7951f35ce8",
-      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
-      "to_id": "10ba438c486686f5477d2831208644d3",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-15T10:31:42.129Z",
-      "updated_at": "2026-08-15T10:36:16.672Z"
     },
     {
       "id": "c432182bd4bf1a3d48bec08d5ebc65c4",
@@ -37257,6 +37258,20 @@
       "updated_at": ""
     },
     {
+      "id": "d5304145e7fd2b5539940e3b21d70746",
+      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
+      "to_id": "854967cb52da2fde346dff466200b7b6",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-15T10:50:37.132Z",
+      "updated_at": "2026-08-15T10:50:37.370Z"
+    },
+    {
       "id": "d543ee00daabb06e7",
       "from_id": "d2013a9e95e00a015",
       "to_id": "d105a1509d6314d8e",
@@ -37927,6 +37942,20 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d75c1a960d6527563e9eebc1cfcaf210",
+      "from_id": "854967cb52da2fde346dff466200b7b6",
+      "to_id": "edfc72be1bbfa6f144e8494da3ac387b",
+      "kind": "exposes",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:50:31.400Z",
+      "updated_at": "2026-08-15T10:50:31.400Z"
     },
     {
       "id": "d79210cb06af53834",
@@ -40967,20 +40996,6 @@
       "updated_at": "2026-08-14T23:17:43.041Z"
     },
     {
-      "id": "e174f85f6c444f5513d39d6136c9fc11",
-      "from_id": "55da5dc7e0395cb75514e30e37978267",
-      "to_id": "a333d43ac3a32219088fa61e6d088efa",
-      "kind": "surfaces",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T22:23:30.773Z",
-      "updated_at": "2026-08-14T22:23:30.773Z"
-    },
-    {
       "id": "e17f8b7300588d7a69188d2013077beb",
       "from_id": "b43ebe21b9940de95ad8ab1c67e459b5",
       "to_id": "7a8b815f9db0812b526f95194c1f4658",
@@ -41695,20 +41710,6 @@
       "updated_at": "2026-08-14T22:21:41.063Z"
     },
     {
-      "id": "f71bf6616a5cd8f3110a9039253e4beb",
-      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
-      "to_id": "edfc72be1bbfa6f144e8494da3ac387b",
-      "kind": "exercises",
-      "truth_class": "asserted",
-      "status": "failing",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-15T10:31:42.130Z",
-      "updated_at": "2026-08-15T10:36:15.976Z"
-    },
-    {
       "id": "f723b0f3c76c6ebbe1f4d73d0691e4ec",
       "from_id": "01d410d00647c2706fd0307318242787",
       "to_id": "eadc784f5dc511ddfce49ab33eba4f46",
@@ -41763,20 +41764,6 @@
       "inspected_by": "",
       "created_at": "2026-08-14T18:47:46.344Z",
       "updated_at": "2026-08-14T18:47:46.344Z"
-    },
-    {
-      "id": "f866a781868cb24d7befcb03357dc5d4",
-      "from_id": "a333d43ac3a32219088fa61e6d088efa",
-      "to_id": "edfc72be1bbfa6f144e8494da3ac387b",
-      "kind": "exposes",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-14T22:23:30.773Z",
-      "updated_at": "2026-08-14T22:23:30.773Z"
     },
     {
       "id": "f8740cd6c0444d99ba21b57897ad5a77",
@@ -41931,20 +41918,6 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T23:17:43.157Z",
       "updated_at": "2026-08-14T23:18:07.966Z"
-    },
-    {
-      "id": "fd4aeba7ef89bd338c43fee8941b8689",
-      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
-      "to_id": "55da5dc7e0395cb75514e30e37978267",
-      "kind": "proves",
-      "truth_class": "asserted",
-      "status": "needs_reverification",
-      "criterion": "compiled Journey profile",
-      "confidence": 1.0,
-      "depends_on": [],
-      "inspected_by": "loom",
-      "created_at": "2026-08-15T10:31:42.129Z",
-      "updated_at": "2026-08-15T10:36:16.671Z"
     },
     {
       "id": "fdc76a163965b431a4f27e6516813ac6",
@@ -44003,19 +43976,6 @@
       "decision_mode": "individual"
     },
     {
-      "id": "f56f94ba864643d58",
-      "subject_kind": "edge",
-      "subject_id": "f71bf6616a5cd8f3110a9039253e4beb",
-      "claim": "verdict",
-      "state": "failing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-15T10:36:15.976Z",
-      "decision_mode": "individual"
-    },
-    {
       "id": "f570c362d064a72be",
       "subject_kind": "edge",
       "subject_id": "1e3647c11a60d659904f06c936aec66b",
@@ -44910,7 +44870,7 @@
       "claim": "adjudication",
       "state": "blocked",
       "criterion": "repair requires re-authoring an accepted Journey surface manifest, which only the human can authorize through loom journey surface-accept. The pointer at journeys/surfaces/pagination.surface.json:39 must change from /items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id to a positional pointer so the generic ^[0-9a-f]{32}$ matcher at :38 asserts row shape rather than one graph content. Until then pagination:proof stays red and the proven rung stays blocked.",
-      "verification": "cited",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "llm:analyzer",
       "asserted_at": "2026-08-15T10:42:04.642Z",
@@ -44927,6 +44887,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T22:22:29.508Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f7e04e32a7a199be2",
+      "subject_kind": "edge",
+      "subject_id": "2813c4985f2d36bf4c06702afe0f5495",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T10:50:37.366Z",
       "decision_mode": "individual"
     },
     {
@@ -44979,19 +44952,6 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-15T07:46:04.272Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "f8132b7071ef312d4",
-      "subject_kind": "edge",
-      "subject_id": "5e25c88b4b611c6d2fafdc3566747b75",
-      "claim": "verdict",
-      "state": "failing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-15T10:36:15.974Z",
       "decision_mode": "individual"
     },
     {
@@ -45308,6 +45268,19 @@
       "confidence": 0.8,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T07:36:25.133Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f8e5149cb1c8d3de5",
+      "subject_kind": "edge",
+      "subject_id": "8490173f35a1466c3a82b43821b0d6bc",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T10:50:37.369Z",
       "decision_mode": "individual"
     },
     {
@@ -45801,19 +45774,6 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-13T13:45:47.522Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "fa228c9d4d4f8da21",
-      "subject_kind": "edge",
-      "subject_id": "081aa10d0812d6352043ebb4ca4b2b78",
-      "claim": "verdict",
-      "state": "failing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-15T10:36:15.976Z",
       "decision_mode": "individual"
     },
     {
@@ -46398,6 +46358,19 @@
       "batch_id": "1786627637130-7908-1"
     },
     {
+      "id": "fb9bcc1551364fa3b",
+      "subject_kind": "edge",
+      "subject_id": "d5304145e7fd2b5539940e3b21d70746",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T10:50:37.370Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fb9bd0372ae1cdd62",
       "subject_kind": "edge",
       "subject_id": "f028d2c3e4cf88b370690fbe8ec994ba",
@@ -46593,19 +46566,6 @@
       "decision_mode": "individual"
     },
     {
-      "id": "fbd64435195070ab2",
-      "subject_kind": "edge",
-      "subject_id": "c405cd47f1243226a48b1a7951f35ce8",
-      "claim": "verdict",
-      "state": "failing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-15T10:36:15.974Z",
-      "decision_mode": "individual"
-    },
-    {
       "id": "fbdde41559dc65b33",
       "subject_kind": "edge",
       "subject_id": "dd376ec0fdc0765b3c216a8488f5e3c5",
@@ -46789,6 +46749,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fc24ba072d5e4b302",
+      "subject_kind": "edge",
+      "subject_id": "4183d94ca97c7d2efa4f7183a391f887",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T10:50:37.368Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fc259ae31181c69ef",
       "subject_kind": "node",
       "subject_id": "b999f926fc735d94573ed77e037b1523",
@@ -46944,19 +46917,6 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-15T10:31:19.570Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "fc6d61cbedb39f82e",
-      "subject_kind": "edge",
-      "subject_id": "fd4aeba7ef89bd338c43fee8941b8689",
-      "claim": "verdict",
-      "state": "failing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-15T10:36:15.975Z",
       "decision_mode": "individual"
     },
     {
@@ -47146,6 +47106,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fce771bb15c1403fd",
+      "subject_kind": "edge",
+      "subject_id": "a8e8b863399a0da0d4efcfa0bd8598f7",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T10:50:37.369Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fcec09e2d8103b689",
       "subject_kind": "edge",
       "subject_id": "82ea855f4fc7a7d2c1bf6ca85bb4c61a",
@@ -47195,6 +47168,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-13T13:46:09.120Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fcff1e5a63892533d",
+      "subject_kind": "edge",
+      "subject_id": "21bb784166037fa05aa041820fbb594d",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-15T10:50:37.370Z",
       "decision_mode": "individual"
     },
     {
@@ -48226,19 +48212,6 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-13T13:33:42.683Z",
-      "decision_mode": "individual"
-    },
-    {
-      "id": "ffde0103e6520ba73",
-      "subject_kind": "edge",
-      "subject_id": "526ed6c76392080e4ff6b54770e114d5",
-      "claim": "verdict",
-      "state": "failing",
-      "criterion": "compiled Journey profile",
-      "verification": "verified",
-      "confidence": 1.0,
-      "asserted_by": "loom",
-      "asserted_at": "2026-08-15T10:36:15.972Z",
       "decision_mode": "individual"
     },
     {
@@ -60393,49 +60366,6 @@
       "recorded_at": "2026-08-14T07:16:40.643Z"
     },
     {
-      "id": "edf59abc90d8fdfc6",
-      "fact_id": "f56f94ba864643d58",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run pagination --profile proof",
-        "cwd": "",
-        "exit_code": 1,
-        "stdout_hash": "baacc31f81e4062b",
-        "stderr_hash": "d9107aba37e915bb",
-        "stdout_excerpt": "{\"assertions_failed\":1,\"assertions_passed\":2,\"failed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"kind\":\"assertion\",\"operation_id\":\"request-first-page\",\"pointer\":\"/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id\"}],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"}],\"profile\":\"proof\",\"status\":\"failed\"}",
-        "stderr_excerpt": "step 'request-first-page' failed 1 typed check(s)",
-        "covered": {
-          "src/commands/intent.rs": "96854510adf58de6"
-        },
-        "assertions": 2,
-        "observed_assertions": [
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-can-continue"
-          },
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-total-is-positive"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786790175971",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-15T10:36:15.976Z"
-    },
-    {
-      "id": "ee5b908efcac9987e",
-      "fact_id": "f56f94ba864643d58",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'pagination:proof' observed failed: step 'request-first-page' failed 1 typed check(s)"
-      },
-      "recorded_at": "2026-08-15T10:36:15.976Z"
-    },
-    {
       "id": "e197a596fbd26a8d9",
       "fact_id": "f570c362d064a72be",
       "payload": {
@@ -65325,6 +65255,64 @@
       "recorded_at": "2026-08-14T22:22:29.508Z"
     },
     {
+      "id": "e6ece2b3ac9e725a9",
+      "fact_id": "f7e04e32a7a199be2",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run pagination --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "9313988c28590cc9",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":6,\"failed_assertions\":[],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"past-end-page-is-empty\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-page-cannot-continue\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-total-is-positive\",\"operation_id\":\"request-page-past-end\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/intent.rs": "96854510adf58de6"
+        },
+        "assertions": 6,
+        "observed_assertions": [
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-row-is-deterministic"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-can-continue"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-total-is-positive"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-is-empty"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-cannot-continue"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-total-is-positive"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786791037363",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T10:50:37.366Z"
+    },
+    {
+      "id": "e7dc216bab160df6f",
+      "fact_id": "f7e04e32a7a199be2",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'pagination:proof' observed passed with 6 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-15T10:50:37.366Z"
+    },
+    {
       "id": "e04816a82d841312f",
       "fact_id": "f7e18898bf32a813a",
       "payload": {
@@ -65580,49 +65568,6 @@
         "loom_version": "0.33.0"
       },
       "recorded_at": "2026-08-15T07:46:04.272Z"
-    },
-    {
-      "id": "e033392560a68fa7d",
-      "fact_id": "f8132b7071ef312d4",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'pagination:proof' observed failed: step 'request-first-page' failed 1 typed check(s)"
-      },
-      "recorded_at": "2026-08-15T10:36:15.974Z"
-    },
-    {
-      "id": "e3cecb778f20ea54d",
-      "fact_id": "f8132b7071ef312d4",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run pagination --profile proof",
-        "cwd": "",
-        "exit_code": 1,
-        "stdout_hash": "baacc31f81e4062b",
-        "stderr_hash": "d9107aba37e915bb",
-        "stdout_excerpt": "{\"assertions_failed\":1,\"assertions_passed\":2,\"failed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"kind\":\"assertion\",\"operation_id\":\"request-first-page\",\"pointer\":\"/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id\"}],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"}],\"profile\":\"proof\",\"status\":\"failed\"}",
-        "stderr_excerpt": "step 'request-first-page' failed 1 typed check(s)",
-        "covered": {
-          "src/commands/intent.rs": "96854510adf58de6"
-        },
-        "assertions": 2,
-        "observed_assertions": [
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-can-continue"
-          },
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-total-is-positive"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786790175971",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-15T10:36:15.974Z"
     },
     {
       "id": "e510061428884dec3",
@@ -67687,6 +67632,64 @@
         "hash": "b13e7c9934ab3383"
       },
       "recorded_at": "2026-08-14T07:36:25.133Z"
+    },
+    {
+      "id": "e43cf2447ccf1c0c6",
+      "fact_id": "f8e5149cb1c8d3de5",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'pagination:proof' observed passed with 6 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-15T10:50:37.369Z"
+    },
+    {
+      "id": "e9dcaa8c6d90964b8",
+      "fact_id": "f8e5149cb1c8d3de5",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run pagination --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "9313988c28590cc9",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":6,\"failed_assertions\":[],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"past-end-page-is-empty\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-page-cannot-continue\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-total-is-positive\",\"operation_id\":\"request-page-past-end\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/intent.rs": "96854510adf58de6"
+        },
+        "assertions": 6,
+        "observed_assertions": [
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-row-is-deterministic"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-can-continue"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-total-is-positive"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-is-empty"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-cannot-continue"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-total-is-positive"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786791037363",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T10:50:37.369Z"
     },
     {
       "id": "e23c10407e926e2cd",
@@ -69839,49 +69842,6 @@
         "text": "`cargo test --test ring1` exit 0"
       },
       "recorded_at": "2026-08-13T13:45:47.522Z"
-    },
-    {
-      "id": "e2963be39a5288330",
-      "fact_id": "fa228c9d4d4f8da21",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'pagination:proof' observed failed: step 'request-first-page' failed 1 typed check(s)"
-      },
-      "recorded_at": "2026-08-15T10:36:15.976Z"
-    },
-    {
-      "id": "ee507c5e2bfed69fc",
-      "fact_id": "fa228c9d4d4f8da21",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run pagination --profile proof",
-        "cwd": "",
-        "exit_code": 1,
-        "stdout_hash": "baacc31f81e4062b",
-        "stderr_hash": "d9107aba37e915bb",
-        "stdout_excerpt": "{\"assertions_failed\":1,\"assertions_passed\":2,\"failed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"kind\":\"assertion\",\"operation_id\":\"request-first-page\",\"pointer\":\"/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id\"}],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"}],\"profile\":\"proof\",\"status\":\"failed\"}",
-        "stderr_excerpt": "step 'request-first-page' failed 1 typed check(s)",
-        "covered": {
-          "src/commands/intent.rs": "96854510adf58de6"
-        },
-        "assertions": 2,
-        "observed_assertions": [
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-can-continue"
-          },
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-total-is-positive"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786790175971",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-15T10:36:15.976Z"
     },
     {
       "id": "e2be60af2d3be40ca",
@@ -73060,6 +73020,64 @@
       "recorded_at": "2026-08-13T13:27:17.526Z"
     },
     {
+      "id": "e357715387af04960",
+      "fact_id": "fb9bcc1551364fa3b",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run pagination --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "9313988c28590cc9",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":6,\"failed_assertions\":[],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"past-end-page-is-empty\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-page-cannot-continue\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-total-is-positive\",\"operation_id\":\"request-page-past-end\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/intent.rs": "96854510adf58de6"
+        },
+        "assertions": 6,
+        "observed_assertions": [
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-row-is-deterministic"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-can-continue"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-total-is-positive"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-is-empty"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-cannot-continue"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-total-is-positive"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786791037363",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T10:50:37.370Z"
+    },
+    {
+      "id": "ed4cbd1f14ff3e0ae",
+      "fact_id": "fb9bcc1551364fa3b",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'pagination:proof' observed passed with 6 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-15T10:50:37.370Z"
+    },
+    {
       "id": "e1abcffb143506652",
       "fact_id": "fb9bd0372ae1cdd62",
       "payload": {
@@ -74608,49 +74626,6 @@
       "recorded_at": "2026-08-13T13:45:54.637Z"
     },
     {
-      "id": "e5f217dfa4af38d7a",
-      "fact_id": "fbd64435195070ab2",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run pagination --profile proof",
-        "cwd": "",
-        "exit_code": 1,
-        "stdout_hash": "baacc31f81e4062b",
-        "stderr_hash": "d9107aba37e915bb",
-        "stdout_excerpt": "{\"assertions_failed\":1,\"assertions_passed\":2,\"failed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"kind\":\"assertion\",\"operation_id\":\"request-first-page\",\"pointer\":\"/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id\"}],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"}],\"profile\":\"proof\",\"status\":\"failed\"}",
-        "stderr_excerpt": "step 'request-first-page' failed 1 typed check(s)",
-        "covered": {
-          "src/commands/intent.rs": "96854510adf58de6"
-        },
-        "assertions": 2,
-        "observed_assertions": [
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-can-continue"
-          },
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-total-is-positive"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786790175971",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-15T10:36:15.974Z"
-    },
-    {
-      "id": "edee0bfb2478ef3a2",
-      "fact_id": "fbd64435195070ab2",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'pagination:proof' observed failed: step 'request-first-page' failed 1 typed check(s)"
-      },
-      "recorded_at": "2026-08-15T10:36:15.974Z"
-    },
-    {
       "id": "ebcb0697bdde43282",
       "fact_id": "fbdde41559dc65b33",
       "payload": {
@@ -75739,6 +75714,64 @@
       "recorded_at": "2026-08-13T14:10:29.663Z"
     },
     {
+      "id": "e905ed1744496b4dc",
+      "fact_id": "fc24ba072d5e4b302",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'pagination:proof' observed passed with 6 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-15T10:50:37.368Z"
+    },
+    {
+      "id": "ec654f298aa5ba806",
+      "fact_id": "fc24ba072d5e4b302",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run pagination --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "9313988c28590cc9",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":6,\"failed_assertions\":[],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"past-end-page-is-empty\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-page-cannot-continue\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-total-is-positive\",\"operation_id\":\"request-page-past-end\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/intent.rs": "96854510adf58de6"
+        },
+        "assertions": 6,
+        "observed_assertions": [
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-row-is-deterministic"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-can-continue"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-total-is-positive"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-is-empty"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-cannot-continue"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-total-is-positive"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786791037363",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T10:50:37.368Z"
+    },
+    {
       "id": "e1ec260dca9b5ea9c",
       "fact_id": "fc259ae31181c69ef",
       "payload": {
@@ -76543,49 +76576,6 @@
       "recorded_at": "2026-08-15T10:31:19.570Z"
     },
     {
-      "id": "e3ad6fc55b6640602",
-      "fact_id": "fc6d61cbedb39f82e",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'pagination:proof' observed failed: step 'request-first-page' failed 1 typed check(s)"
-      },
-      "recorded_at": "2026-08-15T10:36:15.975Z"
-    },
-    {
-      "id": "e4108b797f4d62bda",
-      "fact_id": "fc6d61cbedb39f82e",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run pagination --profile proof",
-        "cwd": "",
-        "exit_code": 1,
-        "stdout_hash": "baacc31f81e4062b",
-        "stderr_hash": "d9107aba37e915bb",
-        "stdout_excerpt": "{\"assertions_failed\":1,\"assertions_passed\":2,\"failed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"kind\":\"assertion\",\"operation_id\":\"request-first-page\",\"pointer\":\"/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id\"}],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"}],\"profile\":\"proof\",\"status\":\"failed\"}",
-        "stderr_excerpt": "step 'request-first-page' failed 1 typed check(s)",
-        "covered": {
-          "src/commands/intent.rs": "96854510adf58de6"
-        },
-        "assertions": 2,
-        "observed_assertions": [
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-can-continue"
-          },
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-total-is-positive"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786790175971",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-15T10:36:15.975Z"
-    },
-    {
       "id": "e03e3426b0ee07f3e",
       "fact_id": "fc744f2637e5a2db9",
       "payload": {
@@ -77160,6 +77150,64 @@
       "recorded_at": "2026-08-14T06:58:21.145Z"
     },
     {
+      "id": "e74009677482a863c",
+      "fact_id": "fce771bb15c1403fd",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run pagination --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "9313988c28590cc9",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":6,\"failed_assertions\":[],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"past-end-page-is-empty\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-page-cannot-continue\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-total-is-positive\",\"operation_id\":\"request-page-past-end\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/intent.rs": "96854510adf58de6"
+        },
+        "assertions": 6,
+        "observed_assertions": [
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-row-is-deterministic"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-can-continue"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-total-is-positive"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-is-empty"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-cannot-continue"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-total-is-positive"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786791037363",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T10:50:37.369Z"
+    },
+    {
+      "id": "edc88ce96d24ec9ca",
+      "fact_id": "fce771bb15c1403fd",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'pagination:proof' observed passed with 6 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-15T10:50:37.369Z"
+    },
+    {
       "id": "e9615b20a9ebf26e8",
       "fact_id": "fcec09e2d8103b689",
       "payload": {
@@ -77330,6 +77378,64 @@
         "text": "`cargo test --lib policy::tests` exit 0"
       },
       "recorded_at": "2026-08-13T13:46:09.120Z"
+    },
+    {
+      "id": "e8baf90004ad8b2c2",
+      "fact_id": "fcff1e5a63892533d",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'pagination:proof' observed passed with 6 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-15T10:50:37.370Z"
+    },
+    {
+      "id": "ee4f490168c9b8694",
+      "fact_id": "fcff1e5a63892533d",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run pagination --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "9313988c28590cc9",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":6,\"failed_assertions\":[],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"past-end-page-is-empty\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-page-cannot-continue\",\"operation_id\":\"request-page-past-end\"},{\"assertion_id\":\"past-end-total-is-positive\",\"operation_id\":\"request-page-past-end\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands/intent.rs": "96854510adf58de6"
+        },
+        "assertions": 6,
+        "observed_assertions": [
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-row-is-deterministic"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-can-continue"
+          },
+          {
+            "group": "request-first-page",
+            "assertion": "first-page-total-is-positive"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-is-empty"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-page-cannot-continue"
+          },
+          {
+            "group": "request-page-past-end",
+            "assertion": "past-end-total-is-positive"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1786791037363",
+        "loom_version": "0.33.0"
+      },
+      "recorded_at": "2026-08-15T10:50:37.370Z"
     },
     {
       "id": "e10467fdb61b8931d",
@@ -84722,49 +84828,6 @@
       "recorded_at": "2026-08-13T13:33:42.683Z"
     },
     {
-      "id": "e49cbd21f39af2789",
-      "fact_id": "ffde0103e6520ba73",
-      "payload": {
-        "kind": "claim",
-        "text": "compiled Journey 'pagination:proof' observed failed: step 'request-first-page' failed 1 typed check(s)"
-      },
-      "recorded_at": "2026-08-15T10:36:15.972Z"
-    },
-    {
-      "id": "ed91b1f64643b7cb9",
-      "fact_id": "ffde0103e6520ba73",
-      "payload": {
-        "kind": "run",
-        "producer": "journey",
-        "command": "loom journey run pagination --profile proof",
-        "cwd": "",
-        "exit_code": 1,
-        "stdout_hash": "baacc31f81e4062b",
-        "stderr_hash": "d9107aba37e915bb",
-        "stdout_excerpt": "{\"assertions_failed\":1,\"assertions_passed\":2,\"failed_assertions\":[{\"assertion_id\":\"first-page-row-is-deterministic\",\"kind\":\"assertion\",\"operation_id\":\"request-first-page\",\"pointer\":\"/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id\"}],\"journey\":\"pagination\",\"passed_assertions\":[{\"assertion_id\":\"first-page-can-continue\",\"operation_id\":\"request-first-page\"},{\"assertion_id\":\"first-page-total-is-positive\",\"operation_id\":\"request-first-page\"}],\"profile\":\"proof\",\"status\":\"failed\"}",
-        "stderr_excerpt": "step 'request-first-page' failed 1 typed check(s)",
-        "covered": {
-          "src/commands/intent.rs": "96854510adf58de6"
-        },
-        "assertions": 2,
-        "observed_assertions": [
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-can-continue"
-          },
-          {
-            "group": "request-first-page",
-            "assertion": "first-page-total-is-positive"
-          }
-        ],
-        "locally_minted": true,
-        "duration_ms": 0,
-        "ran_at": "1786790175971",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-15T10:36:15.972Z"
-    },
-    {
       "id": "e7e0aeb77000539ab",
       "fact_id": "ffdf4bce489074913",
       "payload": {
@@ -85836,6 +85899,27 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "07a39a1a303665e3530e80e295a7cdce",
+      "target_kind": "edge",
+      "key": "binding_hashes",
+      "value": "{\"request-first-page\":\"ae6db798ee9b83ea\",\"request-page-past-end\":\"3dfb7428d3fe0937\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "07a39a1a303665e3530e80e295a7cdce",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "c27cf7514665164b",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "07a39a1a303665e3530e80e295a7cdce",
+      "target_kind": "edge",
+      "key": "operation_bindings",
+      "value": "[{\"operation_id\":\"request-first-page\",\"step_id\":\"request-first-page\"},{\"operation_id\":\"request-page-past-end\",\"step_id\":\"request-page-past-end\"}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "07a7703e39e8b333202187acca41f8bd",
       "target_kind": "edge",
       "key": "journey_hash",
@@ -85890,13 +85974,6 @@
       "key": "journey_derivation_created",
       "value": "true",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "081aa10d0812d6352043ebb4ca4b2b78",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "compiled Journey inputs or proof topology drifted",
-      "truth_class": "derived"
     },
     {
       "target_id": "082758aeb5eb666d037f2018f17c572e",
@@ -86756,7 +86833,7 @@
       "target_id": "10ba438c486686f5477d2831208644d3",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"a page past the end is empty, cannot continue, and keeps the true total\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"journey:pagination:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -88003,6 +88080,20 @@
       "target_kind": "edge",
       "key": "journey_derivation_created",
       "value": "true",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "21bb784166037fa05aa041820fbb594d",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "intent_list",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "21bb784166037fa05aa041820fbb594d",
+      "target_kind": "edge",
+      "key": "surface_locator",
+      "value": "intent_list",
       "truth_class": "asserted"
     },
     {
@@ -91177,13 +91268,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "526ed6c76392080e4ff6b54770e114d5",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "compiled Journey inputs or proof topology drifted",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "52d3a8b8efa9f647cccb7a2836d61e38",
       "target_kind": "edge",
       "key": "journey_hash",
@@ -92197,13 +92281,6 @@
       "key": "visibility",
       "value": "internal",
       "truth_class": "asserted"
-    },
-    {
-      "target_id": "5e25c88b4b611c6d2fafdc3566747b75",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "compiled Journey inputs or proof topology drifted",
-      "truth_class": "derived"
     },
     {
       "target_id": "5e4684a40f4374c8adf8b684ede1a8d8",
@@ -96976,7 +97053,7 @@
       "target_id": "95074e5e7a28c226aeb7f096691ecb77",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/commands.rs\",\"proven_by\":\"journey:pagination:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -100242,13 +100319,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "c405cd47f1243226a48b1a7951f35ce8",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "compiled Journey inputs or proof topology drifted",
-      "truth_class": "derived"
-    },
-    {
       "target_id": "c432182bd4bf1a3d48bec08d5ebc65c4",
       "target_kind": "edge",
       "key": "binding_hashes",
@@ -101901,6 +101971,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "d75c1a960d6527563e9eebc1cfcaf210",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "intent_list",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "d78bfffc8434f5b311ecd170e3349a48",
       "target_kind": "node",
       "key": "proof_anchors",
@@ -102895,27 +102972,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "e174f85f6c444f5513d39d6136c9fc11",
-      "target_kind": "edge",
-      "key": "binding_hashes",
-      "value": "{\"request-first-page\":\"ae6db798ee9b83ea\",\"request-page-past-end\":\"3dfb7428d3fe0937\"}",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "e174f85f6c444f5513d39d6136c9fc11",
-      "target_kind": "edge",
-      "key": "journey_hash",
-      "value": "c27cf7514665164b",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "e174f85f6c444f5513d39d6136c9fc11",
-      "target_kind": "edge",
-      "key": "operation_bindings",
-      "value": "[{\"operation_id\":\"request-first-page\",\"step_id\":\"request-first-page\"},{\"operation_id\":\"request-page-past-end\",\"step_id\":\"request-page-past-end\"}]",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "e1b74285cfd860c6d96e8205aebf14ad",
       "target_kind": "node",
       "key": "calls",
@@ -103605,21 +103661,21 @@
       "target_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
       "target_kind": "node",
       "key": "proof_last_outcome",
-      "value": "failed",
+      "value": "passed",
       "truth_class": "derived"
     },
     {
       "target_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"compile this Journey from its current semantic hash and accepted surface; raw authored specs and incomplete proof topology do not grade\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"6\",\"call_witness\":\"pagination_envelope\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands/intent.rs\",\"entry_symbol\":\"intent_list\",\"grounded_symbol\":\"pagination_envelope\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
       "target_kind": "node",
       "key": "proof_unstable",
-      "value": "passed then failed over unchanged code for 'Loom emits canonical page continuation', 'Loom retrieves a deterministic bounded page'",
+      "value": "failed then passed over unchanged code for 'An offset past the end returns an empty page with no continuation', 'Loom emits canonical page continuation', 'Loom retrieves a deterministic bounded page'",
       "truth_class": "derived"
     },
     {
@@ -104032,7 +104088,7 @@
       "target_id": "eb045fffecb04e70441f507d1a9e29d7",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/store/nodes.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/store/nodes.rs\",\"proven_by\":\"journey:pagination:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -104890,20 +104946,6 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "f71bf6616a5cd8f3110a9039253e4beb",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "intent_list",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "f71bf6616a5cd8f3110a9039253e4beb",
-      "target_kind": "edge",
-      "key": "surface_locator",
-      "value": "intent_list",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "f723b0f3c76c6ebbe1f4d73d0691e4ec",
       "target_kind": "edge",
       "key": "locator",
@@ -105146,13 +105188,6 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "rehearse_cmd",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "f866a781868cb24d7befcb03357dc5d4",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "intent_list",
       "truth_class": "asserted"
     },
     {
@@ -105489,13 +105524,6 @@
       "target_kind": "node",
       "key": "test_symbols",
       "value": "[\"grades_are_ordered\",\"call_witness_depth_clears_the_documented_six_hop_case\",\"semicolon_locator_earns_a_witness_through_its_first_symbol\",\"common_runners_are_understood\",\"a_bare_success_is_not_an_assertion\"]",
-      "truth_class": "derived"
-    },
-    {
-      "target_id": "fd4aeba7ef89bd338c43fee8941b8689",
-      "target_kind": "edge",
-      "key": "stale_cause",
-      "value": "compiled Journey inputs or proof topology drifted",
       "truth_class": "derived"
     },
     {

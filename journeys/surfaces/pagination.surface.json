@@ -36,7 +36,7 @@
             {
               "id": "first-page-row-is-deterministic",
               "matches": "^[0-9a-f]{32}$",
-              "pointer": "/items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id",
+              "pointer": "/items/0/id",
               "type": "string"
             },
             {
