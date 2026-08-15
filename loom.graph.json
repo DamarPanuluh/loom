@@ -46300,6 +46300,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f72469b5bcd717d24",
+      "subject_kind": "node",
+      "subject_id": "122d56db2e9fa7ae624baa35b03db388",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "confirmed by reading the code: src/signal.rs:1127 guards the orphaned-upstream-intent check with an if-let-Ok over crate::federation::read_upstream_entries(store), so when that read fails the whole check at :1130-1145 is skipped, no issue is pushed, and doctor reports clean. That is exactly the 'silently treating an invalid graph as clean' the intent forbids. Fix at root cause: surface the read failure as its own DoctorIssue (an unreadable upstream registry is itself an integrity problem) instead of swallowing the Err. The adversarial reviewer's counterexample holds and is now independently verified.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:26:54.425Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f725940d14dbdd8dc",
       "subject_kind": "edge",
       "subject_id": "085dd66ea1fa2425ef168520d84d3e26",
@@ -46310,6 +46323,19 @@
       "confidence": 0.72,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T06:58:20.045Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f72936d4780691917",
+      "subject_kind": "node",
+      "subject_id": "8741b9f4ae26b51cee7d4e014af5b1c0",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "confirmed: find_exact resolves across four node kinds, so a query whose exact name matches a CodeFile, Journey or QualityRule is answered as though it named a behavior. src/commands/discover_cmd.rs:56-61 declares kinds as [Journey, Intent, CodeFile, QualityRule] and :78 passes that whole list into find_exact, which is the sole call site. The intent claims an exact BEHAVIOR query resolves one matching Intent or refuses an ambiguous match; as written the ambiguity is also across kinds, which the criterion does not describe. Fix at root cause: either scope the behavior path to NodeType::Intent, or widen the intent prose to state that exact resolution spans all four kinds.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:28:04.439Z",
       "decision_mode": "individual"
     },
     {
@@ -46497,6 +46523,19 @@
       "confidence": 0.9,
       "asserted_by": "llm:builder",
       "asserted_at": "2026-08-15T11:05:28.781Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f78c5e041d83179ca",
+      "subject_kind": "node",
+      "subject_id": "d7ce547518e9613b1b8265858ccfea06",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "confirmed: the intent says managed hooks touch ONLY Loom-owned post-commit and post-merge hooks, and the word only is false. src/commands/hook_cmd.rs:12 declares SYNC_HOOKS as post-commit and post-merge, but :13 declares PRE_PUSH_HOOK, and Install accepts a --pre-push path that writes and later removes that third hook under the same ownership marker at :21. The ownership discipline is sound; the prose undercounts what the behavior manages. Fix at root cause by naming pre-push in the criterion, or by moving it to a behavior of its own — either way this is a wantedness correction the human owns, not a silent code edit.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:28:50.736Z",
       "decision_mode": "individual"
     },
     {
@@ -47892,6 +47931,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f9fa8ec95e4b9ef48",
+      "subject_kind": "node",
+      "subject_id": "8ce18dba771dd7cd177c003cbd670220",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "confirmed: the Impact report mixes two scopes and presents them as three resolution classes for one target. exact and heuristic at src/callgraph.rs:450-457 are counted from the target-scoped callers vector, but unresolved_calls at :458 assigns self.unresolved, a graph-wide counter incremented at :97 and :101 for every callee in the repository that matched no symbol. A target with zero unresolved callers still reports the whole repo's unresolved total. Fix at root cause: count unresolved callees encountered while walking this target's reach, or rename and document the field as a graph-level statistic so it stops reading as a class of this target's callers.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:27:50.354Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f9fd78587274df17f",
       "subject_kind": "node",
       "subject_id": "d80ce4b1c200e00240a81222b27ab325",
@@ -48233,6 +48285,19 @@
       "confidence": 0.85,
       "asserted_by": "llm:builder",
       "asserted_at": "2026-08-15T11:38:36.601Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fa9fe1dd1b94a6aa7",
+      "subject_kind": "node",
+      "subject_id": "dbacc821e8d40bc5d2b52fb3d8243c6b",
+      "claim": "adjudication",
+      "state": "resolved",
+      "criterion": "skills/ is tracked now: it was committed in 2ce1004 during the 2026-08-15 drain, so the repo-shipped claim is true and a git-archive checkout carries SKILL.md",
+      "verification": "claimed",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:26:23.958Z",
       "decision_mode": "individual"
     },
     {
@@ -49505,6 +49570,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fc32ea78b99d2e06e",
+      "subject_kind": "node",
+      "subject_id": "74d8c656df5e6a6a02a0630a8eae83a9",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "confirmed: the intent claims reverification ALONE changes derived inspection state, and expire_fact falsifies that. src/store/facts.rs:1518 defines expire_fact as a public Store method that, for a settled verdict, calls write_edge_status with NeedsReverification at :1533-1536 — a second path that moves derived inspection state without any reverification pass. The locator names expire_fact, so the behavior claims that code, and the criterion's exclusivity does not hold over it. Fix at root cause: either state expiry as the other legitimate transition in the criterion, or route expiry through the reverification path so the exclusivity is real.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:28:57.789Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fc3604e56109f969c",
       "subject_kind": "edge",
       "subject_id": "0266944eff0bfd88e402cefead1b76d2",
@@ -49528,6 +49606,19 @@
       "confidence": 0.88,
       "asserted_by": "llm:builder",
       "asserted_at": "2026-08-15T11:09:12.984Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fc3871d0c276bf6e6",
+      "subject_kind": "node",
+      "subject_id": "4557a7e2dcc79ebcdf3aeb4b112c47a4",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "confirmed by reading the test: tests/ring53_release_rehearsal.rs:1685-1690 asserts attestation.roots.iter().all(|root| root.unchanged) and before_hash == after_hash, so the gate asserts the ambient dependency cache was idle for the duration of the smoke run. On a developer machine behind the pre-push hook, a concurrent cargo build or install in the same CARGO_HOME makes that false without anything being wrong with the change under test. Fix at root cause: point the smoke at a private CARGO_HOME it owns for the run, so unchanged is a property the test controls rather than a property of the machine. Asserting the caller has an idle cache is the same class of defect as depending on a real-clock minute bucket.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:25:19.219Z",
       "decision_mode": "individual"
     },
     {
@@ -51721,6 +51812,19 @@
       "confidence": 0.75,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T07:29:18.922Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "ffd217c54d3d48a6f",
+      "subject_kind": "node",
+      "subject_id": "3371466ca3b06cc1718bea26f8c7038d",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "confirmed: the shared-proof detector silently undercounts when one Validation proves more than one behavior. src/signal.rs:362-367 builds proves as a BTreeMap keyed by validation id and inserts e.to_id for every Validates edge, so a validation with two Validates edges keeps only the last intent; the grouping at :380-382 then attributes that command to one behavior instead of two, and the len < 2 guard at :387-388 can drop the collision entirely. That is the exact risk the intent exists to report. Fix at root cause: make proves a multimap from validation id to the set of intents it validates.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T12:27:57.399Z",
       "decision_mode": "individual"
     },
     {
@@ -69885,6 +69989,45 @@
       "recorded_at": "2026-08-14T07:16:39.762Z"
     },
     {
+      "id": "e385e1821181d5e58",
+      "fact_id": "f72469b5bcd717d24",
+      "payload": {
+        "kind": "claim",
+        "text": "src/signal.rs:1127 opens the guard with no else branch, and src/signal.rs:1130-1145 is the only producer of orphaned_upstream_intent issues, so an Err silently yields zero findings"
+      },
+      "recorded_at": "2026-08-15T12:26:54.425Z"
+    },
+    {
+      "id": "e46d8b96c2d7fbeda",
+      "fact_id": "f72469b5bcd717d24",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 1130,
+        "end": 1145,
+        "hash": "b0dc1936bc443942",
+        "symbol": "doctor",
+        "symbol_hash": "9d9b752202963333",
+        "symbol_offset": 193
+      },
+      "recorded_at": "2026-08-15T12:26:54.425Z"
+    },
+    {
+      "id": "e885de8772dee626e",
+      "fact_id": "f72469b5bcd717d24",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 1127,
+        "end": 1127,
+        "hash": "96846338adfb4c43",
+        "symbol": "doctor",
+        "symbol_hash": "9d9b752202963333",
+        "symbol_offset": 190
+      },
+      "recorded_at": "2026-08-15T12:26:54.425Z"
+    },
+    {
       "id": "e00b1c5a3cd4fca54",
       "fact_id": "f725940d14dbdd8dc",
       "payload": {
@@ -69929,6 +70072,30 @@
         "text": "src/commands/limits_cmd.rs:10-27: limits_cmd only calls crate::limits::all() and prints (12-25); no store write. src/limits.rs module doc: 'every entry references the constant its enforcing module uses, so the list cannot drift from enforcement' and all() (line 23) builds Limit entries directly from the same constants (e.g. crate::runner::DEFAULT_TIMEOUT_SECS) used elsewhere to enforce them, making it a deterministic single-source projection, not an independent claim."
       },
       "recorded_at": "2026-08-14T06:58:20.045Z"
+    },
+    {
+      "id": "e07a80e91a19fb563",
+      "fact_id": "f72936d4780691917",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/discover_cmd.rs:56-61 kinds array includes CodeFile and QualityRule alongside Intent; :78 is the only call site and forwards all four kinds to find_exact"
+      },
+      "recorded_at": "2026-08-15T12:28:04.439Z"
+    },
+    {
+      "id": "eaf59d49252fa7d1b",
+      "fact_id": "f72936d4780691917",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/discover_cmd.rs",
+        "start": 56,
+        "end": 61,
+        "hash": "df1e36dff17fe363",
+        "symbol": "find_cmd",
+        "symbol_hash": "822ce18a6cfc3f09",
+        "symbol_offset": 10
+      },
+      "recorded_at": "2026-08-15T12:28:04.439Z"
     },
     {
       "id": "ea08885cf8cee45c8",
@@ -70649,6 +70816,29 @@
         "text": "loom journey surface unratified-ungated reports authored steps ['inspect-proposal-state'] and existing surface 'loom-unratified-candidate-state' with operation_bindings inspect-unapproved-candidate-state -> inspect-proposal-state — every step id is covered, none left over. The surface exposes src/commands/journey/mod.rs at locator 'journey_derive'."
       },
       "recorded_at": "2026-08-15T11:05:28.781Z"
+    },
+    {
+      "id": "e8b816d153329969d",
+      "fact_id": "f78c5e041d83179ca",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/hook_cmd.rs:12 SYNC_HOOKS = post-commit, post-merge; :13 PRE_PUSH_HOOK = pre-push; :21 MARKER is the single ownership test applied to all three"
+      },
+      "recorded_at": "2026-08-15T12:28:50.736Z"
+    },
+    {
+      "id": "e95f4f4340313efd1",
+      "fact_id": "f78c5e041d83179ca",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/hook_cmd.rs",
+        "start": 12,
+        "end": 12,
+        "hash": "96f0abaa071b79f4",
+        "symbol": "SYNC_HOOKS",
+        "symbol_hash": "96f0abaa071b79f4"
+      },
+      "recorded_at": "2026-08-15T12:28:50.736Z"
     },
     {
       "id": "e0f151dc4fcfb7991",
@@ -76010,6 +76200,30 @@
       "recorded_at": "2026-08-15T11:09:27.037Z"
     },
     {
+      "id": "e39a8de5e9fa03248",
+      "fact_id": "f9fa8ec95e4b9ef48",
+      "payload": {
+        "kind": "span",
+        "file": "src/callgraph.rs",
+        "start": 51,
+        "end": 51,
+        "hash": "a61ff6c12c5b4e77",
+        "symbol": "CallGraph",
+        "symbol_hash": "eec511e9b63d990c",
+        "symbol_offset": 4
+      },
+      "recorded_at": "2026-08-15T12:27:50.354Z"
+    },
+    {
+      "id": "ed0063fcc4b9d0c7a",
+      "fact_id": "f9fa8ec95e4b9ef48",
+      "payload": {
+        "kind": "claim",
+        "text": "src/callgraph.rs:51 declares unresolved as a CallGraph-level field; :97 and :101 increment it during build over all raw call sites; :458 emits it verbatim as unresolved_calls inside the per-target Impact built at :448-460"
+      },
+      "recorded_at": "2026-08-15T12:27:50.354Z"
+    },
+    {
       "id": "e856bbede5f912fce",
       "fact_id": "f9fd78587274df17f",
       "payload": {
@@ -77294,6 +77508,15 @@
         "text": "The accepted derivation manifest declares this relationship with the rationale: Every proposed mutation must cite the repository observation from which it was derived. Dependent behavior is realized at src/absorb.rs:253 (record); the behavior it stands on is realized at src/prescan.rs:30 (prescreen). Dependent criterion: From extracted evidence, Loom proposes typed graph mutations with their supporting evidence without applying them as authoritative graph state. Depended-on criterion: Repository inspection returns concrete observed code evidence for behavior not represented in the graph."
       },
       "recorded_at": "2026-08-15T11:38:36.601Z"
+    },
+    {
+      "id": "e63467a315ee6060e",
+      "fact_id": "fa9fe1dd1b94a6aa7",
+      "payload": {
+        "kind": "claim",
+        "text": "git ls-files skills/ returns 2 tracked paths (skills/grill-with-loom/SKILL.md and skills/loom-driver/SKILL.md) where it previously returned 0; tests/ring59_driver_skill.rs include_str!s skills/loom-driver/SKILL.md and passes, and the four groundings onto that file are inspected passing"
+      },
+      "recorded_at": "2026-08-15T12:26:23.958Z"
     },
     {
       "id": "e020e32cf614f628d",
@@ -83120,6 +83343,29 @@
       "recorded_at": "2026-08-14T11:53:00.246Z"
     },
     {
+      "id": "e4a8c8d0c83ad44b3",
+      "fact_id": "fc32ea78b99d2e06e",
+      "payload": {
+        "kind": "span",
+        "file": "src/store/facts.rs",
+        "start": 1518,
+        "end": 1518,
+        "hash": "028008bda7a7ea5a",
+        "symbol": "expire_fact",
+        "symbol_hash": "d94b5d314e346992"
+      },
+      "recorded_at": "2026-08-15T12:28:57.789Z"
+    },
+    {
+      "id": "e67025bbe5499c260",
+      "fact_id": "fc32ea78b99d2e06e",
+      "payload": {
+        "kind": "claim",
+        "text": "src/store/facts.rs:1518 pub fn expire_fact; :1524-1530 gates on a settled verdict state; :1533-1536 writes NeedsReverification directly to the edge"
+      },
+      "recorded_at": "2026-08-15T12:28:57.789Z"
+    },
+    {
       "id": "e3347e7c34515fbbd",
       "fact_id": "fc3604e56109f969c",
       "payload": {
@@ -83173,6 +83419,30 @@
         "text": "manifest door-capture-technical-projection entry 'roundtrip-intake-disposition' (operation=create) maps it to step_ids ['inspect-disposition'], all of which appear in the Journey's declared steps ['submit-topic', 'choose-destination', 'inspect-disposition']. The manifest's journey_hash 0e928822d2f50877 equals the Journey's current semantic_hash 0e928822d2f50877, and loom journey map reports derivations_ratified=True. Entry rationale: The inspect step must prove persisted state can be read back rather than merely trusting the routing command's immediate response."
       },
       "recorded_at": "2026-08-15T11:09:12.984Z"
+    },
+    {
+      "id": "e759ca6a2cd8a8daf",
+      "fact_id": "fc3871d0c276bf6e6",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring53_release_rehearsal.rs",
+        "start": 1685,
+        "end": 1690,
+        "hash": "7167c08a41c932b1",
+        "symbol": "production_dependency_cache_checks_locked_host_target_offline_without_cache_drift",
+        "symbol_hash": "a41ee1b84063e0a9",
+        "symbol_offset": 37
+      },
+      "recorded_at": "2026-08-15T12:25:19.219Z"
+    },
+    {
+      "id": "ef708768873b583dc",
+      "fact_id": "fc3871d0c276bf6e6",
+      "payload": {
+        "kind": "claim",
+        "text": "confirmed by reading the test: tests/ring53_release_rehearsal.rs:1685-1690 asserts attestation.roots.iter().all(|root| root.unchanged) and before_hash == after_hash, so the gate asserts the ambient dependency cache was idle for the duration of the smoke run. On a developer machine behind the pre-push hook, a concurrent cargo build or install in the same CARGO_HOME makes that false without anything being wrong with the change under test. Fix at root cause: point the smoke at a private CARGO_HOME it owns for the run, so unchanged is a property the test controls rather than a property of the machine. Asserting the caller has an idle cache is the same class of defect as depending on a real-clock minute bucket."
+      },
+      "recorded_at": "2026-08-15T12:25:19.219Z"
     },
     {
       "id": "e013b06ff34322226",
@@ -93069,6 +93339,30 @@
       "recorded_at": "2026-08-14T07:29:18.922Z"
     },
     {
+      "id": "e3267ac6eb37f845f",
+      "fact_id": "ffd217c54d3d48a6f",
+      "payload": {
+        "kind": "span",
+        "file": "src/signal.rs",
+        "start": 362,
+        "end": 362,
+        "hash": "94bedbe3592574a2",
+        "symbol": "shared_proof_command_smells",
+        "symbol_hash": "b132e1d3d59951fe",
+        "symbol_offset": 2
+      },
+      "recorded_at": "2026-08-15T12:27:57.399Z"
+    },
+    {
+      "id": "e5e81bda360d2bce2",
+      "fact_id": "ffd217c54d3d48a6f",
+      "payload": {
+        "kind": "claim",
+        "text": "src/signal.rs:362 declares proves as BTreeMap<&str,&str>; :365 inserts one to_id per from_id inside the Validates loop, overwriting any earlier entry; :380-382 reads proves.get(n.id) to attribute the command to a single intent"
+      },
+      "recorded_at": "2026-08-15T12:27:57.399Z"
+    },
+    {
       "id": "e4aa05e52bf300f15",
       "fact_id": "ffd3fe8da0b118337",
       "payload": {
@@ -95484,6 +95778,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "122d56db2e9fa7ae624baa35b03db388",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:26:54.427Z\",\"hash\":\"0083c3058cdcea76\",\"metric\":3}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "125399fad43cd7139a9584fee85e4e76",
       "target_kind": "edge",
       "key": "locator",
@@ -97871,6 +98172,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "3371466ca3b06cc1718bea26f8c7038d",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:27:57.400Z\",\"hash\":\"0083c3058cdcea76\",\"metric\":42}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "33e5064412936af8c6e710427f256591",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -98961,6 +99269,13 @@
       "key": "locator",
       "value": "build_rungs",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "4557a7e2dcc79ebcdf3aeb4b112c47a4",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:25:19.221Z\",\"hash\":\"\"}",
+      "truth_class": "derived"
     },
     {
       "target_id": "4586ea3cac0b4aee231fa0f863c82653",
@@ -102680,6 +102995,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "74d8c656df5e6a6a02a0630a8eae83a9",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:28:57.791Z\",\"hash\":\"6400bc71666f7d7c\",\"metric\":734}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "74fcd06bffb5bd7e78705c14c1fc16a2",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -104339,6 +104661,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "8741b9f4ae26b51cee7d4e014af5b1c0",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:28:04.440Z\",\"hash\":\"c3fb06a9f935241f\",\"metric\":9}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "87779811f454283dabdc277acd2560b1",
       "target_kind": "node",
       "key": "calls",
@@ -104869,6 +105198,13 @@
       "key": "locator",
       "value": "resolve_env; ExecutionIdentity",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "8ce18dba771dd7cd177c003cbd670220",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:27:50.356Z\",\"hash\":\"4e631c6179077b9e\",\"metric\":3119}",
+      "truth_class": "derived"
     },
     {
       "target_id": "8d501d2a895ae8f9d751bceb7b7212b0",
@@ -111045,6 +111381,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "d7ce547518e9613b1b8265858ccfea06",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:28:50.738Z\",\"hash\":\"deb2b2e11d0ac16a\",\"metric\":39}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "d80ce4b1c200e00240a81222b27ab325",
       "target_kind": "node",
       "key": "de_facto",
@@ -111357,6 +111700,13 @@
       "target_kind": "node",
       "key": "test_symbols",
       "value": "[\"imported_ratification_and_rejection_journal_rows_have_no_local_authority\",\"insert_imported_rejects_invalid_asserted_at_before_sql\"]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "dbacc821e8d40bc5d2b52fb3d8243c6b",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T12:26:23.960Z\",\"hash\":\"61b0f7910d388f9f\"}",
       "truth_class": "derived"
     },
     {
