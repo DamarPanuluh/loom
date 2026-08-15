@@ -1208,6 +1208,87 @@
       "updated_at": "2026-08-10T04:00:54.629Z"
     },
     {
+      "id": "131763aad0ec124359da42d7fcd5bae7",
+      "type": "proposal",
+      "name": "Journey impact derivation impact-v2",
+      "description": "Carries the accepted v1 projection forward and binds the identity boundary the reach resolution already enforces: two same-named definitions in different files never merge caller sets.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "resolve-caller-reach-confidence",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "51a4785c64e0347fe90d5b6a0a686f4e",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-change-impact"
+            ],
+            "text": "Resolution confidence is independently testable and is required before risk can be honestly attributed."
+          },
+          {
+            "intent_entry_id": "project-behavior-risk-and-proof-exposure",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "6398b5de19eec1288aa850f635175359",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-change-impact"
+            ],
+            "text": "Risk/proof projection consumes reach information but has its own observable output and failure modes."
+          },
+          {
+            "intent_entry_id": "keep-same-named-symbols-caller-sets-distinct",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "22040b320ffef0616cf30f7bd686a7d6",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-change-impact"
+            ],
+            "text": "The authored step expects resolution confidence to be preserved; two definitions sharing a bare name is the case where confidence would silently collapse, and keying reach on the file-qualified symbol is independently falsifiable."
+          }
+        ],
+        "journey_hash": "352296cc29dd349c",
+        "journey_id": "impact",
+        "journey_node_id": "c8c873f2148878536c105f04d1dc6fbc",
+        "manifest_hash": "daa8aad673866e76",
+        "proposal_id": "impact-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds the identity boundary the reach resolution already enforces: two same-named definitions in different files never merge caller sets.",
+        "raw": "{\"intents\":[{\"criterion\":\"For a target symbol, Loom reports exact callers, heuristic callers, and unresolved calls as distinct resolution classes.\",\"id\":\"resolve-caller-reach-confidence\",\"level\":\"feature\",\"name\":\"Loom resolves caller reach confidence\",\"operation\":\"create\",\"rationale\":\"Resolution confidence is independently testable and is required before risk can be honestly attributed.\",\"step_ids\":[\"inspect-change-impact\"],\"visibility\":\"user_visible\"},{\"criterion\":\"From resolved caller reach, Loom reports at-risk grounded behaviors together with each behavior's proof exposure.\",\"id\":\"project-behavior-risk-and-proof-exposure\",\"level\":\"feature\",\"name\":\"Loom projects behavior risk and proof exposure\",\"operation\":\"create\",\"rationale\":\"Risk/proof projection consumes reach information but has its own observable output and failure modes.\",\"step_ids\":[\"inspect-change-impact\"],\"visibility\":\"user_visible\"},{\"id\":\"keep-same-named-symbols-caller-sets-distinct\",\"intent_id\":\"22040b320ffef0616cf30f7bd686a7d6\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects resolution confidence to be preserved; two definitions sharing a bare name is the case where confidence would silently collapse, and keying reach on the file-qualified symbol is independently falsifiable.\",\"step_ids\":[\"inspect-change-impact\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"352296cc29dd349c\",\"journey_id\":\"impact\",\"proposal_id\":\"impact-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds the identity boundary the reach resolution already enforces: two same-named definitions in different files never merge caller sets.\",\"relationships\":[{\"from\":\"project-behavior-risk-and-proof-exposure\",\"id\":\"risk-projection-requires-reach-resolution\",\"kind\":\"requires\",\"rationale\":\"Risk and proof exposure must be attributed from explicit exact, heuristic, or unresolved reach rather than guessed.\",\"to\":\"resolve-caller-reach-confidence\"},{\"from\":\"keep-same-named-symbols-caller-sets-distinct\",\"id\":\"keep-same-named-symbols-caller-sets-distinct-requires-resolve-caller-reach-confidence\",\"kind\":\"requires\",\"rationale\":\"Distinct caller sets are a property of the reach resolution that classifies exact, heuristic, and unresolved callers.\",\"to\":\"resolve-caller-reach-confidence\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "ebc1b8fc327bf53caabd9b6ecfd5dc29",
+            "from": "keep-same-named-symbols-caller-sets-distinct",
+            "id": "keep-same-named-symbols-caller-sets-distinct-requires-resolve-caller-reach-confidence",
+            "kind": "requires",
+            "rationale": "Distinct caller sets are a property of the reach resolution that classifies exact, heuristic, and unresolved callers.",
+            "to": "resolve-caller-reach-confidence"
+          },
+          {
+            "edge_id": "17cfd8e1dde86c062dd228f729420285",
+            "from": "project-behavior-risk-and-proof-exposure",
+            "id": "risk-projection-requires-reach-resolution",
+            "kind": "requires",
+            "rationale": "Risk and proof exposure must be attributed from explicit exact, heuristic, or unresolved reach rather than guessed.",
+            "to": "resolve-caller-reach-confidence"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:26:25.907Z",
+      "updated_at": "2026-08-15T10:26:25.952Z"
+    },
+    {
       "id": "13868af6867d2f439cf4cb8c0defa5c9",
       "type": "note",
       "name": "note:decision",
@@ -2154,7 +2235,7 @@
       "type": "proposal",
       "name": "Journey pagination derivation pagination-v1",
       "description": "Bounded retrieval establishes page facts; the continuation envelope is a separate canonical projection of those facts.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -2208,7 +2289,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.565Z",
-      "updated_at": "2026-08-09T12:54:20.592Z"
+      "updated_at": "2026-08-15T10:14:03.050Z"
     },
     {
       "id": "1da7713eb0730d058a7e77a474070a25",
@@ -2949,6 +3030,20 @@
       "updated_at": "2026-08-09T12:54:20.412Z"
     },
     {
+      "id": "22c192c9ef48daf116bd8d608ab0451f",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'impact' derivation at semantic hash 352296cc29dd349c from canonical manifest daa8aad673866e76",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "22040b320ffef0616cf30f7bd686a7d6"
+      },
+      "created_at": "2026-08-15T10:26:25.939Z",
+      "updated_at": "2026-08-15T10:26:25.939Z"
+    },
+    {
       "id": "23708154a927a0b897b170e15c35ae25",
       "type": "note",
       "name": "note:ratify",
@@ -3008,7 +3103,7 @@
       "type": "proposal",
       "name": "Journey impact derivation impact-v1",
       "description": "Reach resolution and risk projection are separate, reusable technical responsibilities behind the one operator-facing impact inspection.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -3062,7 +3157,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.451Z",
-      "updated_at": "2026-08-09T12:54:20.475Z"
+      "updated_at": "2026-08-15T10:26:25.952Z"
     },
     {
       "id": "25dbb8f283f2bcddcd648f4efda7c341",
@@ -3217,6 +3312,20 @@
       },
       "created_at": "2026-08-09T12:54:20.276Z",
       "updated_at": "2026-08-09T12:54:20.276Z"
+    },
+    {
+      "id": "27f8c680f3c5f8eead5435262496e1f8",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'mcp-in-band' derivation at semantic hash edbe81e359d5ad43 from canonical manifest 733c02d997761af1",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "6738806e8ca7380024eb78a8f5d09d62"
+      },
+      "created_at": "2026-08-15T10:20:04.957Z",
+      "updated_at": "2026-08-15T10:20:04.957Z"
     },
     {
       "id": "28441d7d9c46d7759d7c34ec50136998",
@@ -3573,6 +3682,20 @@
       },
       "created_at": "2026-08-09T12:54:19.552Z",
       "updated_at": "2026-08-09T16:34:31.200Z"
+    },
+    {
+      "id": "2dfcbb33568508ab885ffda80271cb96",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'writes-graph' derivation at semantic hash 193145a6b8c0667a from canonical manifest b3db9e193e6104d1",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "fb88a31e5386f25d2c33097d3d229f7b"
+      },
+      "created_at": "2026-08-15T10:28:05.866Z",
+      "updated_at": "2026-08-15T10:28:05.866Z"
     },
     {
       "id": "2e1c104fdaf896a595f4f75ab3d19ad4",
@@ -6356,6 +6479,20 @@
       "body": {},
       "created_at": "2026-08-09T12:54:42.415Z",
       "updated_at": "2026-08-09T12:54:42.415Z"
+    },
+    {
+      "id": "4b4178d1dd4a09d379040f9d60c9dca7",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'find-grounding' derivation at semantic hash 24ee5adf3e646bdd from canonical manifest ffa1e61b7e804fba",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "170eee9f25f6f74b04019251df4a2985"
+      },
+      "created_at": "2026-08-15T10:27:11.812Z",
+      "updated_at": "2026-08-15T10:27:11.812Z"
     },
     {
       "id": "4bd7720f63a694ea75aa32262b927e45",
@@ -11014,6 +11151,87 @@
       "updated_at": "2026-08-09T12:54:19.900Z"
     },
     {
+      "id": "80bd0eb99a270b8e866bb5b56677bd39",
+      "type": "proposal",
+      "name": "Journey find-grounding derivation find-grounding-v2",
+      "description": "Carries the accepted v1 projection forward and binds the refusal its own authored step depends on: an exact name matching more than one active node is refused with the count rather than resolved to an arbitrary match.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "resolve-exact-behavior-identity",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "9037bd5e25b911691b83ef769f79e198",
+            "status": "adopted",
+            "step_ids": [
+              "find-exact-behavior"
+            ],
+            "text": "Identity resolution must be deterministic before result details can be trusted."
+          },
+          {
+            "intent_entry_id": "project-resolved-grounding-detail",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "03ce676907f25b437e8b4ce4fc28f5da",
+            "status": "adopted",
+            "step_ids": [
+              "find-exact-behavior"
+            ],
+            "text": "Grounding detail is a separate projection whose correctness depends on an unambiguous behavior identity."
+          },
+          {
+            "intent_entry_id": "refuse-ambiguous-behavior-name",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "170eee9f25f6f74b04019251df4a2985",
+            "status": "adopted",
+            "step_ids": [
+              "find-exact-behavior"
+            ],
+            "text": "The authored step promises the grounding of the matched behavior; when more than one active node carries the exact name there is no single grounding to project, so refusal naming the count is the falsifiable alternative to a guess."
+          }
+        ],
+        "journey_hash": "24ee5adf3e646bdd",
+        "journey_id": "find-grounding",
+        "journey_node_id": "a03053690413c5dd3cba214056da17e5",
+        "manifest_hash": "ffa1e61b7e804fba",
+        "proposal_id": "find-grounding-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds the refusal its own authored step depends on: an exact name matching more than one active node is refused with the count rather than resolved to an arbitrary match.",
+        "raw": "{\"intents\":[{\"criterion\":\"An exact behavior query resolves one matching Intent or explicitly refuses an ambiguous match.\",\"id\":\"resolve-exact-behavior-identity\",\"level\":\"feature\",\"name\":\"Loom resolves exact behavior identity\",\"operation\":\"create\",\"rationale\":\"Identity resolution must be deterministic before result details can be trusted.\",\"step_ids\":[\"find-exact-behavior\"],\"visibility\":\"user_visible\"},{\"criterion\":\"For a uniquely resolved behavior, Loom returns realizing path, locator, grounding role, inspection state, and evidence.\",\"id\":\"project-resolved-grounding-detail\",\"level\":\"feature\",\"name\":\"Loom projects resolved grounding detail\",\"operation\":\"create\",\"rationale\":\"Grounding detail is a separate projection whose correctness depends on an unambiguous behavior identity.\",\"step_ids\":[\"find-exact-behavior\"],\"visibility\":\"user_visible\"},{\"id\":\"refuse-ambiguous-behavior-name\",\"intent_id\":\"170eee9f25f6f74b04019251df4a2985\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step promises the grounding of the matched behavior; when more than one active node carries the exact name there is no single grounding to project, so refusal naming the count is the falsifiable alternative to a guess.\",\"step_ids\":[\"find-exact-behavior\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"24ee5adf3e646bdd\",\"journey_id\":\"find-grounding\",\"proposal_id\":\"find-grounding-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds the refusal its own authored step depends on: an exact name matching more than one active node is refused with the count rather than resolved to an arbitrary match.\",\"relationships\":[{\"from\":\"project-resolved-grounding-detail\",\"id\":\"grounding-detail-requires-identity-resolution\",\"kind\":\"requires\",\"rationale\":\"A path and locator must belong to the uniquely selected behavior, never a fuzzy match.\",\"to\":\"resolve-exact-behavior-identity\"},{\"from\":\"refuse-ambiguous-behavior-name\",\"id\":\"refuse-ambiguous-behavior-name-requires-resolve-exact-behavior-identity\",\"kind\":\"requires\",\"rationale\":\"The refusal is the negative outcome of the identity resolution that decides whether one behavior matched.\",\"to\":\"resolve-exact-behavior-identity\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "b6d1f1c5c87862d9ed46dfec79600524",
+            "from": "project-resolved-grounding-detail",
+            "id": "grounding-detail-requires-identity-resolution",
+            "kind": "requires",
+            "rationale": "A path and locator must belong to the uniquely selected behavior, never a fuzzy match.",
+            "to": "resolve-exact-behavior-identity"
+          },
+          {
+            "edge_id": "f275e3941707900235e7cb23e5e98e2b",
+            "from": "refuse-ambiguous-behavior-name",
+            "id": "refuse-ambiguous-behavior-name-requires-resolve-exact-behavior-identity",
+            "kind": "requires",
+            "rationale": "The refusal is the negative outcome of the identity resolution that decides whether one behavior matched.",
+            "to": "resolve-exact-behavior-identity"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:27:11.788Z",
+      "updated_at": "2026-08-15T10:27:11.822Z"
+    },
+    {
       "id": "816434f4a96f512a1a2d3c3bc83b1d34",
       "type": "proposal",
       "name": "Journey human-asked derivation human-asked-technical-projection",
@@ -13738,7 +13956,7 @@
       "type": "proposal",
       "name": "Journey writes-graph derivation writes-graph-v1",
       "description": "Repository evidence extraction is separate from proposing graph mutations, which must remain nonauthoritative.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -13792,7 +14010,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.759Z",
-      "updated_at": "2026-08-09T12:54:20.786Z"
+      "updated_at": "2026-08-15T10:28:05.877Z"
     },
     {
       "id": "9d82e8960600a4c8910059ccd1598552",
@@ -15451,6 +15669,20 @@
       },
       "created_at": "2026-08-09T14:20:30.702Z",
       "updated_at": "2026-08-14T10:22:07.720Z"
+    },
+    {
+      "id": "a19e311a6352945673b1da4a43423759",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'pagination' derivation at semantic hash c27cf7514665164b from canonical manifest 61675153b4cf5fc1",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "10ba438c486686f5477d2831208644d3"
+      },
+      "created_at": "2026-08-15T10:14:03.041Z",
+      "updated_at": "2026-08-15T10:14:03.041Z"
     },
     {
       "id": "a227e7708e7b910a7121228f57366a72",
@@ -17514,7 +17746,7 @@
       "type": "proposal",
       "name": "Journey find-grounding derivation find-grounding-v1",
       "description": "Exact behavior resolution is distinct from projecting the evidence attached to the resolved behavior.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -17568,7 +17800,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.509Z",
-      "updated_at": "2026-08-09T12:54:20.531Z"
+      "updated_at": "2026-08-15T10:27:11.822Z"
     },
     {
       "id": "bd75cbc06fe08397af95b5a6da6e2e8a",
@@ -19240,6 +19472,21 @@
       "updated_at": ""
     },
     {
+      "id": "d154c955ca86c419d",
+      "type": "finding",
+      "name": "user-visible intent 'An offset past the end returns an empty page with no continuation' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:10ba438c486686f5477d2831208644d3",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d15525d893e5f558f",
       "type": "finding",
       "name": "src/candidate_surface_policy.rs::inspect_surface is long",
@@ -19397,6 +19644,21 @@
         "category": "smell",
         "identity": "tangled_file:b6dd9c92f69c950901a08d28177f1cf3",
         "kind": "tangled_file"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d1a4442d5f1257e49",
+      "type": "finding",
+      "name": "user-visible intent 'Same-named symbols in different files never share a caller set' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:22040b320ffef0616cf30f7bd686a7d6",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -19569,21 +19831,6 @@
       "updated_at": ""
     },
     {
-      "id": "d21a72c7221b08dca",
-      "type": "finding",
-      "name": "user-visible intent 'An offset past the end returns an empty page with no continuation' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:10ba438c486686f5477d2831208644d3",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d2228150595d32891",
       "type": "finding",
       "name": "src/journey.rs is oversized",
@@ -19727,6 +19974,87 @@
       },
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d292f2209cbab40d43eda25eb29dad29",
+      "type": "proposal",
+      "name": "Journey writes-graph derivation writes-graph-v2",
+      "description": "Carries the accepted v1 projection forward and binds the fail-closed half of evidence extraction: an uncompilable quality pattern aborts the scan naming that pattern instead of silently returning fewer hits.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "extract-repository-evidence",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "bf87f391e40cfc2612e0dbe0dc1609fa",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-repository-work"
+            ],
+            "text": "Evidence collection is independently inspectable and is the only legitimate basis for a subsequent proposal."
+          },
+          {
+            "intent_entry_id": "propose-nonauthoritative-typed-graph-writes",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "01d410d00647c2706fd0307318242787",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-repository-work"
+            ],
+            "text": "Proposal generation is useful only when it preserves the review boundary instead of silently mutating asserted truth."
+          },
+          {
+            "intent_entry_id": "fail-scan-naming-invalid-pattern",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "fb88a31e5386f25d2c33097d3d229f7b",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-repository-work"
+            ],
+            "text": "The authored step expects every proposal to carry the repository evidence behind it; a pattern that cannot compile must abort the scan naming that pattern rather than quietly yield fewer hits and thus weaker evidence."
+          }
+        ],
+        "journey_hash": "193145a6b8c0667a",
+        "journey_id": "writes-graph",
+        "journey_node_id": "74b96a6be1ae5d7c638326d16f970d94",
+        "manifest_hash": "b3db9e193e6104d1",
+        "proposal_id": "writes-graph-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds the fail-closed half of evidence extraction: an uncompilable quality pattern aborts the scan naming that pattern instead of silently returning fewer hits.",
+        "raw": "{\"intents\":[{\"criterion\":\"Repository inspection returns concrete observed code evidence for behavior not represented in the graph.\",\"id\":\"extract-repository-evidence\",\"level\":\"feature\",\"name\":\"Loom extracts repository evidence\",\"operation\":\"create\",\"rationale\":\"Evidence collection is independently inspectable and is the only legitimate basis for a subsequent proposal.\",\"step_ids\":[\"inspect-repository-work\"],\"visibility\":\"user_visible\"},{\"criterion\":\"From extracted evidence, Loom proposes typed graph mutations with their supporting evidence without applying them as authoritative graph state.\",\"id\":\"propose-nonauthoritative-typed-graph-writes\",\"level\":\"feature\",\"name\":\"Loom proposes nonauthoritative typed graph writes\",\"operation\":\"create\",\"rationale\":\"Proposal generation is useful only when it preserves the review boundary instead of silently mutating asserted truth.\",\"step_ids\":[\"inspect-repository-work\"],\"visibility\":\"user_visible\"},{\"id\":\"fail-scan-naming-invalid-pattern\",\"intent_id\":\"fb88a31e5386f25d2c33097d3d229f7b\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects every proposal to carry the repository evidence behind it; a pattern that cannot compile must abort the scan naming that pattern rather than quietly yield fewer hits and thus weaker evidence.\",\"step_ids\":[\"inspect-repository-work\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"193145a6b8c0667a\",\"journey_id\":\"writes-graph\",\"proposal_id\":\"writes-graph-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds the fail-closed half of evidence extraction: an uncompilable quality pattern aborts the scan naming that pattern instead of silently returning fewer hits.\",\"relationships\":[{\"from\":\"propose-nonauthoritative-typed-graph-writes\",\"id\":\"typed-proposal-requires-evidence-extraction\",\"kind\":\"requires\",\"rationale\":\"Every proposed mutation must cite the repository observation from which it was derived.\",\"to\":\"extract-repository-evidence\"},{\"from\":\"fail-scan-naming-invalid-pattern\",\"id\":\"fail-scan-naming-invalid-pattern-requires-extract-repository-evidence\",\"kind\":\"requires\",\"rationale\":\"The refusal is the fail-closed half of the evidence extraction that the proposals stand on.\",\"to\":\"extract-repository-evidence\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "02a80b3a9b8b60ce7257ae9c605ee04f",
+            "from": "fail-scan-naming-invalid-pattern",
+            "id": "fail-scan-naming-invalid-pattern-requires-extract-repository-evidence",
+            "kind": "requires",
+            "rationale": "The refusal is the fail-closed half of the evidence extraction that the proposals stand on.",
+            "to": "extract-repository-evidence"
+          },
+          {
+            "edge_id": "ea077fefefe478b3ad0cf836589360db",
+            "from": "propose-nonauthoritative-typed-graph-writes",
+            "id": "typed-proposal-requires-evidence-extraction",
+            "kind": "requires",
+            "rationale": "Every proposed mutation must cite the repository observation from which it was derived.",
+            "to": "extract-repository-evidence"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:28:05.833Z",
+      "updated_at": "2026-08-15T10:28:05.877Z"
     },
     {
       "id": "d2990f4fd445e6482",
@@ -21166,6 +21494,132 @@
       "updated_at": ""
     },
     {
+      "id": "d718ccff182b0dcac5ea40a40eaa373f",
+      "type": "proposal",
+      "name": "Journey mcp-in-band derivation mcp-in-band-v2",
+      "description": "Carries the accepted v1 projection forward and binds the method-level refusal the transport already performs: an unimplemented method answered as -32601 and an id-less notification left unanswered, neither ending the session.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "negotiate-mcp-session-capability-schema",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "10461615e20dd349229806795ade22d3",
+            "status": "adopted",
+            "step_ids": [
+              "discover-tools"
+            ],
+            "text": "Session negotiation is the protocol precondition for all later in-band requests."
+          },
+          {
+            "intent_entry_id": "serve-live-mcp-domain-tool",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "d6ad13fcf69580b43a3108d0ab85c4b0",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-live-impact"
+            ],
+            "text": "Serving live tools is distinct from the session handshake and preserves the protocol surface without duplicating impact semantics."
+          },
+          {
+            "intent_entry_id": "resolve-caller-reach-confidence",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "51a4785c64e0347fe90d5b6a0a686f4e",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-live-impact"
+            ],
+            "text": "The live impact result must retain the exact/heuristic/unresolved reach semantics already approved for impact."
+          },
+          {
+            "intent_entry_id": "project-behavior-risk-and-proof-exposure",
+            "kind": "journey_intent",
+            "number": 4,
+            "operation": "reuse",
+            "spawned": "6398b5de19eec1288aa850f635175359",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-live-impact"
+            ],
+            "text": "The MCP route exposes the same behavior-risk and proof-exposure projection rather than a weakened protocol-specific substitute."
+          },
+          {
+            "intent_entry_id": "classify-mcp-errors-and-preserve-session",
+            "kind": "journey_intent",
+            "number": 5,
+            "operation": "create",
+            "spawned": "e6152f2317b29aa8dbdb196d42d746e3",
+            "status": "adopted",
+            "step_ids": [
+              "request-unknown-tool",
+              "invoke-failing-tool"
+            ],
+            "text": "Protocol-versus-tool classification and session continuity are one observable recovery contract across the two failure steps."
+          },
+          {
+            "intent_entry_id": "refuse-unimplemented-mcp-method",
+            "kind": "journey_intent",
+            "number": 6,
+            "operation": "reuse",
+            "spawned": "6738806e8ca7380024eb78a8f5d09d62",
+            "status": "adopted",
+            "step_ids": [
+              "request-unknown-tool"
+            ],
+            "text": "The authored step separates an invalid request from a tool execution failure; an unimplemented METHOD is the third class the code already answers with -32601, and an id-less notification is answered not at all, both leaving the session usable."
+          }
+        ],
+        "journey_hash": "edbe81e359d5ad43",
+        "journey_id": "mcp-in-band",
+        "journey_node_id": "42c6e0310688ba636c0c62f137ce90d7",
+        "manifest_hash": "733c02d997761af1",
+        "proposal_id": "mcp-in-band-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds the method-level refusal the transport already performs: an unimplemented method answered as -32601 and an id-less notification left unanswered, neither ending the session.",
+        "raw": "{\"intents\":[{\"criterion\":\"MCP initialization establishes a usable session and advertises Loom read/write tools with structured input descriptions.\",\"id\":\"negotiate-mcp-session-capability-schema\",\"level\":\"feature\",\"name\":\"Loom negotiates MCP session capability schema\",\"operation\":\"create\",\"rationale\":\"Session negotiation is the protocol precondition for all later in-band requests.\",\"step_ids\":[\"discover-tools\"],\"visibility\":\"user_visible\"},{\"criterion\":\"A known MCP tool returns current graph-domain data through the negotiated in-band session.\",\"id\":\"serve-live-mcp-domain-tool\",\"level\":\"feature\",\"name\":\"Loom serves a live MCP domain tool\",\"operation\":\"create\",\"rationale\":\"Serving live tools is distinct from the session handshake and preserves the protocol surface without duplicating impact semantics.\",\"step_ids\":[\"inspect-live-impact\"],\"visibility\":\"user_visible\"},{\"id\":\"resolve-caller-reach-confidence\",\"intent_id\":\"Loom resolves caller reach confidence\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The live impact result must retain the exact/heuristic/unresolved reach semantics already approved for impact.\",\"step_ids\":[\"inspect-live-impact\"],\"visibility\":\"user_visible\"},{\"id\":\"project-behavior-risk-and-proof-exposure\",\"intent_id\":\"Loom projects behavior risk and proof exposure\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The MCP route exposes the same behavior-risk and proof-exposure projection rather than a weakened protocol-specific substitute.\",\"step_ids\":[\"inspect-live-impact\"],\"visibility\":\"user_visible\"},{\"criterion\":\"An unknown tool is reported as a protocol request error, a failing known tool is reported as a tool error, and the session remains usable after the latter.\",\"id\":\"classify-mcp-errors-and-preserve-session\",\"level\":\"feature\",\"name\":\"Loom classifies MCP errors and preserves the session\",\"operation\":\"create\",\"rationale\":\"Protocol-versus-tool classification and session continuity are one observable recovery contract across the two failure steps.\",\"step_ids\":[\"request-unknown-tool\",\"invoke-failing-tool\"],\"visibility\":\"user_visible\"},{\"id\":\"refuse-unimplemented-mcp-method\",\"intent_id\":\"6738806e8ca7380024eb78a8f5d09d62\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step separates an invalid request from a tool execution failure; an unimplemented METHOD is the third class the code already answers with -32601, and an id-less notification is answered not at all, both leaving the session usable.\",\"step_ids\":[\"request-unknown-tool\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"edbe81e359d5ad43\",\"journey_id\":\"mcp-in-band\",\"proposal_id\":\"mcp-in-band-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds the method-level refusal the transport already performs: an unimplemented method answered as -32601 and an id-less notification left unanswered, neither ending the session.\",\"relationships\":[{\"from\":\"serve-live-mcp-domain-tool\",\"id\":\"live-tool-requires-mcp-session\",\"kind\":\"requires\",\"rationale\":\"Live requests require a negotiated session and its advertised capability schema.\",\"to\":\"negotiate-mcp-session-capability-schema\"},{\"from\":\"classify-mcp-errors-and-preserve-session\",\"id\":\"mcp-error-continuity-requires-session\",\"kind\":\"requires\",\"rationale\":\"Request classification and continued usability are meaningful only for an established in-band session.\",\"to\":\"negotiate-mcp-session-capability-schema\"},{\"from\":\"refuse-unimplemented-mcp-method\",\"id\":\"refuse-unimplemented-mcp-method-requires-classify-mcp-errors-and-preserve-session\",\"kind\":\"requires\",\"rationale\":\"Method-level refusal is one class of the same error classification that keeps the in-band session usable.\",\"to\":\"classify-mcp-errors-and-preserve-session\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "6525832418d48afc46389147c2741864",
+            "from": "serve-live-mcp-domain-tool",
+            "id": "live-tool-requires-mcp-session",
+            "kind": "requires",
+            "rationale": "Live requests require a negotiated session and its advertised capability schema.",
+            "to": "negotiate-mcp-session-capability-schema"
+          },
+          {
+            "edge_id": "a4ead93a5e0e9e7b0b0fc5eeb5f2af2b",
+            "from": "classify-mcp-errors-and-preserve-session",
+            "id": "mcp-error-continuity-requires-session",
+            "kind": "requires",
+            "rationale": "Request classification and continued usability are meaningful only for an established in-band session.",
+            "to": "negotiate-mcp-session-capability-schema"
+          },
+          {
+            "edge_id": "30084624862b182d6446e875282f010c",
+            "from": "refuse-unimplemented-mcp-method",
+            "id": "refuse-unimplemented-mcp-method-requires-classify-mcp-errors-and-preserve-session",
+            "kind": "requires",
+            "rationale": "Method-level refusal is one class of the same error classification that keeps the in-band session usable.",
+            "to": "classify-mcp-errors-and-preserve-session"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:20:04.925Z",
+      "updated_at": "2026-08-15T10:20:04.966Z"
+    },
+    {
       "id": "d7278d7ac05f8019e1d6eac9c090cc9d",
       "type": "validation",
       "name": "journey:semantic-commit-recommendation:proof",
@@ -21778,21 +22232,6 @@
         "category": "smell",
         "identity": "unstable_proof:7247c92c3c054f99e993d58aa8074959",
         "kind": "unstable_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d89982c85e7db8a02",
-      "type": "finding",
-      "name": "user-visible intent 'Same-named symbols in different files never share a caller set' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:22040b320ffef0616cf30f7bd686a7d6",
-        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -22934,21 +23373,6 @@
       "updated_at": "2026-08-09T12:54:42.818Z"
     },
     {
-      "id": "db7c3b67a3ead7d77",
-      "type": "finding",
-      "name": "user-visible intent 'An ambiguous behavior name is refused rather than resolved to an arbitrary match' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:170eee9f25f6f74b04019251df4a2985",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "db7de80cbbb28c471",
       "type": "code_rule",
       "name": "deep-nesting",
@@ -23846,6 +24270,21 @@
       "body": {
         "category": "smell",
         "identity": "proof_too_shallow_for_intent:c396233636e7827e497151e71108da91",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de198a7f9304b0658",
+      "type": "finding",
+      "name": "user-visible intent 'An ambiguous behavior name is refused rather than resolved to an arbitrary match' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:170eee9f25f6f74b04019251df4a2985",
         "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
@@ -26628,6 +27067,87 @@
       "updated_at": "2026-08-09T12:54:20.588Z"
     },
     {
+      "id": "f0ad6c9a4467ad4b7cbd7ed1834657c5",
+      "type": "proposal",
+      "name": "Journey pagination derivation pagination-v2",
+      "description": "Carries the accepted v1 projection forward and binds the past-the-end outcome its own authored step already expects: an empty slice, has_more false, no next offset, and a footer that says the offset is past the end.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "retrieve-deterministic-bounded-page",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "eb045fffecb04e70441f507d1a9e29d7",
+            "status": "adopted",
+            "step_ids": [
+              "request-first-page"
+            ],
+            "text": "Retrieval owns bounds and deterministic rows independently of how callers are told to continue."
+          },
+          {
+            "intent_entry_id": "emit-canonical-page-continuation",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "95074e5e7a28c226aeb7f096691ecb77",
+            "status": "adopted",
+            "step_ids": [
+              "request-page-past-end"
+            ],
+            "text": "Continuation is a caller-facing contract derived from page facts and must remain correct at both boundaries."
+          },
+          {
+            "intent_entry_id": "empty-page-past-end-no-continuation",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "10ba438c486686f5477d2831208644d3",
+            "status": "adopted",
+            "step_ids": [
+              "request-page-past-end"
+            ],
+            "text": "The authored step request-page-past-end expects no more rows and no next offset; this names that outcome as a falsifiable behavior including the empty slice and the text footer that says the offset is past the end."
+          }
+        ],
+        "journey_hash": "c27cf7514665164b",
+        "journey_id": "pagination",
+        "journey_node_id": "55da5dc7e0395cb75514e30e37978267",
+        "manifest_hash": "61675153b4cf5fc1",
+        "proposal_id": "pagination-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds the past-the-end outcome its own authored step already expects: an empty slice, has_more false, no next offset, and a footer that says the offset is past the end.",
+        "raw": "{\"intents\":[{\"criterion\":\"A bounded collection request returns a deterministic row slice and correct page facts, including an empty slice past the end.\",\"id\":\"retrieve-deterministic-bounded-page\",\"level\":\"feature\",\"name\":\"Loom retrieves a deterministic bounded page\",\"operation\":\"create\",\"rationale\":\"Retrieval owns bounds and deterministic rows independently of how callers are told to continue.\",\"step_ids\":[\"request-first-page\"],\"visibility\":\"user_visible\"},{\"criterion\":\"The page envelope reports has_more and emits next_offset exactly when another page exists, including no offset past the end.\",\"id\":\"emit-canonical-page-continuation\",\"level\":\"feature\",\"name\":\"Loom emits canonical page continuation\",\"operation\":\"create\",\"rationale\":\"Continuation is a caller-facing contract derived from page facts and must remain correct at both boundaries.\",\"step_ids\":[\"request-page-past-end\"],\"visibility\":\"user_visible\"},{\"id\":\"empty-page-past-end-no-continuation\",\"intent_id\":\"10ba438c486686f5477d2831208644d3\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step request-page-past-end expects no more rows and no next offset; this names that outcome as a falsifiable behavior including the empty slice and the text footer that says the offset is past the end.\",\"step_ids\":[\"request-page-past-end\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"c27cf7514665164b\",\"journey_id\":\"pagination\",\"proposal_id\":\"pagination-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds the past-the-end outcome its own authored step already expects: an empty slice, has_more false, no next offset, and a footer that says the offset is past the end.\",\"relationships\":[{\"from\":\"emit-canonical-page-continuation\",\"id\":\"continuation-requires-page-facts\",\"kind\":\"requires\",\"rationale\":\"Continuation metadata is valid only when it is calculated from the returned bounded page.\",\"to\":\"retrieve-deterministic-bounded-page\"},{\"from\":\"empty-page-past-end-no-continuation\",\"id\":\"empty-page-past-end-no-continuation-requires-emit-canonical-page-continuation\",\"kind\":\"requires\",\"rationale\":\"The past-the-end outcome stands on the continuation projection that computes has_more and next_offset.\",\"to\":\"emit-canonical-page-continuation\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "3ac193fbe72de5a24626ba108f9fbe41",
+            "from": "emit-canonical-page-continuation",
+            "id": "continuation-requires-page-facts",
+            "kind": "requires",
+            "rationale": "Continuation metadata is valid only when it is calculated from the returned bounded page.",
+            "to": "retrieve-deterministic-bounded-page"
+          },
+          {
+            "edge_id": "21ad6edd9512df508af099bdcb16e17f",
+            "from": "empty-page-past-end-no-continuation",
+            "id": "empty-page-past-end-no-continuation-requires-emit-canonical-page-continuation",
+            "kind": "requires",
+            "rationale": "The past-the-end outcome stands on the continuation projection that computes has_more and next_offset.",
+            "to": "emit-canonical-page-continuation"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:14:03.007Z",
+      "updated_at": "2026-08-15T10:14:03.050Z"
+    },
+    {
       "id": "f0bfac8bc1f2dae02103354ed1df5b9f",
       "type": "note",
       "name": "note:ratify",
@@ -27352,7 +27872,7 @@
       "type": "proposal",
       "name": "Journey mcp-in-band derivation mcp-in-band-v1",
       "description": "The in-band session, shared live tools, and error/session behavior are distinct protocol responsibilities; impact parity is reused rather than re-derived.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -27451,7 +27971,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.822Z",
-      "updated_at": "2026-08-09T12:54:20.856Z"
+      "updated_at": "2026-08-15T10:20:04.966Z"
     },
     {
       "id": "fec98162f959f95d2a7b3d49c453c047",
@@ -27807,6 +28327,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-09T15:56:25.829Z",
       "updated_at": "2026-08-14T07:16:39.449Z"
+    },
+    {
+      "id": "02a80b3a9b8b60ce7257ae9c605ee04f",
+      "from_id": "fb88a31e5386f25d2c33097d3d229f7b",
+      "to_id": "bf87f391e40cfc2612e0dbe0dc1609fa",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:28:05.877Z",
+      "updated_at": "2026-08-15T10:28:05.877Z"
     },
     {
       "id": "030efaa67acfadc1aac5c273c96e9a72",
@@ -28311,6 +28845,20 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:19.952Z",
       "updated_at": "2026-08-09T12:54:19.952Z"
+    },
+    {
+      "id": "0cb206ffe613bbf51d090f1dba14de48",
+      "from_id": "e6fb4ab80e7128cf0b77f1c35ae22b16",
+      "to_id": "10ba438c486686f5477d2831208644d3",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:14:05.709Z",
+      "updated_at": "2026-08-15T10:14:05.709Z"
     },
     {
       "id": "0cec53a44157ce12999096014265053f",
@@ -29111,6 +29659,20 @@
       "updated_at": "2026-08-15T07:45:19.048Z"
     },
     {
+      "id": "21ad6edd9512df508af099bdcb16e17f",
+      "from_id": "10ba438c486686f5477d2831208644d3",
+      "to_id": "95074e5e7a28c226aeb7f096691ecb77",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:14:03.050Z",
+      "updated_at": "2026-08-15T10:14:03.050Z"
+    },
+    {
       "id": "2222e9fd850c63efc0dd31f17c2b5598",
       "from_id": "be0fe713b672af342bdf003d5d1ad51b",
       "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
@@ -29599,6 +30161,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T14:09:05.403Z",
       "updated_at": "2026-08-14T10:54:59.641Z"
+    },
+    {
+      "id": "30084624862b182d6446e875282f010c",
+      "from_id": "6738806e8ca7380024eb78a8f5d09d62",
+      "to_id": "e6152f2317b29aa8dbdb196d42d746e3",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:20:04.966Z",
+      "updated_at": "2026-08-15T10:20:04.966Z"
     },
     {
       "id": "3019bc4ec1eee2600d5e70978e8249f7",
@@ -30217,6 +30793,20 @@
       "updated_at": "2026-08-13T14:10:29.662Z"
     },
     {
+      "id": "434898fe4b22c88b7717c166f870cd33",
+      "from_id": "c8c873f2148878536c105f04d1dc6fbc",
+      "to_id": "22040b320ffef0616cf30f7bd686a7d6",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:26:25.943Z",
+      "updated_at": "2026-08-15T10:26:25.943Z"
+    },
+    {
       "id": "44cec90f5dfd697146e663ff503b64f0",
       "from_id": "d54387b358a615d705c6a53599b2daf6",
       "to_id": "683d6457db3690b1d19bec2c6dc47c18",
@@ -30679,6 +31269,20 @@
       "updated_at": "2026-08-14T22:21:47.457Z"
     },
     {
+      "id": "511a782110f71451b37e7d2f97f24bb2",
+      "from_id": "843d184eac16bd40fd8235e1fe696dbe",
+      "to_id": "6738806e8ca7380024eb78a8f5d09d62",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:20:07.746Z",
+      "updated_at": "2026-08-15T10:20:07.746Z"
+    },
+    {
       "id": "5131d84fd4dad5559337dda6333bbb76",
       "from_id": "42c6e0310688ba636c0c62f137ce90d7",
       "to_id": "10461615e20dd349229806795ade22d3",
@@ -30705,6 +31309,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-11T02:14:11.891Z",
       "updated_at": "2026-08-11T02:24:50.578Z"
+    },
+    {
+      "id": "51bcc3f56515e70a67c4d3b4cc2ab9df",
+      "from_id": "b5725c801af4c3b75b932b5be43c6059",
+      "to_id": "fb88a31e5386f25d2c33097d3d229f7b",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:28:08.641Z",
+      "updated_at": "2026-08-15T10:28:08.641Z"
     },
     {
       "id": "51fbcb14099b9705bc5f831feb8ad425",
@@ -30777,6 +31395,20 @@
       "updated_at": "2026-08-15T07:30:49.545Z"
     },
     {
+      "id": "530eeb479d3e6960ea73852b550d510e",
+      "from_id": "2738cae7b6c60caf1bdc848a4516aef7",
+      "to_id": "170eee9f25f6f74b04019251df4a2985",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:27:14.562Z",
+      "updated_at": "2026-08-15T10:27:14.562Z"
+    },
+    {
       "id": "53190760c89127495976be287a8b21ab",
       "from_id": "2d16cabcf844b5d7f9dbd929c7da0f5c",
       "to_id": "cd3f3bc4fb4e12f0ed0c2a6fe73f4141",
@@ -30803,6 +31435,20 @@
       "inspected_by": "",
       "created_at": "2026-08-15T09:52:51.768Z",
       "updated_at": "2026-08-15T09:52:51.768Z"
+    },
+    {
+      "id": "53337d632ffd6e80cb2196716be263f9",
+      "from_id": "a03cfd1d58679b956b112fd78386a6fa",
+      "to_id": "22040b320ffef0616cf30f7bd686a7d6",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:26:28.720Z",
+      "updated_at": "2026-08-15T10:26:28.720Z"
     },
     {
       "id": "5339af69f172ca5706f1ce6b11b0599d",
@@ -32275,6 +32921,20 @@
       "updated_at": "2026-08-14T23:11:11.506Z"
     },
     {
+      "id": "80d634aed0b8b22d7945c1fca83e88b0",
+      "from_id": "a03053690413c5dd3cba214056da17e5",
+      "to_id": "170eee9f25f6f74b04019251df4a2985",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:27:11.815Z",
+      "updated_at": "2026-08-15T10:27:11.815Z"
+    },
+    {
       "id": "810e9d6a3f03a3a2a5de8ef3553bc3e9",
       "from_id": "f4a5a1175fec0fa52f4baea6fafb099d",
       "to_id": "9a95b5ffa66ddd671b0338670da86dfd",
@@ -32457,6 +33117,20 @@
       "updated_at": "2026-08-10T03:58:48.854Z"
     },
     {
+      "id": "86d2d37ac98e0e36fdc537b7448ad894",
+      "from_id": "55da5dc7e0395cb75514e30e37978267",
+      "to_id": "10ba438c486686f5477d2831208644d3",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:14:03.044Z",
+      "updated_at": "2026-08-15T10:14:03.044Z"
+    },
+    {
       "id": "8707a418cca52e4d7ce9c2062918f20c",
       "from_id": "8456a04b74fd1dabd4cc89af61ab8a30",
       "to_id": "35ebc51ec9c9ff4a7a8fb5c0a59df289",
@@ -32595,6 +33269,20 @@
       "inspected_by": "",
       "created_at": "2026-08-15T10:11:32.556Z",
       "updated_at": "2026-08-15T10:11:32.556Z"
+    },
+    {
+      "id": "8bf1505d84a527291ff987b67acfd038",
+      "from_id": "42c6e0310688ba636c0c62f137ce90d7",
+      "to_id": "6738806e8ca7380024eb78a8f5d09d62",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:20:04.961Z",
+      "updated_at": "2026-08-15T10:20:04.961Z"
     },
     {
       "id": "8c45a95b53c96ed91d7e1721cd6573d1",
@@ -34611,6 +35299,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T22:22:24.992Z",
       "updated_at": "2026-08-14T22:22:27.584Z"
+    },
+    {
+      "id": "c9b40fbcb28910081cc72ec77e8aa69d",
+      "from_id": "74b96a6be1ae5d7c638326d16f970d94",
+      "to_id": "fb88a31e5386f25d2c33097d3d229f7b",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:28:05.869Z",
+      "updated_at": "2026-08-15T10:28:05.869Z"
     },
     {
       "id": "ca058c319072fc51a1ee32fb296af78a",
@@ -40661,6 +41363,20 @@
       "updated_at": "2026-08-14T06:58:21.115Z"
     },
     {
+      "id": "ebc1b8fc327bf53caabd9b6ecfd5dc29",
+      "from_id": "22040b320ffef0616cf30f7bd686a7d6",
+      "to_id": "51a4785c64e0347fe90d5b6a0a686f4e",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:26:25.951Z",
+      "updated_at": "2026-08-15T10:26:25.951Z"
+    },
+    {
       "id": "ebd130aa07c205596455b1510b78c44e",
       "from_id": "d569f71f0fcb01e91838ba2c60c59bcb",
       "to_id": "0727320f47b30fd3f14c7f67b7b69eb7",
@@ -40883,6 +41599,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T22:22:24.993Z",
       "updated_at": "2026-08-14T22:22:27.585Z"
+    },
+    {
+      "id": "f275e3941707900235e7cb23e5e98e2b",
+      "from_id": "170eee9f25f6f74b04019251df4a2985",
+      "to_id": "9037bd5e25b911691b83ef769f79e198",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:27:11.821Z",
+      "updated_at": "2026-08-15T10:27:11.821Z"
     },
     {
       "id": "f31053e408896375b87039d1c8794f4d",
@@ -41855,6 +42585,20 @@
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T07:16:41.575Z",
       "decision_mode": "individual"
+    },
+    {
+      "id": "f1c6dd47e179a29bc",
+      "subject_kind": "node",
+      "subject_id": "22040b320ffef0616cf30f7bd686a7d6",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:26:25.937Z",
+      "decision_mode": "batch",
+      "batch_id": "1786789585925-19083-1"
     },
     {
       "id": "f1e22c23d991c02ec",
@@ -43645,6 +44389,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f6961ef98bde54f67",
+      "subject_kind": "node",
+      "subject_id": "170eee9f25f6f74b04019251df4a2985",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:27:11.811Z",
+      "decision_mode": "batch",
+      "batch_id": "1786789631800-19304-1"
+    },
+    {
       "id": "f696986e62a03ce30",
       "subject_kind": "edge",
       "subject_id": "da1a6011a0dcbe6e7dc85aaac42538b3",
@@ -43843,6 +44601,20 @@
       "asserted_by": "human",
       "asserted_at": "2026-08-13T13:29:44.858Z",
       "decision_mode": "individual"
+    },
+    {
+      "id": "f7350874013fd8296",
+      "subject_kind": "node",
+      "subject_id": "6738806e8ca7380024eb78a8f5d09d62",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:20:04.956Z",
+      "decision_mode": "batch",
+      "batch_id": "1786789204943-18202-1"
     },
     {
       "id": "f7536d453ae10a8ad",
@@ -44412,6 +45184,20 @@
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T11:56:06.528Z",
       "decision_mode": "individual"
+    },
+    {
+      "id": "f90a627e52d56db14",
+      "subject_kind": "node",
+      "subject_id": "10ba438c486686f5477d2831208644d3",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:14:03.039Z",
+      "decision_mode": "batch",
+      "batch_id": "1786788843028-99776-1"
     },
     {
       "id": "f90d59f22830bd4f5",
@@ -46698,6 +47484,20 @@
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T22:48:42.037Z",
       "decision_mode": "individual"
+    },
+    {
+      "id": "fe946b33c08b837a1",
+      "subject_kind": "node",
+      "subject_id": "fb88a31e5386f25d2c33097d3d229f7b",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:28:05.865Z",
+      "decision_mode": "batch",
+      "batch_id": "1786789685849-19457-1"
     },
     {
       "id": "fe98b7f79bc1e9cad",
@@ -50723,6 +51523,24 @@
         "text": "src/store/adjudications.rs:44-48 (suppress_hit): keys the judgment on `hit_hash(&canonical_excerpt(excerpt))`, i.e. content-derived identity, not line/position. :61-65 inserts only into `hit_adjudication(rule_name, content_hash, excerpt, reason, actor, created_at)` — a separate table, never touching a diagnostic/rule/evidence table. unsuppress_hit (:88-103) resolves the row by hash-prefix or exact canonical excerpt and issues a plain `DELETE FROM hit_adjudication ...` — fully reversible, and again only affects the adjudication table. is_hit_suppressed (:127-135) re-derives the same canonical hash and does a pure `COUNT(*)` lookup, so suppression state is entirely a function of hit content. hit_hash (:158-160) delegates to `crate::artifact::fingerprint(canonical_excerpt)`, confirming the key is the canonicalized matched text, not a position."
       },
       "recorded_at": "2026-08-14T07:16:41.575Z"
+    },
+    {
+      "id": "e1258054bbe51092b",
+      "fact_id": "f1c6dd47e179a29bc",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786789585929-19083-2"
+      },
+      "recorded_at": "2026-08-15T10:26:25.937Z"
+    },
+    {
+      "id": "eb18f8a86579020fc",
+      "fact_id": "f1c6dd47e179a29bc",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'impact' derivation at semantic hash 352296cc29dd349c from canonical manifest daa8aad673866e76"
+      },
+      "recorded_at": "2026-08-15T10:26:25.937Z"
     },
     {
       "id": "e1d70c96a124cb570",
@@ -61458,6 +62276,24 @@
       "recorded_at": "2026-08-14T06:58:20.788Z"
     },
     {
+      "id": "ed6a4b0d722f9e85a",
+      "fact_id": "f6961ef98bde54f67",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786789631804-19304-2"
+      },
+      "recorded_at": "2026-08-15T10:27:11.811Z"
+    },
+    {
+      "id": "ef9478345c2bf90ca",
+      "fact_id": "f6961ef98bde54f67",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'find-grounding' derivation at semantic hash 24ee5adf3e646bdd from canonical manifest ffa1e61b7e804fba"
+      },
+      "recorded_at": "2026-08-15T10:27:11.811Z"
+    },
+    {
       "id": "e1ae9d41f19057e98",
       "fact_id": "f696986e62a03ce30",
       "payload": {
@@ -62468,6 +63304,24 @@
         "ref": "1786627784844-26029-0"
       },
       "recorded_at": "2026-08-13T13:29:44.858Z"
+    },
+    {
+      "id": "e3acddc94498bbed0",
+      "fact_id": "f7350874013fd8296",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786789204949-18202-2"
+      },
+      "recorded_at": "2026-08-15T10:20:04.956Z"
+    },
+    {
+      "id": "ef6c74a2de6408e17",
+      "fact_id": "f7350874013fd8296",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'mcp-in-band' derivation at semantic hash edbe81e359d5ad43 from canonical manifest 733c02d997761af1"
+      },
+      "recorded_at": "2026-08-15T10:20:04.956Z"
     },
     {
       "id": "e3990a947b43f1537",
@@ -65702,6 +66556,24 @@
         "text": "`cargo test --test ring51_semantic_checkpoint` exit 0"
       },
       "recorded_at": "2026-08-14T11:56:06.528Z"
+    },
+    {
+      "id": "e73b47462e0f39f01",
+      "fact_id": "f90a627e52d56db14",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786788843033-99776-2"
+      },
+      "recorded_at": "2026-08-15T10:14:03.039Z"
+    },
+    {
+      "id": "ef65de5760f5eacca",
+      "fact_id": "f90a627e52d56db14",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'pagination' derivation at semantic hash c27cf7514665164b from canonical manifest 61675153b4cf5fc1"
+      },
+      "recorded_at": "2026-08-15T10:14:03.039Z"
     },
     {
       "id": "e27dfa372852b15f4",
@@ -79005,6 +79877,24 @@
       "recorded_at": "2026-08-14T22:48:42.037Z"
     },
     {
+      "id": "e788f6f2b0102ccc5",
+      "fact_id": "fe946b33c08b837a1",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'writes-graph' derivation at semantic hash 193145a6b8c0667a from canonical manifest b3db9e193e6104d1"
+      },
+      "recorded_at": "2026-08-15T10:28:05.865Z"
+    },
+    {
+      "id": "efbfbfb98b289eafe",
+      "fact_id": "fe946b33c08b837a1",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786789685857-19457-2"
+      },
+      "recorded_at": "2026-08-15T10:28:05.865Z"
+    },
+    {
       "id": "e9a55c2446182f695",
       "fact_id": "fe98b7f79bc1e9cad",
       "payload": {
@@ -81929,6 +82819,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "02a80b3a9b8b60ce7257ae9c605ee04f",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"d292f2209cbab40d43eda25eb29dad29\":{\"manifest_hash\":\"b3db9e193e6104d1\",\"rationale\":\"The refusal is the fail-closed half of the evidence extraction that the proposals stand on.\",\"relationship_id\":\"fail-scan-naming-invalid-pattern-requires-extract-repository-evidence\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "02a80b3a9b8b60ce7257ae9c605ee04f",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "02d66b7b5d4eabc067845e10c794a750",
       "target_kind": "node",
       "key": "de_facto",
@@ -82422,14 +83326,14 @@
       "target_id": "07a7703e39e8b333202187acca41f8bd",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "020e98c6ccee4a3e",
+      "value": "61675153b4cf5fc1",
       "truth_class": "asserted"
     },
     {
       "target_id": "07a7703e39e8b333202187acca41f8bd",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "1d6c7938bae0ebec94827c8ff3613ca2",
+      "value": "f0ad6c9a4467ad4b7cbd7ed1834657c5",
       "truth_class": "asserted"
     },
     {
@@ -83829,7 +84733,7 @@
       "target_id": "17cfd8e1dde86c062dd228f729420285",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"2568392d37e2bf1eee2d9445c28f0668\":{\"manifest_hash\":\"085f760cbd93527e\",\"rationale\":\"Risk and proof exposure must be attributed from explicit exact, heuristic, or unresolved reach rather than guessed.\",\"relationship_id\":\"risk-projection-requires-reach-resolution\"}}",
+      "value": "{\"131763aad0ec124359da42d7fcd5bae7\":{\"manifest_hash\":\"daa8aad673866e76\",\"rationale\":\"Risk and proof exposure must be attributed from explicit exact, heuristic, or unresolved reach rather than guessed.\",\"relationship_id\":\"risk-projection-requires-reach-resolution\"}}",
       "truth_class": "asserted"
     },
     {
@@ -84410,14 +85314,14 @@
       "target_id": "1e5814d2b4710c047c77f7bfb8d7d35e",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "085f760cbd93527e",
+      "value": "daa8aad673866e76",
       "truth_class": "asserted"
     },
     {
       "target_id": "1e5814d2b4710c047c77f7bfb8d7d35e",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2568392d37e2bf1eee2d9445c28f0668",
+      "value": "131763aad0ec124359da42d7fcd5bae7",
       "truth_class": "asserted"
     },
     {
@@ -84544,6 +85448,20 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "module skills/loom-driver/SKILL.md",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "21ad6edd9512df508af099bdcb16e17f",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"f0ad6c9a4467ad4b7cbd7ed1834657c5\":{\"manifest_hash\":\"61675153b4cf5fc1\",\"rationale\":\"The past-the-end outcome stands on the continuation projection that computes has_more and next_offset.\",\"relationship_id\":\"empty-page-past-end-no-continuation-requires-emit-canonical-page-continuation\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "21ad6edd9512df508af099bdcb16e17f",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
       "truth_class": "asserted"
     },
     {
@@ -85401,6 +86319,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "30084624862b182d6446e875282f010c",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"d718ccff182b0dcac5ea40a40eaa373f\":{\"manifest_hash\":\"733c02d997761af1\",\"rationale\":\"Method-level refusal is one class of the same error classification that keeps the in-band session usable.\",\"relationship_id\":\"refuse-unimplemented-mcp-method-requires-classify-mcp-errors-and-preserve-session\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "30084624862b182d6446e875282f010c",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "3019bc4ec1eee2600d5e70978e8249f7",
       "target_kind": "edge",
       "key": "locator",
@@ -85908,7 +86840,7 @@
       "target_id": "3ac193fbe72de5a24626ba108f9fbe41",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"1d6c7938bae0ebec94827c8ff3613ca2\":{\"manifest_hash\":\"020e98c6ccee4a3e\",\"rationale\":\"Continuation metadata is valid only when it is calculated from the returned bounded page.\",\"relationship_id\":\"continuation-requires-page-facts\"}}",
+      "value": "{\"f0ad6c9a4467ad4b7cbd7ed1834657c5\":{\"manifest_hash\":\"61675153b4cf5fc1\",\"rationale\":\"Continuation metadata is valid only when it is calculated from the returned bounded page.\",\"relationship_id\":\"continuation-requires-page-facts\"}}",
       "truth_class": "asserted"
     },
     {
@@ -86504,6 +87436,48 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "shared_proof_command_smells",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "434898fe4b22c88b7717c166f870cd33",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "352296cc29dd349c",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "434898fe4b22c88b7717c166f870cd33",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "daa8aad673866e76",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "434898fe4b22c88b7717c166f870cd33",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "131763aad0ec124359da42d7fcd5bae7",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "434898fe4b22c88b7717c166f870cd33",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects resolution confidence to be preserved; two definitions sharing a bare name is the case where confidence would silently collapse, and keying reach on the file-qualified symbol is independently falsifiable.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "434898fe4b22c88b7717c166f870cd33",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"inspect-change-impact\":\"236aea77f72b66b9\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "434898fe4b22c88b7717c166f870cd33",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"inspect-change-impact\"]",
       "truth_class": "asserted"
     },
     {
@@ -87315,14 +88289,14 @@
       "target_id": "4d8118a60e19aa6683ebca2e05971dd1",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "09dcb85f15cbfad4",
+      "value": "733c02d997761af1",
       "truth_class": "asserted"
     },
     {
       "target_id": "4d8118a60e19aa6683ebca2e05971dd1",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "fde55c90ab60064e5e4a30568dd84a78",
+      "value": "d718ccff182b0dcac5ea40a40eaa373f",
       "truth_class": "asserted"
     },
     {
@@ -87539,14 +88513,14 @@
       "target_id": "5131d84fd4dad5559337dda6333bbb76",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "09dcb85f15cbfad4",
+      "value": "733c02d997761af1",
       "truth_class": "asserted"
     },
     {
       "target_id": "5131d84fd4dad5559337dda6333bbb76",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "fde55c90ab60064e5e4a30568dd84a78",
+      "value": "d718ccff182b0dcac5ea40a40eaa373f",
       "truth_class": "asserted"
     },
     {
@@ -87791,14 +88765,14 @@
       "target_id": "55033db872ff96bfc4bd3f3e27418f1d",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "1dda923880da9052",
+      "value": "b3db9e193e6104d1",
       "truth_class": "asserted"
     },
     {
       "target_id": "55033db872ff96bfc4bd3f3e27418f1d",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "9d785125121d39cf21455e731d390169",
+      "value": "d292f2209cbab40d43eda25eb29dad29",
       "truth_class": "asserted"
     },
     {
@@ -88260,14 +89234,14 @@
       "target_id": "59abe02ae79fee6027827c20df5633cc",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "9b110f7eeb480ac4",
+      "value": "ffa1e61b7e804fba",
       "truth_class": "asserted"
     },
     {
       "target_id": "59abe02ae79fee6027827c20df5633cc",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "bcafc625b9b8b864e8edc65bbea76159",
+      "value": "80bd0eb99a270b8e866bb5b56677bd39",
       "truth_class": "asserted"
     },
     {
@@ -89156,7 +90130,7 @@
       "target_id": "6525832418d48afc46389147c2741864",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"fde55c90ab60064e5e4a30568dd84a78\":{\"manifest_hash\":\"09dcb85f15cbfad4\",\"rationale\":\"Live requests require a negotiated session and its advertised capability schema.\",\"relationship_id\":\"live-tool-requires-mcp-session\"}}",
+      "value": "{\"d718ccff182b0dcac5ea40a40eaa373f\":{\"manifest_hash\":\"733c02d997761af1\",\"rationale\":\"Live requests require a negotiated session and its advertised capability schema.\",\"relationship_id\":\"live-tool-requires-mcp-session\"}}",
       "truth_class": "asserted"
     },
     {
@@ -90150,14 +91124,14 @@
       "target_id": "701a6cf42a9e4f5882b865f2035dd650",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "09dcb85f15cbfad4",
+      "value": "733c02d997761af1",
       "truth_class": "asserted"
     },
     {
       "target_id": "701a6cf42a9e4f5882b865f2035dd650",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "fde55c90ab60064e5e4a30568dd84a78",
+      "value": "d718ccff182b0dcac5ea40a40eaa373f",
       "truth_class": "asserted"
     },
     {
@@ -90584,14 +91558,14 @@
       "target_id": "7a4dadb1420531a8a6ffc71a63cda712",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "09dcb85f15cbfad4",
+      "value": "733c02d997761af1",
       "truth_class": "asserted"
     },
     {
       "target_id": "7a4dadb1420531a8a6ffc71a63cda712",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "fde55c90ab60064e5e4a30568dd84a78",
+      "value": "d718ccff182b0dcac5ea40a40eaa373f",
       "truth_class": "asserted"
     },
     {
@@ -91344,6 +92318,48 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "80d634aed0b8b22d7945c1fca83e88b0",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "24ee5adf3e646bdd",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "80d634aed0b8b22d7945c1fca83e88b0",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "ffa1e61b7e804fba",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "80d634aed0b8b22d7945c1fca83e88b0",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "80bd0eb99a270b8e866bb5b56677bd39",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "80d634aed0b8b22d7945c1fca83e88b0",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step promises the grounding of the matched behavior; when more than one active node carries the exact name there is no single grounding to project, so refusal naming the count is the falsifiable alternative to a guess.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "80d634aed0b8b22d7945c1fca83e88b0",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"find-exact-behavior\":\"646a4dc3393c6f08\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "80d634aed0b8b22d7945c1fca83e88b0",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"find-exact-behavior\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "810e9d6a3f03a3a2a5de8ef3553bc3e9",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -91396,14 +92412,14 @@
       "target_id": "82c8b7862465890c8173ea2d235c3eb8",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "1dda923880da9052",
+      "value": "b3db9e193e6104d1",
       "truth_class": "asserted"
     },
     {
       "target_id": "82c8b7862465890c8173ea2d235c3eb8",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "9d785125121d39cf21455e731d390169",
+      "value": "d292f2209cbab40d43eda25eb29dad29",
       "truth_class": "asserted"
     },
     {
@@ -91666,6 +92682,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "86d2d37ac98e0e36fdc537b7448ad894",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "c27cf7514665164b",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "86d2d37ac98e0e36fdc537b7448ad894",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "61675153b4cf5fc1",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "86d2d37ac98e0e36fdc537b7448ad894",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "f0ad6c9a4467ad4b7cbd7ed1834657c5",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "86d2d37ac98e0e36fdc537b7448ad894",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step request-page-past-end expects no more rows and no next offset; this names that outcome as a falsifiable behavior including the empty slice and the text footer that says the offset is past the end.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "86d2d37ac98e0e36fdc537b7448ad894",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"request-page-past-end\":\"a3e94b79c5874c56\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "86d2d37ac98e0e36fdc537b7448ad894",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"request-page-past-end\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "86e5d4217e0617539229fbcb04fdf88b",
       "target_kind": "node",
       "key": "calls",
@@ -91837,14 +92895,14 @@
       "target_id": "8780261ba3af84c94c3b4e960e66e153",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "09dcb85f15cbfad4",
+      "value": "733c02d997761af1",
       "truth_class": "asserted"
     },
     {
       "target_id": "8780261ba3af84c94c3b4e960e66e153",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "fde55c90ab60064e5e4a30568dd84a78",
+      "value": "d718ccff182b0dcac5ea40a40eaa373f",
       "truth_class": "asserted"
     },
     {
@@ -92181,6 +93239,48 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "run",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8bf1505d84a527291ff987b67acfd038",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "edbe81e359d5ad43",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8bf1505d84a527291ff987b67acfd038",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "733c02d997761af1",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8bf1505d84a527291ff987b67acfd038",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "d718ccff182b0dcac5ea40a40eaa373f",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8bf1505d84a527291ff987b67acfd038",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step separates an invalid request from a tool execution failure; an unimplemented METHOD is the third class the code already answers with -32601, and an id-less notification is answered not at all, both leaving the session usable.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8bf1505d84a527291ff987b67acfd038",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"request-unknown-tool\":\"29bfe8e833eb29ea\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8bf1505d84a527291ff987b67acfd038",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"request-unknown-tool\"]",
       "truth_class": "asserted"
     },
     {
@@ -94301,7 +95401,7 @@
       "target_id": "a4ead93a5e0e9e7b0b0fc5eeb5f2af2b",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"fde55c90ab60064e5e4a30568dd84a78\":{\"manifest_hash\":\"09dcb85f15cbfad4\",\"rationale\":\"Request classification and continued usability are meaningful only for an established in-band session.\",\"relationship_id\":\"mcp-error-continuity-requires-session\"}}",
+      "value": "{\"d718ccff182b0dcac5ea40a40eaa373f\":{\"manifest_hash\":\"733c02d997761af1\",\"rationale\":\"Request classification and continued usability are meaningful only for an established in-band session.\",\"relationship_id\":\"mcp-error-continuity-requires-session\"}}",
       "truth_class": "asserted"
     },
     {
@@ -94329,14 +95429,14 @@
       "target_id": "a5313096db294505493b8b42172fb905",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "085f760cbd93527e",
+      "value": "daa8aad673866e76",
       "truth_class": "asserted"
     },
     {
       "target_id": "a5313096db294505493b8b42172fb905",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2568392d37e2bf1eee2d9445c28f0668",
+      "value": "131763aad0ec124359da42d7fcd5bae7",
       "truth_class": "asserted"
     },
     {
@@ -94882,14 +95982,14 @@
       "target_id": "aef354512b1b2686c1d8be43d0f22275",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "9b110f7eeb480ac4",
+      "value": "ffa1e61b7e804fba",
       "truth_class": "asserted"
     },
     {
       "target_id": "aef354512b1b2686c1d8be43d0f22275",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "bcafc625b9b8b864e8edc65bbea76159",
+      "value": "80bd0eb99a270b8e866bb5b56677bd39",
       "truth_class": "asserted"
     },
     {
@@ -95477,7 +96577,7 @@
       "target_id": "b6d1f1c5c87862d9ed46dfec79600524",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"bcafc625b9b8b864e8edc65bbea76159\":{\"manifest_hash\":\"9b110f7eeb480ac4\",\"rationale\":\"A path and locator must belong to the uniquely selected behavior, never a fuzzy match.\",\"relationship_id\":\"grounding-detail-requires-identity-resolution\"}}",
+      "value": "{\"80bd0eb99a270b8e866bb5b56677bd39\":{\"manifest_hash\":\"ffa1e61b7e804fba\",\"rationale\":\"A path and locator must belong to the uniquely selected behavior, never a fuzzy match.\",\"relationship_id\":\"grounding-detail-requires-identity-resolution\"}}",
       "truth_class": "asserted"
     },
     {
@@ -96783,6 +97883,48 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "c9b40fbcb28910081cc72ec77e8aa69d",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "193145a6b8c0667a",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c9b40fbcb28910081cc72ec77e8aa69d",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "b3db9e193e6104d1",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c9b40fbcb28910081cc72ec77e8aa69d",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "d292f2209cbab40d43eda25eb29dad29",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c9b40fbcb28910081cc72ec77e8aa69d",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects every proposal to carry the repository evidence behind it; a pattern that cannot compile must abort the scan naming that pattern rather than quietly yield fewer hits and thus weaker evidence.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c9b40fbcb28910081cc72ec77e8aa69d",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"inspect-repository-work\":\"62185c170151f55a\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c9b40fbcb28910081cc72ec77e8aa69d",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"inspect-repository-work\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "c9c69db32b06a1a9f6ecdcfbd8a059e2",
       "target_kind": "node",
       "key": "de_facto",
@@ -96891,14 +98033,14 @@
       "target_id": "cb03874a7aa8de1aa3da27f589657bc1",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "020e98c6ccee4a3e",
+      "value": "61675153b4cf5fc1",
       "truth_class": "asserted"
     },
     {
       "target_id": "cb03874a7aa8de1aa3da27f589657bc1",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "1d6c7938bae0ebec94827c8ff3613ca2",
+      "value": "f0ad6c9a4467ad4b7cbd7ed1834657c5",
       "truth_class": "asserted"
     },
     {
@@ -100111,7 +101253,7 @@
       "target_id": "ea077fefefe478b3ad0cf836589360db",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"9d785125121d39cf21455e731d390169\":{\"manifest_hash\":\"1dda923880da9052\",\"rationale\":\"Every proposed mutation must cite the repository observation from which it was derived.\",\"relationship_id\":\"typed-proposal-requires-evidence-extraction\"}}",
+      "value": "{\"d292f2209cbab40d43eda25eb29dad29\":{\"manifest_hash\":\"b3db9e193e6104d1\",\"rationale\":\"Every proposed mutation must cite the repository observation from which it was derived.\",\"relationship_id\":\"typed-proposal-requires-evidence-extraction\"}}",
       "truth_class": "asserted"
     },
     {
@@ -100350,6 +101492,20 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "extract",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ebc1b8fc327bf53caabd9b6ecfd5dc29",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"131763aad0ec124359da42d7fcd5bae7\":{\"manifest_hash\":\"daa8aad673866e76\",\"rationale\":\"Distinct caller sets are a property of the reach resolution that classifies exact, heuristic, and unresolved callers.\",\"relationship_id\":\"keep-same-named-symbols-caller-sets-distinct-requires-resolve-caller-reach-confidence\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "ebc1b8fc327bf53caabd9b6ecfd5dc29",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
       "truth_class": "asserted"
     },
     {
@@ -100819,6 +101975,20 @@
       "target_kind": "edge",
       "key": "surface_locator",
       "value": "validation",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f275e3941707900235e7cb23e5e98e2b",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"80bd0eb99a270b8e866bb5b56677bd39\":{\"manifest_hash\":\"ffa1e61b7e804fba\",\"rationale\":\"The refusal is the negative outcome of the identity resolution that decides whether one behavior matched.\",\"relationship_id\":\"refuse-ambiguous-behavior-name-requires-resolve-exact-behavior-identity\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "f275e3941707900235e7cb23e5e98e2b",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
       "truth_class": "asserted"
     },
     {
@@ -103502,6 +104672,96 @@
         "batch_id": "1786788764402-99449-1",
         "decision_mode": "batch",
         "evidence": "accepted Journey 'duplicate-command-warn' derivation at semantic hash c28da61dc5013846 from canonical manifest 5e085ccd2c79d517",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786788843033-99776-2",
+      "ts": "1786788843033",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "10ba438c486686f5477d2831208644d3",
+      "payload": {
+        "batch_id": "1786788843028-99776-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'pagination' derivation at semantic hash c27cf7514665164b from canonical manifest 61675153b4cf5fc1",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786789204949-18202-2",
+      "ts": "1786789204949",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "6738806e8ca7380024eb78a8f5d09d62",
+      "payload": {
+        "batch_id": "1786789204943-18202-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'mcp-in-band' derivation at semantic hash edbe81e359d5ad43 from canonical manifest 733c02d997761af1",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786789585929-19083-2",
+      "ts": "1786789585929",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "22040b320ffef0616cf30f7bd686a7d6",
+      "payload": {
+        "batch_id": "1786789585925-19083-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'impact' derivation at semantic hash 352296cc29dd349c from canonical manifest daa8aad673866e76",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786789631804-19304-2",
+      "ts": "1786789631804",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "170eee9f25f6f74b04019251df4a2985",
+      "payload": {
+        "batch_id": "1786789631800-19304-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'find-grounding' derivation at semantic hash 24ee5adf3e646bdd from canonical manifest ffa1e61b7e804fba",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786789685857-19457-2",
+      "ts": "1786789685857",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "fb88a31e5386f25d2c33097d3d229f7b",
+      "payload": {
+        "batch_id": "1786789685849-19457-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'writes-graph' derivation at semantic hash 193145a6b8c0667a from canonical manifest b3db9e193e6104d1",
         "human_decision": {
           "mode": "mediated",
           "response": "Accept (Recommended)"
