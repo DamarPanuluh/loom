@@ -2109,6 +2109,20 @@
       "updated_at": "2026-08-10T04:00:54.735Z"
     },
     {
+      "id": "1ca8609daeb9528daee0ab4d99a8ba85",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'green-graph' derivation at semantic hash cf45988e6a690560 from canonical manifest 4e9213cfa4ef57af",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "b999f926fc735d94573ed77e037b1523"
+      },
+      "created_at": "2026-08-15T09:59:03.840Z",
+      "updated_at": "2026-08-15T09:59:03.840Z"
+    },
+    {
       "id": "1ce369e58a31e26585a5d6cdb53b9be0",
       "type": "note",
       "name": "note:decision",
@@ -3394,7 +3408,7 @@
       "type": "proposal",
       "name": "Journey self-audit derivation self-audit-v1",
       "description": "Detecting falsifiability/judgment-burst conditions and presenting an audit outcome are separate responsibilities; exact prior human batch authorization is part of detection, not a bypass.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -3449,7 +3463,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.895Z",
-      "updated_at": "2026-08-09T12:54:20.924Z"
+      "updated_at": "2026-08-15T10:10:29.408Z"
     },
     {
       "id": "2b9d39a8dc33e778eb4e71aed8ebf9ea",
@@ -4553,6 +4567,20 @@
       },
       "created_at": "2026-08-14T22:22:24.949Z",
       "updated_at": "2026-08-14T22:22:24.949Z"
+    },
+    {
+      "id": "35bfaa0091388df26b6de255b14f7b95",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest 54070a7ea2e78492",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "edb36a06142779c3db657ee31edc7e7e"
+      },
+      "created_at": "2026-08-15T10:10:29.398Z",
+      "updated_at": "2026-08-15T10:10:29.398Z"
     },
     {
       "id": "35ebc51ec9c9ff4a7a8fb5c0a59df289",
@@ -6398,7 +6426,7 @@
       "type": "proposal",
       "name": "Journey green-graph derivation green-graph-v1",
       "description": "Weakness ranking is distinct from offering optional strengthening work, which must never reintroduce a release gate after ordinary maturity is green.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -6452,7 +6480,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.963Z",
-      "updated_at": "2026-08-09T12:54:20.989Z"
+      "updated_at": "2026-08-15T09:59:03.856Z"
     },
     {
       "id": "4da347e483ee7b59739b6e0fa8b483ff",
@@ -7237,6 +7265,107 @@
       "updated_at": "2026-08-15T07:59:44.317Z"
     },
     {
+      "id": "56d16653178dd1c50a07e43252a0c22a",
+      "type": "proposal",
+      "name": "Journey green-graph derivation green-graph-v2",
+      "description": "Carries the accepted v1 projection forward and binds the two degraded outcomes of the same authored step: an empty ranking serving no work, and a freeze-baseline move that does not promise a higher grade.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "rank-weakest-standing-claim",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "ba48ee7d3a59cba3cca83ddefcc9ec50",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-deepening-opportunity"
+            ],
+            "text": "Ranking exposes a continuous improvement target without changing the settled maturity floor."
+          },
+          {
+            "intent_entry_id": "offer-optional-evidence-improvement",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "f4a5a1175fec0fa52f4baea6fafb099d",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-deepening-opportunity"
+            ],
+            "text": "The optional packet is a separate policy guarantee: it turns ranking into useful work without making deepening a blocking gate."
+          },
+          {
+            "intent_entry_id": "rank-empty-serves-no-work",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "b999f926fc735d94573ed77e037b1523",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-deepening-opportunity"
+            ],
+            "text": "The authored step expects Loom to name the weakest claim; the case where nothing ranks is the distinct observable outcome of that same inspection and must not invent one."
+          },
+          {
+            "intent_entry_id": "freeze-baseline-without-grade-promise",
+            "kind": "journey_intent",
+            "number": 4,
+            "operation": "reuse",
+            "spawned": "18667ffa6b23f6033b3d083d5f1564ca",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-deepening-opportunity"
+            ],
+            "text": "The authored step expects a proposed next evidence move; freezing the baseline is that move in the case where it cannot raise the grade, which is independently falsifiable."
+          }
+        ],
+        "journey_hash": "cf45988e6a690560",
+        "journey_id": "green-graph",
+        "journey_node_id": "d708de924a7a0f122803f010c9f2113f",
+        "manifest_hash": "4e9213cfa4ef57af",
+        "proposal_id": "green-graph-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds the two degraded outcomes of the same authored step: an empty ranking serving no work, and a freeze-baseline move that does not promise a higher grade.",
+        "raw": "{\"intents\":[{\"criterion\":\"When ordinary maturity work is settled, Loom deterministically names the weakest standing claim and explains why it ranks first.\",\"id\":\"rank-weakest-standing-claim\",\"level\":\"feature\",\"name\":\"Loom ranks the weakest standing claim\",\"operation\":\"create\",\"rationale\":\"Ranking exposes a continuous improvement target without changing the settled maturity floor.\",\"step_ids\":[\"inspect-deepening-opportunity\"],\"visibility\":\"user_visible\"},{\"criterion\":\"For the ranked weakness, Loom proposes a next evidence move as optional deepening work that never blocks a green graph or release.\",\"id\":\"offer-optional-evidence-improvement\",\"level\":\"feature\",\"name\":\"Loom offers optional evidence improvement\",\"operation\":\"create\",\"rationale\":\"The optional packet is a separate policy guarantee: it turns ranking into useful work without making deepening a blocking gate.\",\"step_ids\":[\"inspect-deepening-opportunity\"],\"visibility\":\"user_visible\"},{\"id\":\"rank-empty-serves-no-work\",\"intent_id\":\"b999f926fc735d94573ed77e037b1523\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects Loom to name the weakest claim; the case where nothing ranks is the distinct observable outcome of that same inspection and must not invent one.\",\"step_ids\":[\"inspect-deepening-opportunity\"],\"visibility\":\"user_visible\"},{\"id\":\"freeze-baseline-without-grade-promise\",\"intent_id\":\"18667ffa6b23f6033b3d083d5f1564ca\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects a proposed next evidence move; freezing the baseline is that move in the case where it cannot raise the grade, which is independently falsifiable.\",\"step_ids\":[\"inspect-deepening-opportunity\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"cf45988e6a690560\",\"journey_id\":\"green-graph\",\"proposal_id\":\"green-graph-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds the two degraded outcomes of the same authored step: an empty ranking serving no work, and a freeze-baseline move that does not promise a higher grade.\",\"relationships\":[{\"from\":\"offer-optional-evidence-improvement\",\"id\":\"optional-improvement-requires-weakness-rank\",\"kind\":\"requires\",\"rationale\":\"An evidence-improvement packet must be attached to the explicitly ranked weakness it proposes to strengthen.\",\"to\":\"rank-weakest-standing-claim\"},{\"from\":\"rank-empty-serves-no-work\",\"id\":\"rank-empty-serves-no-work-requires-rank-weakest-standing-claim\",\"kind\":\"requires\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"to\":\"rank-weakest-standing-claim\"},{\"from\":\"freeze-baseline-without-grade-promise\",\"id\":\"freeze-baseline-without-grade-promise-requires-offer-optional-evidence-improvement\",\"kind\":\"requires\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"to\":\"offer-optional-evidence-improvement\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "6940f99874d432af27b7943f65e6c5ce",
+            "from": "freeze-baseline-without-grade-promise",
+            "id": "freeze-baseline-without-grade-promise-requires-offer-optional-evidence-improvement",
+            "kind": "requires",
+            "rationale": "This degraded outcome stands on the behavior whose inspection produces it.",
+            "to": "offer-optional-evidence-improvement"
+          },
+          {
+            "edge_id": "b4c56f7e54f9c4a154001836f9d950f1",
+            "from": "offer-optional-evidence-improvement",
+            "id": "optional-improvement-requires-weakness-rank",
+            "kind": "requires",
+            "rationale": "An evidence-improvement packet must be attached to the explicitly ranked weakness it proposes to strengthen.",
+            "to": "rank-weakest-standing-claim"
+          },
+          {
+            "edge_id": "7a8cb84f88a30e22552eb7e0d87350c5",
+            "from": "rank-empty-serves-no-work",
+            "id": "rank-empty-serves-no-work-requires-rank-weakest-standing-claim",
+            "kind": "requires",
+            "rationale": "This degraded outcome stands on the behavior whose inspection produces it.",
+            "to": "rank-weakest-standing-claim"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T09:59:03.808Z",
+      "updated_at": "2026-08-15T09:59:03.856Z"
+    },
+    {
       "id": "56d44edf69fdfa63987c0569d22a37c3",
       "type": "intent",
       "name": "Loom detects proof command collisions",
@@ -7355,6 +7484,119 @@
       },
       "created_at": "2026-08-10T04:00:54.841Z",
       "updated_at": "2026-08-10T04:00:54.841Z"
+    },
+    {
+      "id": "591ee79818c11450fdbc459626195966",
+      "type": "proposal",
+      "name": "Journey shared-proof derivation shared-proof-v2",
+      "description": "Carries the accepted v1 projection forward and binds two boundaries of the same authored step: a failing shared subprocess still writing one verdict per claim, and an orphan Validation excluded from shared-proof risk.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "preserve-independent-claim-truth-with-shared-subprocess",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "7d61e23f99627cee331dd38d055e99c2",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-proof-sharing"
+            ],
+            "text": "Claim truth and subprocess reuse are different axes and must not be collapsed into one proof result."
+          },
+          {
+            "intent_entry_id": "detect-proof-command-collision",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "reuse",
+            "spawned": "56d44edf69fdfa63987c0569d22a37c3",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-proof-sharing"
+            ],
+            "text": "The prior collision detector supplies the shared-mechanism evidence required for this Journey."
+          },
+          {
+            "intent_entry_id": "diagnose-shared-proof-risk",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "create",
+            "spawned": "d07d180c7138297956c1cb6badbcf1ec",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-proof-sharing"
+            ],
+            "text": "Risk diagnosis is the user-facing consequence of collision evidence and must explicitly preserve the unique-mechanism exclusion."
+          },
+          {
+            "intent_entry_id": "fail-every-claim-on-shared-subprocess",
+            "kind": "journey_intent",
+            "number": 4,
+            "operation": "reuse",
+            "spawned": "68e80c57771ccb2dd8c543fffaa50dfe",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-proof-sharing"
+            ],
+            "text": "The authored step distinguishes shared mechanism from independent truth; the failing case is where independence actually bites, and one shared failure must still write a verdict per claim."
+          },
+          {
+            "intent_entry_id": "exclude-orphan-validation-from-shared-risk",
+            "kind": "journey_intent",
+            "number": 5,
+            "operation": "reuse",
+            "spawned": "00a7e296fbd01d217e4cd38f108fbe6c",
+            "status": "adopted",
+            "step_ids": [
+              "inspect-proof-sharing"
+            ],
+            "text": "The authored step expects Loom not to report an independent proof; a Validation proving no behavior at all is the boundary of that exclusion and is independently falsifiable."
+          }
+        ],
+        "journey_hash": "c06ab8b7ac30ec50",
+        "journey_id": "shared-proof",
+        "journey_node_id": "35ebc51ec9c9ff4a7a8fb5c0a59df289",
+        "manifest_hash": "8c1091f4a1f5bf6e",
+        "proposal_id": "shared-proof-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds two boundaries of the same authored step: a failing shared subprocess still writing one verdict per claim, and an orphan Validation excluded from shared-proof risk.",
+        "raw": "{\"intents\":[{\"criterion\":\"Behaviors that invoke one subprocess retain separate proof claims; one behavior's green result does not settle another behavior's claim.\",\"id\":\"preserve-independent-claim-truth-with-shared-subprocess\",\"level\":\"feature\",\"name\":\"Loom preserves independent claim truth with a shared subprocess\",\"operation\":\"create\",\"rationale\":\"Claim truth and subprocess reuse are different axes and must not be collapsed into one proof result.\",\"step_ids\":[\"inspect-proof-sharing\"],\"visibility\":\"user_visible\"},{\"id\":\"detect-proof-command-collision\",\"intent_id\":\"Loom detects proof command collisions\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The prior collision detector supplies the shared-mechanism evidence required for this Journey.\",\"step_ids\":[\"inspect-proof-sharing\"],\"visibility\":\"user_visible\"},{\"criterion\":\"Loom reports only behaviors sharing a proof mechanism, recommends narrowing their proofs, and excludes behaviors whose mechanisms are unique.\",\"id\":\"diagnose-shared-proof-risk\",\"level\":\"feature\",\"name\":\"Loom diagnoses shared proof risk\",\"operation\":\"create\",\"rationale\":\"Risk diagnosis is the user-facing consequence of collision evidence and must explicitly preserve the unique-mechanism exclusion.\",\"step_ids\":[\"inspect-proof-sharing\"],\"visibility\":\"user_visible\"},{\"id\":\"fail-every-claim-on-shared-subprocess\",\"intent_id\":\"68e80c57771ccb2dd8c543fffaa50dfe\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step distinguishes shared mechanism from independent truth; the failing case is where independence actually bites, and one shared failure must still write a verdict per claim.\",\"step_ids\":[\"inspect-proof-sharing\"],\"visibility\":\"user_visible\"},{\"id\":\"exclude-orphan-validation-from-shared-risk\",\"intent_id\":\"00a7e296fbd01d217e4cd38f108fbe6c\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects Loom not to report an independent proof; a Validation proving no behavior at all is the boundary of that exclusion and is independently falsifiable.\",\"step_ids\":[\"inspect-proof-sharing\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"c06ab8b7ac30ec50\",\"journey_id\":\"shared-proof\",\"proposal_id\":\"shared-proof-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds two boundaries of the same authored step: a failing shared subprocess still writing one verdict per claim, and an orphan Validation excluded from shared-proof risk.\",\"relationships\":[{\"from\":\"diagnose-shared-proof-risk\",\"id\":\"shared-risk-requires-collision-detector\",\"kind\":\"requires\",\"rationale\":\"A risk report must be based on an actual shared mechanism and must not flag unique mechanisms.\",\"to\":\"detect-proof-command-collision\"},{\"from\":\"fail-every-claim-on-shared-subprocess\",\"id\":\"fail-every-claim-on-shared-subprocess-requires-preserve-independent-claim-truth-with-shared-subprocess\",\"kind\":\"requires\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"to\":\"preserve-independent-claim-truth-with-shared-subprocess\"},{\"from\":\"exclude-orphan-validation-from-shared-risk\",\"id\":\"exclude-orphan-validation-from-shared-risk-requires-diagnose-shared-proof-risk\",\"kind\":\"requires\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"to\":\"diagnose-shared-proof-risk\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "19745d58bdff6ca772b6c3db1e398a54",
+            "from": "exclude-orphan-validation-from-shared-risk",
+            "id": "exclude-orphan-validation-from-shared-risk-requires-diagnose-shared-proof-risk",
+            "kind": "requires",
+            "rationale": "This degraded outcome stands on the behavior whose inspection produces it.",
+            "to": "diagnose-shared-proof-risk"
+          },
+          {
+            "edge_id": "c0ae72ec3335bb0235ff9e357ed95115",
+            "from": "fail-every-claim-on-shared-subprocess",
+            "id": "fail-every-claim-on-shared-subprocess-requires-preserve-independent-claim-truth-with-shared-subprocess",
+            "kind": "requires",
+            "rationale": "This degraded outcome stands on the behavior whose inspection produces it.",
+            "to": "preserve-independent-claim-truth-with-shared-subprocess"
+          },
+          {
+            "edge_id": "2bb357915fdd0d8e60b54bc229490236",
+            "from": "diagnose-shared-proof-risk",
+            "id": "shared-risk-requires-collision-detector",
+            "kind": "requires",
+            "rationale": "A risk report must be based on an actual shared mechanism and must not flag unique mechanisms.",
+            "to": "detect-proof-command-collision"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:11:29.773Z",
+      "updated_at": "2026-08-15T10:11:29.816Z"
     },
     {
       "id": "598a655b822b3f1d272c637a2f8b554a",
@@ -7622,6 +7864,107 @@
       },
       "created_at": "2026-08-09T14:20:30.729Z",
       "updated_at": "2026-08-14T10:22:09.797Z"
+    },
+    {
+      "id": "5a5d78c861116bbf00300a8691d06158",
+      "type": "proposal",
+      "name": "Journey duplicate-command-warn derivation duplicate-command-warn-v2",
+      "description": "Carries the accepted v1 projection forward and binds the two boundaries of the same registration step: an empty command matching nothing, and a collision endpoint that no longer resolves being dropped rather than named.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "detect-proof-command-collision",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "56d44edf69fdfa63987c0569d22a37c3",
+            "status": "adopted",
+            "step_ids": [
+              "register-second-proof"
+            ],
+            "text": "Collision detection compares proof mechanisms and can be reused by later shared-proof diagnostics."
+          },
+          {
+            "intent_entry_id": "emit-nonblocking-proof-collision-diagnostic",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "284ec4b8f0ae2be0374d73fb6f947ebb",
+            "status": "adopted",
+            "step_ids": [
+              "register-second-proof"
+            ],
+            "text": "The warning policy is independently observable and must not turn useful registration into a rejection."
+          },
+          {
+            "intent_entry_id": "empty-command-reports-no-collision",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "14bfa87840f52d59ae0136dcfc6a5f95",
+            "status": "adopted",
+            "step_ids": [
+              "register-second-proof"
+            ],
+            "text": "The authored step registers a mechanism and expects the prior behavior named; a command that trims to nothing is the boundary where detection must report no collision rather than group every blank-command behavior."
+          },
+          {
+            "intent_entry_id": "drop-vanished-behavior-from-collision",
+            "kind": "journey_intent",
+            "number": 4,
+            "operation": "reuse",
+            "spawned": "924c3db7d1c97df3f9edc9b8b13276a5",
+            "status": "adopted",
+            "step_ids": [
+              "register-second-proof"
+            ],
+            "text": "The authored step expects the warning to name the first behavior; when that endpoint no longer resolves the diagnostic must omit it and still accept the registration, which is independently falsifiable."
+          }
+        ],
+        "journey_hash": "c28da61dc5013846",
+        "journey_id": "duplicate-command-warn",
+        "journey_node_id": "2b9d39a8dc33e778eb4e71aed8ebf9ea",
+        "manifest_hash": "5e085ccd2c79d517",
+        "proposal_id": "duplicate-command-warn-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds the two boundaries of the same registration step: an empty command matching nothing, and a collision endpoint that no longer resolves being dropped rather than named.",
+        "raw": "{\"intents\":[{\"criterion\":\"When a proof command is registered for another behavior, Loom identifies any existing behavior using the same mechanism.\",\"id\":\"detect-proof-command-collision\",\"level\":\"feature\",\"name\":\"Loom detects proof command collisions\",\"operation\":\"create\",\"rationale\":\"Collision detection compares proof mechanisms and can be reused by later shared-proof diagnostics.\",\"step_ids\":[\"register-second-proof\"],\"visibility\":\"user_visible\"},{\"criterion\":\"A detected proof-command collision leaves registration valid while warning which prior behavior shares the mechanism.\",\"id\":\"emit-nonblocking-proof-collision-diagnostic\",\"level\":\"feature\",\"name\":\"Loom emits a nonblocking proof collision diagnostic\",\"operation\":\"create\",\"rationale\":\"The warning policy is independently observable and must not turn useful registration into a rejection.\",\"step_ids\":[\"register-second-proof\"],\"visibility\":\"user_visible\"},{\"id\":\"empty-command-reports-no-collision\",\"intent_id\":\"14bfa87840f52d59ae0136dcfc6a5f95\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step registers a mechanism and expects the prior behavior named; a command that trims to nothing is the boundary where detection must report no collision rather than group every blank-command behavior.\",\"step_ids\":[\"register-second-proof\"],\"visibility\":\"user_visible\"},{\"id\":\"drop-vanished-behavior-from-collision\",\"intent_id\":\"924c3db7d1c97df3f9edc9b8b13276a5\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects the warning to name the first behavior; when that endpoint no longer resolves the diagnostic must omit it and still accept the registration, which is independently falsifiable.\",\"step_ids\":[\"register-second-proof\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"c28da61dc5013846\",\"journey_id\":\"duplicate-command-warn\",\"proposal_id\":\"duplicate-command-warn-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds the two boundaries of the same registration step: an empty command matching nothing, and a collision endpoint that no longer resolves being dropped rather than named.\",\"relationships\":[{\"from\":\"emit-nonblocking-proof-collision-diagnostic\",\"id\":\"collision-diagnostic-requires-detector\",\"kind\":\"requires\",\"rationale\":\"The diagnostic must name an observed shared mechanism, not infer one from similar behavior names.\",\"to\":\"detect-proof-command-collision\"},{\"from\":\"empty-command-reports-no-collision\",\"id\":\"empty-command-reports-no-collision-requires-detect-proof-command-collision\",\"kind\":\"requires\",\"rationale\":\"This boundary outcome stands on the behavior that performs the collision check.\",\"to\":\"detect-proof-command-collision\"},{\"from\":\"drop-vanished-behavior-from-collision\",\"id\":\"drop-vanished-behavior-from-collision-requires-emit-nonblocking-proof-collision-diagnostic\",\"kind\":\"requires\",\"rationale\":\"This boundary outcome stands on the behavior that performs the collision check.\",\"to\":\"emit-nonblocking-proof-collision-diagnostic\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "7a55897200195985daf2b4753ae517a4",
+            "from": "emit-nonblocking-proof-collision-diagnostic",
+            "id": "collision-diagnostic-requires-detector",
+            "kind": "requires",
+            "rationale": "The diagnostic must name an observed shared mechanism, not infer one from similar behavior names.",
+            "to": "detect-proof-command-collision"
+          },
+          {
+            "edge_id": "01350761627bdcab9d5cf2cbf58cd21f",
+            "from": "drop-vanished-behavior-from-collision",
+            "id": "drop-vanished-behavior-from-collision-requires-emit-nonblocking-proof-collision-diagnostic",
+            "kind": "requires",
+            "rationale": "This boundary outcome stands on the behavior that performs the collision check.",
+            "to": "emit-nonblocking-proof-collision-diagnostic"
+          },
+          {
+            "edge_id": "0bf046ef27f7cbfb62b454c2ec2c7363",
+            "from": "empty-command-reports-no-collision",
+            "id": "empty-command-reports-no-collision-requires-detect-proof-command-collision",
+            "kind": "requires",
+            "rationale": "This boundary outcome stands on the behavior that performs the collision check.",
+            "to": "detect-proof-command-collision"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:12:44.388Z",
+      "updated_at": "2026-08-15T10:12:44.432Z"
     },
     {
       "id": "5aa77e3fa29d3d31a1de118a609e5894",
@@ -9138,6 +9481,20 @@
       },
       "created_at": "2026-08-09T12:54:20.164Z",
       "updated_at": "2026-08-09T12:54:20.191Z"
+    },
+    {
+      "id": "690c541b4c304a5cdb1a7600fd7180f9",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest 54070a7ea2e78492",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "7c3723dfd09f22f847f6932781144386"
+      },
+      "created_at": "2026-08-15T10:10:29.393Z",
+      "updated_at": "2026-08-15T10:10:29.393Z"
     },
     {
       "id": "69274da0755390b3f5fd2c13450a9af0",
@@ -11887,7 +12244,7 @@
       "type": "proposal",
       "name": "Journey duplicate-command-warn derivation duplicate-command-warn-v1",
       "description": "Detecting a shared command and surfacing a nonblocking diagnostic are deliberately separate responsibilities.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -11941,7 +12298,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.628Z",
-      "updated_at": "2026-08-09T12:54:20.655Z"
+      "updated_at": "2026-08-15T10:12:44.432Z"
     },
     {
       "id": "9193ce6f8061eb9c507bfcdcdd87796a",
@@ -15705,6 +16062,20 @@
       "updated_at": "2026-08-15T08:00:48.972Z"
     },
     {
+      "id": "abd39e2b1e6b44b4f2d5a92a948f0722",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'duplicate-command-warn' derivation at semantic hash c28da61dc5013846 from canonical manifest 5e085ccd2c79d517",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "14bfa87840f52d59ae0136dcfc6a5f95"
+      },
+      "created_at": "2026-08-15T10:12:44.413Z",
+      "updated_at": "2026-08-15T10:12:44.413Z"
+    },
+    {
       "id": "ad1cf607bb94c31b711329fac138ecff",
       "type": "interface_surface",
       "name": "loom-idempotent-sync-ripple",
@@ -16370,6 +16741,20 @@
       "updated_at": "2026-08-15T07:26:50.317Z"
     },
     {
+      "id": "b744a0673085af37a57ede37027014ec",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'shared-proof' derivation at semantic hash c06ab8b7ac30ec50 from canonical manifest 8c1091f4a1f5bf6e",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "68e80c57771ccb2dd8c543fffaa50dfe"
+      },
+      "created_at": "2026-08-15T10:11:29.801Z",
+      "updated_at": "2026-08-15T10:11:29.801Z"
+    },
+    {
       "id": "b751493a05c1de068b97a937712fb247",
       "type": "codefile",
       "name": "src/store/edges.rs",
@@ -16407,6 +16792,108 @@
       },
       "created_at": "2026-08-13T13:41:22.836Z",
       "updated_at": "2026-08-13T13:41:22.836Z"
+    },
+    {
+      "id": "b87c9666e57ff8f5459639defd9463e7",
+      "type": "proposal",
+      "name": "Journey self-audit derivation self-audit-v2",
+      "description": "Carries the accepted v1 projection forward and binds two degraded outcomes the authored steps already imply: a refused burst attestation when no live burst exists, and a finding whose subject vanished still reported against the graph.",
+      "status": "adopted",
+      "truth_class": "asserted",
+      "body": {
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "items": [
+          {
+            "intent_entry_id": "detect-falsifiability-and-judgment-bursts",
+            "kind": "journey_intent",
+            "number": 1,
+            "operation": "create",
+            "spawned": "30c9fed430c96dbe07295b422272fabb",
+            "status": "adopted",
+            "step_ids": [
+              "audit-authorized-batch"
+            ],
+            "text": "The detector owns the distinction between legitimate recorded authorization and an unauthorised fast judgment burst."
+          },
+          {
+            "intent_entry_id": "project-audit-outcome-remedies-and-routing",
+            "kind": "journey_intent",
+            "number": 2,
+            "operation": "create",
+            "spawned": "e44da152fe229cb7887548b94d7d8c36",
+            "status": "adopted",
+            "step_ids": [
+              "audit-clean-graph",
+              "audit-defective-graph"
+            ],
+            "text": "Outcome projection consumes detector results and gives the operator the actionable clean/defective distinction."
+          },
+          {
+            "intent_entry_id": "refuse-attest-without-live-burst",
+            "kind": "journey_intent",
+            "number": 3,
+            "operation": "reuse",
+            "spawned": "7c3723dfd09f22f847f6932781144386",
+            "status": "adopted",
+            "step_ids": [
+              "audit-authorized-batch"
+            ],
+            "text": "The authored step expects only an exact prior hash-bound authorization to be recognized; refusing to seal when no live burst of the threshold size exists is the fail-closed half of that recognition, checked before any human challenge."
+          },
+          {
+            "intent_entry_id": "report-orphan-audit-subject-against-graph",
+            "kind": "journey_intent",
+            "number": 4,
+            "operation": "reuse",
+            "spawned": "edb36a06142779c3db657ee31edc7e7e",
+            "status": "adopted",
+            "step_ids": [
+              "audit-defective-graph"
+            ],
+            "text": "The authored step expects every finding reported by kind and detail; a finding whose node or edge no longer resolves must still be projected, relabelled against the graph, rather than silently dropped."
+          }
+        ],
+        "journey_hash": "0dcc2efcd203fd34",
+        "journey_id": "self-audit",
+        "journey_node_id": "30b64733808563947e06a0843616b8ea",
+        "manifest_hash": "54070a7ea2e78492",
+        "proposal_id": "self-audit-v2",
+        "proposal_rationale": "Carries the accepted v1 projection forward and binds two degraded outcomes the authored steps already imply: a refused burst attestation when no live burst exists, and a finding whose subject vanished still reported against the graph.",
+        "raw": "{\"intents\":[{\"criterion\":\"Audit detects falsifiability defects and suspicious judgment bursts while recognizing only an exact prior hash-bound human batch authorization; extra or changed judgments remain reportable.\",\"id\":\"detect-falsifiability-and-judgment-bursts\",\"level\":\"feature\",\"name\":\"Loom detects falsifiability defects and judgment bursts\",\"operation\":\"create\",\"rationale\":\"The detector owns the distinction between legitimate recorded authorization and an unauthorised fast judgment burst.\",\"step_ids\":[\"audit-authorized-batch\"],\"visibility\":\"user_visible\"},{\"criterion\":\"Audit reports empty successful output for a clean graph and otherwise reports findings, remedies, unsuccessful state, and follow-up routing.\",\"id\":\"project-audit-outcome-remedies-and-routing\",\"level\":\"feature\",\"name\":\"Loom projects audit outcomes remedies and routing\",\"operation\":\"create\",\"rationale\":\"Outcome projection consumes detector results and gives the operator the actionable clean/defective distinction.\",\"step_ids\":[\"audit-clean-graph\",\"audit-defective-graph\"],\"visibility\":\"user_visible\"},{\"id\":\"refuse-attest-without-live-burst\",\"intent_id\":\"7c3723dfd09f22f847f6932781144386\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects only an exact prior hash-bound authorization to be recognized; refusing to seal when no live burst of the threshold size exists is the fail-closed half of that recognition, checked before any human challenge.\",\"step_ids\":[\"audit-authorized-batch\"],\"visibility\":\"user_visible\"},{\"id\":\"report-orphan-audit-subject-against-graph\",\"intent_id\":\"edb36a06142779c3db657ee31edc7e7e\",\"level\":\"feature\",\"operation\":\"reuse\",\"rationale\":\"The authored step expects every finding reported by kind and detail; a finding whose node or edge no longer resolves must still be projected, relabelled against the graph, rather than silently dropped.\",\"step_ids\":[\"audit-defective-graph\"],\"visibility\":\"user_visible\"}],\"journey_hash\":\"0dcc2efcd203fd34\",\"journey_id\":\"self-audit\",\"proposal_id\":\"self-audit-v2\",\"proposal_rationale\":\"Carries the accepted v1 projection forward and binds two degraded outcomes the authored steps already imply: a refused burst attestation when no live burst exists, and a finding whose subject vanished still reported against the graph.\",\"relationships\":[{\"from\":\"project-audit-outcome-remedies-and-routing\",\"id\":\"audit-projection-requires-detector\",\"kind\":\"requires\",\"rationale\":\"A truthful audit outcome and remedy set must be projected from the detector's clean or defective result.\",\"to\":\"detect-falsifiability-and-judgment-bursts\"},{\"from\":\"refuse-attest-without-live-burst\",\"id\":\"refuse-attest-without-live-burst-requires-detect-falsifiability-and-judgment-bursts\",\"kind\":\"requires\",\"rationale\":\"This degraded outcome stands on the behavior whose audit pass produces it.\",\"to\":\"detect-falsifiability-and-judgment-bursts\"},{\"from\":\"report-orphan-audit-subject-against-graph\",\"id\":\"report-orphan-audit-subject-against-graph-requires-project-audit-outcome-remedies-and-routing\",\"kind\":\"requires\",\"rationale\":\"This degraded outcome stands on the behavior whose audit pass produces it.\",\"to\":\"project-audit-outcome-remedies-and-routing\"}],\"schema\":\"loom.journey-derivation/v1\"}",
+        "relationships": [
+          {
+            "edge_id": "56d6d170020463a2b4523bba78d92575",
+            "from": "project-audit-outcome-remedies-and-routing",
+            "id": "audit-projection-requires-detector",
+            "kind": "requires",
+            "rationale": "A truthful audit outcome and remedy set must be projected from the detector's clean or defective result.",
+            "to": "detect-falsifiability-and-judgment-bursts"
+          },
+          {
+            "edge_id": "161b82f18823c6b02df3fc17e1d8a5dd",
+            "from": "refuse-attest-without-live-burst",
+            "id": "refuse-attest-without-live-burst-requires-detect-falsifiability-and-judgment-bursts",
+            "kind": "requires",
+            "rationale": "This degraded outcome stands on the behavior whose audit pass produces it.",
+            "to": "detect-falsifiability-and-judgment-bursts"
+          },
+          {
+            "edge_id": "23d315ffadb7c2c0b2a8cb7c3ba04417",
+            "from": "report-orphan-audit-subject-against-graph",
+            "id": "report-orphan-audit-subject-against-graph-requires-project-audit-outcome-remedies-and-routing",
+            "kind": "requires",
+            "rationale": "This degraded outcome stands on the behavior whose audit pass produces it.",
+            "to": "project-audit-outcome-remedies-and-routing"
+          }
+        ],
+        "source": "journey_derivation",
+        "source_path": null
+      },
+      "created_at": "2026-08-15T10:10:29.366Z",
+      "updated_at": "2026-08-15T10:10:29.408Z"
     },
     {
       "id": "b8c7a72dcd05874012a591ded7e6543b",
@@ -16469,6 +16956,20 @@
       },
       "created_at": "2026-08-13T13:27:17.505Z",
       "updated_at": "2026-08-13T13:27:17.505Z"
+    },
+    {
+      "id": "b989bf0ef052afa81789a311ac0dc3ba",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'green-graph' derivation at semantic hash cf45988e6a690560 from canonical manifest 4e9213cfa4ef57af",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "18667ffa6b23f6033b3d083d5f1564ca"
+      },
+      "created_at": "2026-08-15T09:59:03.845Z",
+      "updated_at": "2026-08-15T09:59:03.845Z"
     },
     {
       "id": "b999f926fc735d94573ed77e037b1523",
@@ -17470,6 +17971,20 @@
       },
       "created_at": "2026-08-13T05:06:25.118Z",
       "updated_at": "2026-08-13T05:06:25.118Z"
+    },
+    {
+      "id": "c584d20ae603de2a897a86546cfbc196",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'duplicate-command-warn' derivation at semantic hash c28da61dc5013846 from canonical manifest 5e085ccd2c79d517",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "924c3db7d1c97df3f9edc9b8b13276a5"
+      },
+      "created_at": "2026-08-15T10:12:44.422Z",
+      "updated_at": "2026-08-15T10:12:44.422Z"
     },
     {
       "id": "c58d0663c95b8bdd7583e7d16726934c",
@@ -18509,21 +19024,6 @@
       "updated_at": "2026-08-15T08:01:06.395Z"
     },
     {
-      "id": "d078a1089513f9b5c",
-      "type": "finding",
-      "name": "user-visible intent 'A collision against a vanished behavior is dropped, not reported as a phantom' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:924c3db7d1c97df3f9edc9b8b13276a5",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d07d180c7138297956c1cb6badbcf1ec",
       "type": "intent",
       "name": "Loom diagnoses shared proof risk",
@@ -18550,21 +19050,6 @@
         "category": "smell",
         "identity": "undeclared_coupling:55455df18222748f0f0ff32b65c1c3ee:6ad010027be2aad494fd046071bfb961",
         "kind": "undeclared_coupling"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d08a60fe1cb57a82c",
-      "type": "finding",
-      "name": "user-visible intent 'An empty proof command reports no collision instead of matching everything' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:14bfa87840f52d59ae0136dcfc6a5f95",
-        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -20148,21 +20633,6 @@
       "updated_at": ""
     },
     {
-      "id": "d575a2872da9d5a05",
-      "type": "finding",
-      "name": "user-visible intent 'A freeze-baseline move deepens evidence without promising a higher grade' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:18667ffa6b23f6033b3d083d5f1564ca",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d5838226a9b0f8c52",
       "type": "finding",
       "name": "src/journal.rs is oversized",
@@ -21165,6 +21635,21 @@
       "updated_at": ""
     },
     {
+      "id": "d86ff9a487131192b",
+      "type": "finding",
+      "name": "user-visible intent 'An empty proof command reports no collision instead of matching everything' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:14bfa87840f52d59ae0136dcfc6a5f95",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d8714872fae43be47",
       "type": "finding",
       "name": "proof 'source-anchor-navigation-and-proof-isolation' reported passed then failed over unchanged code for 'Resolve source anchors for navigation and blast radius' — its outcome does not depend only on the code it covers",
@@ -21343,6 +21828,21 @@
       "updated_at": ""
     },
     {
+      "id": "d8b4e869797b6b822",
+      "type": "finding",
+      "name": "user-visible intent 'An audit finding about a vanished subject is reported against the graph, not dropped' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:edb36a06142779c3db657ee31edc7e7e",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d8bf64271bd760b0a",
       "type": "finding",
       "name": "src/release.rs::git_candidate_paths is complex",
@@ -21450,6 +21950,21 @@
         "category": "smell",
         "identity": "undeclared_coupling:942836946ff7ce2a623c06e6f4aa9f4f:e6ffd99fcef7728d3955a1add7b45343",
         "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d8ee76e6ca894bc34",
+      "type": "finding",
+      "name": "user-visible intent 'With nothing ranked, the deepen lane serves no work instead of inventing a weakest claim' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:b999f926fc735d94573ed77e037b1523",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -22112,6 +22627,21 @@
       "updated_at": ""
     },
     {
+      "id": "da9fcd6f01c2e1373",
+      "type": "finding",
+      "name": "user-visible intent 'A failing shared subprocess fails every claim leaning on it, one verdict each' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:68e80c57771ccb2dd8c543fffaa50dfe",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "daa9737cf95720764",
       "type": "finding",
       "name": "src/sync.rs is realized by 3 intents with no recorded relationship connecting them",
@@ -22324,7 +22854,7 @@
       "type": "proposal",
       "name": "Journey shared-proof derivation shared-proof-v1",
       "description": "Shared subprocess evidence must not merge behavior truth; collision detection is reused to explain only the real shared-risk cases.",
-      "status": "adopted",
+      "status": "superseded",
       "truth_class": "asserted",
       "body": {
         "human_decision": {
@@ -22390,7 +22920,7 @@
         "source_path": null
       },
       "created_at": "2026-08-09T12:54:20.692Z",
-      "updated_at": "2026-08-09T12:54:20.722Z"
+      "updated_at": "2026-08-15T10:11:29.817Z"
     },
     {
       "id": "db7667f3bfc4df5461c57702a524845b",
@@ -22402,21 +22932,6 @@
       "body": {},
       "created_at": "2026-08-09T12:54:42.818Z",
       "updated_at": "2026-08-09T12:54:42.818Z"
-    },
-    {
-      "id": "db7a710f12bba8a07",
-      "type": "finding",
-      "name": "user-visible intent 'With nothing ranked, the deepen lane serves no work instead of inventing a weakest claim' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:b999f926fc735d94573ed77e037b1523",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
     },
     {
       "id": "db7c3b67a3ead7d77",
@@ -22712,6 +23227,21 @@
       "updated_at": ""
     },
     {
+      "id": "dc57c3bbdd2422d58",
+      "type": "finding",
+      "name": "user-visible intent 'Attesting a burst that does not exist is refused before any human seal' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:7c3723dfd09f22f847f6932781144386",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dc5c21d2cdcfe88ad",
       "type": "finding",
       "name": "src/absorb.rs imports src/model.rs but their intents have no recorded relationship",
@@ -22753,16 +23283,16 @@
       "updated_at": ""
     },
     {
-      "id": "dc781dfc22e957a4b",
+      "id": "dc74818f1a64ffcbe",
       "type": "finding",
-      "name": "user-visible intent 'Attesting a burst that does not exist is refused before any human seal' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
+      "name": "user-visible intent 'A freeze-baseline move deepens evidence without promising a higher grade' has validations but no passing S3-or-stronger journey proof",
       "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
+      "status": "proof_too_shallow_for_intent",
       "truth_class": "derived",
       "body": {
         "category": "smell",
-        "identity": "missing_journey_proof:7c3723dfd09f22f847f6932781144386",
-        "kind": "missing_journey_proof"
+        "identity": "proof_too_shallow_for_intent:18667ffa6b23f6033b3d083d5f1564ca",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -23126,21 +23656,6 @@
       "updated_at": ""
     },
     {
-      "id": "dd65976d9601482df",
-      "type": "finding",
-      "name": "user-visible intent 'A validation proving no behavior is excluded from shared-proof risk' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:00a7e296fbd01d217e4cd38f108fbe6c",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "dd7217062e3ed9cb7",
       "type": "finding",
       "name": "src/signal/debt.rs imports src/model.rs but their intents have no recorded relationship",
@@ -23181,21 +23696,6 @@
         "kind": "complex_symbol",
         "metric": 26,
         "symbol": "classify_paths"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "dd77c91d6cea8faf5",
-      "type": "finding",
-      "name": "user-visible intent 'An audit finding about a vanished subject is reported against the graph, not dropped' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:edb36a06142779c3db657ee31edc7e7e",
-        "kind": "missing_journey_proof"
       },
       "created_at": "",
       "updated_at": ""
@@ -23367,21 +23867,6 @@
       "updated_at": ""
     },
     {
-      "id": "de2548084e14056d4",
-      "type": "finding",
-      "name": "user-visible intent 'A failing shared subprocess fails every claim leaning on it, one verdict each' has no linked validation; boundary-facing behavior needs an S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "missing_journey_proof",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "missing_journey_proof:68e80c57771ccb2dd8c543fffaa50dfe",
-        "kind": "missing_journey_proof"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "de273e6f368e092f7",
       "type": "finding",
       "name": "src/commands/capture_cmd.rs::task is complex",
@@ -23513,6 +23998,21 @@
       },
       "created_at": "2026-08-13T13:27:17.380Z",
       "updated_at": "2026-08-13T13:27:17.380Z"
+    },
+    {
+      "id": "de67ee7a437821e1f",
+      "type": "finding",
+      "name": "user-visible intent 'A collision against a vanished behavior is dropped, not reported as a phantom' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:924c3db7d1c97df3f9edc9b8b13276a5",
+        "kind": "proof_too_shallow_for_intent"
+      },
+      "created_at": "",
+      "updated_at": ""
     },
     {
       "id": "de6e63dc87492af6d",
@@ -23885,6 +24385,21 @@
         "kind": "oversized_file",
         "metric": 1679,
         "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dff4f64e3c88637f0",
+      "type": "finding",
+      "name": "user-visible intent 'A validation proving no behavior is excluded from shared-proof risk' has validations but no passing S3-or-stronger journey proof",
+      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
+      "status": "proof_too_shallow_for_intent",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "proof_too_shallow_for_intent:00a7e296fbd01d217e4cd38f108fbe6c",
+        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -25955,6 +26470,20 @@
       "updated_at": "2026-08-15T07:59:20.656Z"
     },
     {
+      "id": "ec3bbe52b4fb2a4f0f794e7f0eb3d944",
+      "type": "note",
+      "name": "note:ratify",
+      "description": "ratified: accepted Journey 'shared-proof' derivation at semantic hash c06ab8b7ac30ec50 from canonical manifest 8c1091f4a1f5bf6e",
+      "status": "ratify",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "ratify",
+        "target_id": "00a7e296fbd01d217e4cd38f108fbe6c"
+      },
+      "created_at": "2026-08-15T10:11:29.807Z",
+      "updated_at": "2026-08-15T10:11:29.807Z"
+    },
+    {
       "id": "ec9a714a4de58b5c84de8a5a2c1427e9",
       "type": "note",
       "name": "note:decision",
@@ -27224,6 +27753,20 @@
       "updated_at": "2026-08-09T12:54:20.353Z"
     },
     {
+      "id": "01350761627bdcab9d5cf2cbf58cd21f",
+      "from_id": "924c3db7d1c97df3f9edc9b8b13276a5",
+      "to_id": "284ec4b8f0ae2be0374d73fb6f947ebb",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:12:44.431Z",
+      "updated_at": "2026-08-15T10:12:44.431Z"
+    },
+    {
       "id": "01782c57e73596945dc3765c27ab499f",
       "from_id": "6808563516646ae785a81cdd1cb16d78",
       "to_id": "620da2943266c331a94c4eb21dd42113",
@@ -27278,6 +27821,20 @@
       "inspected_by": "",
       "created_at": "2026-08-15T07:53:08.761Z",
       "updated_at": "2026-08-15T07:53:08.761Z"
+    },
+    {
+      "id": "0351191fec8ce691b0f4c80fafc0f8f1",
+      "from_id": "e744929246b47e11f98b0028d0ad2d29",
+      "to_id": "924c3db7d1c97df3f9edc9b8b13276a5",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:12:47.107Z",
+      "updated_at": "2026-08-15T10:12:47.107Z"
     },
     {
       "id": "04d3539b56da8462ca0ab6161b9c163d",
@@ -27670,6 +28227,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:49.253Z",
       "updated_at": "2026-08-14T07:16:39.509Z"
+    },
+    {
+      "id": "0bf046ef27f7cbfb62b454c2ec2c7363",
+      "from_id": "14bfa87840f52d59ae0136dcfc6a5f95",
+      "to_id": "56d44edf69fdfa63987c0569d22a37c3",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:12:44.431Z",
+      "updated_at": "2026-08-15T10:12:44.431Z"
     },
     {
       "id": "0c1234bac576fe156f7c11b2829f1ed7",
@@ -28092,6 +28663,20 @@
       "updated_at": "2026-08-15T07:53:49.678Z"
     },
     {
+      "id": "161b82f18823c6b02df3fc17e1d8a5dd",
+      "from_id": "7c3723dfd09f22f847f6932781144386",
+      "to_id": "30c9fed430c96dbe07295b422272fabb",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:10:29.407Z",
+      "updated_at": "2026-08-15T10:10:29.407Z"
+    },
+    {
       "id": "1649be4b58fc89ce4efdb80de3c2a0f5",
       "from_id": "7be59c16129b15b909b388ee08369b07",
       "to_id": "0d0cfe4a0497a60b7f286d64d8a7723b",
@@ -28230,6 +28815,20 @@
       "inspected_by": "",
       "created_at": "2026-08-09T12:54:20.285Z",
       "updated_at": "2026-08-09T12:54:20.285Z"
+    },
+    {
+      "id": "19745d58bdff6ca772b6c3db1e398a54",
+      "from_id": "00a7e296fbd01d217e4cd38f108fbe6c",
+      "to_id": "d07d180c7138297956c1cb6badbcf1ec",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:11:29.816Z",
+      "updated_at": "2026-08-15T10:11:29.816Z"
     },
     {
       "id": "1989eb37e66b7a07e037a15dc18fd59d",
@@ -28540,6 +29139,20 @@
       "updated_at": "2026-08-14T22:22:24.950Z"
     },
     {
+      "id": "23d315ffadb7c2c0b2a8cb7c3ba04417",
+      "from_id": "edb36a06142779c3db657ee31edc7e7e",
+      "to_id": "e44da152fe229cb7887548b94d7d8c36",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:10:29.407Z",
+      "updated_at": "2026-08-15T10:10:29.407Z"
+    },
+    {
       "id": "241fde755321857252f1d806f5d81059",
       "from_id": "5825ececd9825f32311a6cd594cfa9ba",
       "to_id": "0a741b621b6d655620e342a9fef1c094",
@@ -28664,6 +29277,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T23:17:43.158Z",
       "updated_at": "2026-08-14T23:18:07.963Z"
+    },
+    {
+      "id": "27edee401210f65dabd27e5e2d6dc505",
+      "from_id": "2b9d39a8dc33e778eb4e71aed8ebf9ea",
+      "to_id": "14bfa87840f52d59ae0136dcfc6a5f95",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:12:44.425Z",
+      "updated_at": "2026-08-15T10:12:44.425Z"
     },
     {
       "id": "288cb1cf0701f653767d475d9fff86de",
@@ -29028,6 +29655,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T22:24:23.609Z",
       "updated_at": "2026-08-14T22:24:48.775Z"
+    },
+    {
+      "id": "311859ea3b688701052a980f06e5b315",
+      "from_id": "fc93a29fa391aef243a7cb5d2a369b4c",
+      "to_id": "7c3723dfd09f22f847f6932781144386",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:10:32.125Z",
+      "updated_at": "2026-08-15T10:10:32.125Z"
     },
     {
       "id": "3126c95e7488c68f9910c4e0c2f1526c",
@@ -29422,6 +30063,20 @@
       "updated_at": "2026-08-13T13:41:21.189Z"
     },
     {
+      "id": "3f397f3e7ed5f91983428fcb4e14c5f2",
+      "from_id": "8456a04b74fd1dabd4cc89af61ab8a30",
+      "to_id": "68e80c57771ccb2dd8c543fffaa50dfe",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:11:32.556Z",
+      "updated_at": "2026-08-15T10:11:32.556Z"
+    },
+    {
       "id": "3fbe978a3b035fdabcaaca01ef40a651",
       "from_id": "65d827608b44ca5488573c0a04067b42",
       "to_id": "0727320f47b30fd3f14c7f67b7b69eb7",
@@ -29688,6 +30343,20 @@
       "updated_at": "2026-08-14T06:58:20.364Z"
     },
     {
+      "id": "49fd508600334e2ed42f34a3acc439e6",
+      "from_id": "d708de924a7a0f122803f010c9f2113f",
+      "to_id": "18667ffa6b23f6033b3d083d5f1564ca",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:59:03.849Z",
+      "updated_at": "2026-08-15T09:59:03.849Z"
+    },
+    {
       "id": "4a1e97c201fdecce111361e6093a6da7",
       "from_id": "546c0ade3316ebcaea9c2c384e9bf416",
       "to_id": "dcb6d5f9e9174ad221d41a34a0f988de",
@@ -29840,6 +30509,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T15:40:22.368Z",
       "updated_at": "2026-08-14T15:41:02.459Z"
+    },
+    {
+      "id": "4e1fb31d71519420b032601ec4ff8e6b",
+      "from_id": "a04f38662cff5026d079f7f8791c712c",
+      "to_id": "18667ffa6b23f6033b3d083d5f1564ca",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:59:10.693Z",
+      "updated_at": "2026-08-15T09:59:10.693Z"
     },
     {
       "id": "4e7d5294e619df448f392e56ef1a7184",
@@ -30318,6 +31001,20 @@
       "updated_at": "2026-08-14T06:58:20.429Z"
     },
     {
+      "id": "589eed0b914b6cc0e531b631bfa6c8f3",
+      "from_id": "30b64733808563947e06a0843616b8ea",
+      "to_id": "edb36a06142779c3db657ee31edc7e7e",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:10:29.401Z",
+      "updated_at": "2026-08-15T10:10:29.401Z"
+    },
+    {
       "id": "58c91c822f9490fa9591ebc4b4a9675d",
       "from_id": "30b64733808563947e06a0843616b8ea",
       "to_id": "30c9fed430c96dbe07295b422272fabb",
@@ -30598,6 +31295,20 @@
       "updated_at": "2026-08-14T18:34:11.957Z"
     },
     {
+      "id": "5f1c88c264a250c54042f8d43b80e235",
+      "from_id": "fc93a29fa391aef243a7cb5d2a369b4c",
+      "to_id": "edb36a06142779c3db657ee31edc7e7e",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:10:32.125Z",
+      "updated_at": "2026-08-15T10:10:32.125Z"
+    },
+    {
       "id": "5f80c00f8c8cdbbfd56b6eb8758e47b1",
       "from_id": "0d40306d9479b9a428a843a37b22b156",
       "to_id": "d932e40515659425b6275dd960a083fa",
@@ -30626,6 +31337,20 @@
       "updated_at": "2026-08-14T18:34:26.462Z"
     },
     {
+      "id": "61594568a6baee9d334f4d354b93ab56",
+      "from_id": "35ebc51ec9c9ff4a7a8fb5c0a59df289",
+      "to_id": "00a7e296fbd01d217e4cd38f108fbe6c",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:11:29.810Z",
+      "updated_at": "2026-08-15T10:11:29.810Z"
+    },
+    {
       "id": "61f53d60b9fadd954c1e1dcf7878f8f0",
       "from_id": "843d184eac16bd40fd8235e1fe696dbe",
       "to_id": "10461615e20dd349229806795ade22d3",
@@ -30652,6 +31377,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-13T05:07:40.806Z",
       "updated_at": "2026-08-14T04:21:57.317Z"
+    },
+    {
+      "id": "626f11ce6d591d50a2b1808225a7a9fb",
+      "from_id": "30b64733808563947e06a0843616b8ea",
+      "to_id": "7c3723dfd09f22f847f6932781144386",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:10:29.400Z",
+      "updated_at": "2026-08-15T10:10:29.400Z"
     },
     {
       "id": "62e4fa99796a0427e6a8eef26217d9c7",
@@ -30792,6 +31531,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-14T11:52:26.007Z",
       "updated_at": "2026-08-14T11:55:27.794Z"
+    },
+    {
+      "id": "6940f99874d432af27b7943f65e6c5ce",
+      "from_id": "18667ffa6b23f6033b3d083d5f1564ca",
+      "to_id": "f4a5a1175fec0fa52f4baea6fafb099d",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:59:03.855Z",
+      "updated_at": "2026-08-15T09:59:03.855Z"
     },
     {
       "id": "695bf151fbb3151a135e320c9d63ddeb",
@@ -31228,6 +31981,20 @@
       "updated_at": "2026-08-14T06:58:20.543Z"
     },
     {
+      "id": "7a8cb84f88a30e22552eb7e0d87350c5",
+      "from_id": "b999f926fc735d94573ed77e037b1523",
+      "to_id": "ba48ee7d3a59cba3cca83ddefcc9ec50",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:59:03.856Z",
+      "updated_at": "2026-08-15T09:59:03.856Z"
+    },
+    {
       "id": "7b4e66651eb0d2cd84944ad918fd1946",
       "from_id": "57a8e53668837b2ce790aabfd6489381",
       "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
@@ -31620,6 +32387,20 @@
       "updated_at": "2026-08-09T12:54:19.581Z"
     },
     {
+      "id": "83b69682aef267bfb4694ceadadd0f94",
+      "from_id": "35ebc51ec9c9ff4a7a8fb5c0a59df289",
+      "to_id": "68e80c57771ccb2dd8c543fffaa50dfe",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:11:29.810Z",
+      "updated_at": "2026-08-15T10:11:29.810Z"
+    },
+    {
       "id": "83dba7544ee368730798817d4d334244",
       "from_id": "998eb146c4c794c94594acc451a04c30",
       "to_id": "9a7f93694fb556e0a97646db90a045be",
@@ -31646,6 +32427,20 @@
       "inspected_by": "",
       "created_at": "2026-08-14T22:21:43.441Z",
       "updated_at": "2026-08-14T22:21:43.441Z"
+    },
+    {
+      "id": "843bcbe0aa67c0880e1ad6a17e8ecd0b",
+      "from_id": "e744929246b47e11f98b0028d0ad2d29",
+      "to_id": "14bfa87840f52d59ae0136dcfc6a5f95",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:12:47.107Z",
+      "updated_at": "2026-08-15T10:12:47.107Z"
     },
     {
       "id": "85e54b3fcf6c5176c6139b30aa644b88",
@@ -31786,6 +32581,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T15:43:37.138Z",
       "updated_at": "2026-08-14T11:53:00.277Z"
+    },
+    {
+      "id": "8b3ddd99c969bce6e6c7c6df61f89047",
+      "from_id": "8456a04b74fd1dabd4cc89af61ab8a30",
+      "to_id": "00a7e296fbd01d217e4cd38f108fbe6c",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:11:32.556Z",
+      "updated_at": "2026-08-15T10:11:32.556Z"
     },
     {
       "id": "8c45a95b53c96ed91d7e1721cd6573d1",
@@ -32108,6 +32917,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:48.966Z",
       "updated_at": "2026-08-14T06:58:20.766Z"
+    },
+    {
+      "id": "942962bd35262779eebfcd8b205700df",
+      "from_id": "d708de924a7a0f122803f010c9f2113f",
+      "to_id": "b999f926fc735d94573ed77e037b1523",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:59:03.848Z",
+      "updated_at": "2026-08-15T09:59:03.848Z"
     },
     {
       "id": "94657a556f2246eece210d6797eecc8f",
@@ -33536,6 +34359,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-15T07:38:34.374Z",
       "updated_at": "2026-08-15T07:38:36.886Z"
+    },
+    {
+      "id": "c0ae72ec3335bb0235ff9e357ed95115",
+      "from_id": "68e80c57771ccb2dd8c543fffaa50dfe",
+      "to_id": "7d61e23f99627cee331dd38d055e99c2",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:11:29.816Z",
+      "updated_at": "2026-08-15T10:11:29.816Z"
     },
     {
       "id": "c0bf8bf24778a308c6b228e81912334a",
@@ -39670,6 +40507,20 @@
       "updated_at": "2026-08-14T06:58:20.989Z"
     },
     {
+      "id": "e810926da7cc5f2751ef940c0f5ad006",
+      "from_id": "2b9d39a8dc33e778eb4e71aed8ebf9ea",
+      "to_id": "924c3db7d1c97df3f9edc9b8b13276a5",
+      "kind": "derives",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T10:12:44.425Z",
+      "updated_at": "2026-08-15T10:12:44.425Z"
+    },
+    {
       "id": "e81fa4789ba8aeb64b4d4a0aee77ad08",
       "from_id": "998eb146c4c794c94594acc451a04c30",
       "to_id": "0d40306d9479b9a428a843a37b22b156",
@@ -39934,6 +40785,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-11T18:09:32.099Z",
       "updated_at": "2026-08-14T07:16:41.176Z"
+    },
+    {
+      "id": "efa8c587cb7a5718bf6a142d58faca31",
+      "from_id": "a04f38662cff5026d079f7f8791c712c",
+      "to_id": "b999f926fc735d94573ed77e037b1523",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-15T09:59:10.693Z",
+      "updated_at": "2026-08-15T09:59:10.693Z"
     },
     {
       "id": "efe043d3dc55c9d9327e894d5ea2f81a",
@@ -41139,6 +42004,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f242b051e4730dd23",
+      "subject_kind": "node",
+      "subject_id": "00a7e296fbd01d217e4cd38f108fbe6c",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:11:29.806Z",
+      "decision_mode": "batch",
+      "batch_id": "1786788689788-99239-1"
+    },
+    {
       "id": "f24ce98090c7f48df",
       "subject_kind": "edge",
       "subject_id": "25a6e256de8df4b164c92db7ddfa59cc",
@@ -42185,6 +43064,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f5130cff666616575",
+      "subject_kind": "node",
+      "subject_id": "edb36a06142779c3db657ee31edc7e7e",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:10:29.397Z",
+      "decision_mode": "batch",
+      "batch_id": "1786788629381-99082-1"
+    },
+    {
       "id": "f517ff2617b42d046",
       "subject_kind": "edge",
       "subject_id": "4f5b0aafa80d3911358a5aa926f068e3",
@@ -43006,6 +43899,20 @@
       "batch_id": "1786627637130-7908-1"
     },
     {
+      "id": "f761a1b91fe3ec176",
+      "subject_kind": "node",
+      "subject_id": "68e80c57771ccb2dd8c543fffaa50dfe",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:11:29.800Z",
+      "decision_mode": "batch",
+      "batch_id": "1786788689788-99239-1"
+    },
+    {
       "id": "f771abe8d2a6f1076",
       "subject_kind": "node",
       "subject_id": "e269bba68eb2e76594e28fbffc8ed276",
@@ -43425,6 +44332,20 @@
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T22:48:42.036Z",
       "decision_mode": "individual"
+    },
+    {
+      "id": "f8d8f9bbabe9dd77b",
+      "subject_kind": "node",
+      "subject_id": "7c3723dfd09f22f847f6932781144386",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:10:29.392Z",
+      "decision_mode": "batch",
+      "batch_id": "1786788629381-99082-1"
     },
     {
       "id": "f8e118862106917b9",
@@ -44800,6 +45721,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fc259ae31181c69ef",
+      "subject_kind": "node",
+      "subject_id": "b999f926fc735d94573ed77e037b1523",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T09:59:03.838Z",
+      "decision_mode": "batch",
+      "batch_id": "1786787943827-97482-1"
+    },
+    {
       "id": "fc27bf80cfcdecea6",
       "subject_kind": "edge",
       "subject_id": "6da28d3e237f21f82157e70948342028",
@@ -44969,6 +45904,20 @@
       "asserted_at": "2026-08-13T13:27:17.394Z",
       "decision_mode": "batch",
       "batch_id": "1786627637130-7908-1"
+    },
+    {
+      "id": "fc8cb4b545682d919",
+      "subject_kind": "node",
+      "subject_id": "18667ffa6b23f6033b3d083d5f1564ca",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T09:59:03.845Z",
+      "decision_mode": "batch",
+      "batch_id": "1786787943827-97482-1"
     },
     {
       "id": "fc8e8ccf9fed1e748",
@@ -45804,6 +46753,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fec236ac7f9d81b06",
+      "subject_kind": "node",
+      "subject_id": "924c3db7d1c97df3f9edc9b8b13276a5",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:12:44.420Z",
+      "decision_mode": "batch",
+      "batch_id": "1786788764402-99449-1"
+    },
+    {
       "id": "fec589cfa6604b8c7",
       "subject_kind": "edge",
       "subject_id": "bf26e12f4f758638a87099b416d7531d",
@@ -45933,6 +46896,20 @@
       "asserted_by": "llm:builder",
       "asserted_at": "2026-08-11T02:24:50.558Z",
       "decision_mode": "individual"
+    },
+    {
+      "id": "ff5776329521f9c22",
+      "subject_kind": "node",
+      "subject_id": "14bfa87840f52d59ae0136dcfc6a5f95",
+      "claim": "ratification",
+      "state": "ratified",
+      "criterion": "host-mediated",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "human",
+      "asserted_at": "2026-08-15T10:12:44.412Z",
+      "decision_mode": "batch",
+      "batch_id": "1786788764402-99449-1"
     },
     {
       "id": "ff609a5b00d1baf28",
@@ -50280,6 +51257,24 @@
         "loom_version": "0.32.0"
       },
       "recorded_at": "2026-08-14T22:23:21.493Z"
+    },
+    {
+      "id": "efce5580cb1f2c952",
+      "fact_id": "f242b051e4730dd23",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786788689801-99239-3"
+      },
+      "recorded_at": "2026-08-15T10:11:29.806Z"
+    },
+    {
+      "id": "efe81e386d7f9aea6",
+      "fact_id": "f242b051e4730dd23",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'shared-proof' derivation at semantic hash c06ab8b7ac30ec50 from canonical manifest 8c1091f4a1f5bf6e"
+      },
+      "recorded_at": "2026-08-15T10:11:29.806Z"
     },
     {
       "id": "e972d0d048e0aafa6",
@@ -57340,6 +58335,24 @@
       "recorded_at": "2026-08-14T07:16:41.168Z"
     },
     {
+      "id": "e827ca0d2efddd794",
+      "fact_id": "f5130cff666616575",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786788629393-99082-3"
+      },
+      "recorded_at": "2026-08-15T10:10:29.397Z"
+    },
+    {
+      "id": "e84743076d486761e",
+      "fact_id": "f5130cff666616575",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest 54070a7ea2e78492"
+      },
+      "recorded_at": "2026-08-15T10:10:29.397Z"
+    },
+    {
       "id": "e3ef109dcd981fe0c",
       "fact_id": "f517ff2617b42d046",
       "payload": {
@@ -61769,6 +62782,24 @@
       "recorded_at": "2026-08-13T13:27:17.206Z"
     },
     {
+      "id": "e6fa1c7b286bc417e",
+      "fact_id": "f761a1b91fe3ec176",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'shared-proof' derivation at semantic hash c06ab8b7ac30ec50 from canonical manifest 8c1091f4a1f5bf6e"
+      },
+      "recorded_at": "2026-08-15T10:11:29.800Z"
+    },
+    {
+      "id": "e8d81cd214b6bbf63",
+      "fact_id": "f761a1b91fe3ec176",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786788689793-99239-2"
+      },
+      "recorded_at": "2026-08-15T10:11:29.800Z"
+    },
+    {
       "id": "e40fe4a8e20442387",
       "fact_id": "f771abe8d2a6f1076",
       "payload": {
@@ -64329,6 +65360,24 @@
         "loom_version": "0.32.0"
       },
       "recorded_at": "2026-08-14T22:48:42.036Z"
+    },
+    {
+      "id": "e8fac28604678fda6",
+      "fact_id": "f8d8f9bbabe9dd77b",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest 54070a7ea2e78492"
+      },
+      "recorded_at": "2026-08-15T10:10:29.392Z"
+    },
+    {
+      "id": "ebac68081044b849c",
+      "fact_id": "f8d8f9bbabe9dd77b",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786788629385-99082-2"
+      },
+      "recorded_at": "2026-08-15T10:10:29.392Z"
     },
     {
       "id": "e24db9803f52b5155",
@@ -71734,6 +72783,24 @@
       "recorded_at": "2026-08-13T14:10:29.663Z"
     },
     {
+      "id": "e1ec260dca9b5ea9c",
+      "fact_id": "fc259ae31181c69ef",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786787943831-97482-2"
+      },
+      "recorded_at": "2026-08-15T09:59:03.838Z"
+    },
+    {
+      "id": "ee14db8e26bb7ceba",
+      "fact_id": "fc259ae31181c69ef",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'green-graph' derivation at semantic hash cf45988e6a690560 from canonical manifest 4e9213cfa4ef57af"
+      },
+      "recorded_at": "2026-08-15T09:59:03.838Z"
+    },
+    {
       "id": "e9bc7b46a2518fd25",
       "fact_id": "fc27bf80cfcdecea6",
       "payload": {
@@ -72490,6 +73557,24 @@
         "ref": "1786627637390-7908-55"
       },
       "recorded_at": "2026-08-13T13:27:17.394Z"
+    },
+    {
+      "id": "e71530da99bbbd4f0",
+      "fact_id": "fc8cb4b545682d919",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786787943840-97482-3"
+      },
+      "recorded_at": "2026-08-15T09:59:03.845Z"
+    },
+    {
+      "id": "ec7eb07648457b043",
+      "fact_id": "fc8cb4b545682d919",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'green-graph' derivation at semantic hash cf45988e6a690560 from canonical manifest 4e9213cfa4ef57af"
+      },
+      "recorded_at": "2026-08-15T09:59:03.845Z"
     },
     {
       "id": "e08fd022de46d6f87",
@@ -78144,6 +79229,24 @@
       "recorded_at": "2026-08-14T06:58:20.582Z"
     },
     {
+      "id": "e8e67f7249d15544d",
+      "fact_id": "fec236ac7f9d81b06",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'duplicate-command-warn' derivation at semantic hash c28da61dc5013846 from canonical manifest 5e085ccd2c79d517"
+      },
+      "recorded_at": "2026-08-15T10:12:44.420Z"
+    },
+    {
+      "id": "ead1b8b4b2b84c2bc",
+      "fact_id": "fec236ac7f9d81b06",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786788764413-99449-3"
+      },
+      "recorded_at": "2026-08-15T10:12:44.420Z"
+    },
+    {
       "id": "e9799d6b29cdd4d54",
       "fact_id": "fec589cfa6604b8c7",
       "payload": {
@@ -79072,6 +80175,24 @@
         "symbol_hash": "c9f541eb44916749"
       },
       "recorded_at": "2026-08-11T02:24:50.558Z"
+    },
+    {
+      "id": "e1ffac3d3b9e25958",
+      "fact_id": "ff5776329521f9c22",
+      "payload": {
+        "kind": "claim",
+        "text": "accepted Journey 'duplicate-command-warn' derivation at semantic hash c28da61dc5013846 from canonical manifest 5e085ccd2c79d517"
+      },
+      "recorded_at": "2026-08-15T10:12:44.412Z"
+    },
+    {
+      "id": "e2cfd74ff92092ef4",
+      "fact_id": "ff5776329521f9c22",
+      "payload": {
+        "kind": "journal",
+        "ref": "1786788764406-99449-2"
+      },
+      "recorded_at": "2026-08-15T10:12:44.412Z"
     },
     {
       "id": "e3b86be3609164f07",
@@ -80668,6 +81789,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "01350761627bdcab9d5cf2cbf58cd21f",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"5a5d78c861116bbf00300a8691d06158\":{\"manifest_hash\":\"5e085ccd2c79d517\",\"rationale\":\"This boundary outcome stands on the behavior that performs the collision check.\",\"relationship_id\":\"drop-vanished-behavior-from-collision-requires-emit-nonblocking-proof-collision-diagnostic\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "01350761627bdcab9d5cf2cbf58cd21f",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "014c62de21b2b018b2c97da7b0571cd3",
       "target_kind": "node",
       "key": "calls",
@@ -81655,6 +82790,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "0bf046ef27f7cbfb62b454c2ec2c7363",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"5a5d78c861116bbf00300a8691d06158\":{\"manifest_hash\":\"5e085ccd2c79d517\",\"rationale\":\"This boundary outcome stands on the behavior that performs the collision check.\",\"relationship_id\":\"empty-command-reports-no-collision-requires-detect-proof-command-collision\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0bf046ef27f7cbfb62b454c2ec2c7363",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "0c1234bac576fe156f7c11b2829f1ed7",
       "target_kind": "edge",
       "key": "stale_cause",
@@ -82488,6 +83637,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "161b82f18823c6b02df3fc17e1d8a5dd",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"b87c9666e57ff8f5459639defd9463e7\":{\"manifest_hash\":\"54070a7ea2e78492\",\"rationale\":\"This degraded outcome stands on the behavior whose audit pass produces it.\",\"relationship_id\":\"refuse-attest-without-live-burst-requires-detect-falsifiability-and-judgment-bursts\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "161b82f18823c6b02df3fc17e1d8a5dd",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "163504107b2e40c6ee30c853a89356bb",
       "target_kind": "node",
       "key": "calls",
@@ -82755,6 +83918,20 @@
     },
     {
       "target_id": "195cfd6611113f576d0d199d06492a58",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "19745d58bdff6ca772b6c3db1e398a54",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"591ee79818c11450fdbc459626195966\":{\"manifest_hash\":\"8c1091f4a1f5bf6e\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"relationship_id\":\"exclude-orphan-validation-from-shared-risk-requires-diagnose-shared-proof-risk\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "19745d58bdff6ca772b6c3db1e398a54",
       "target_kind": "edge",
       "key": "journey_derivation_created",
       "value": "true",
@@ -83489,6 +84666,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "23d315ffadb7c2c0b2a8cb7c3ba04417",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"b87c9666e57ff8f5459639defd9463e7\":{\"manifest_hash\":\"54070a7ea2e78492\",\"rationale\":\"This degraded outcome stands on the behavior whose audit pass produces it.\",\"relationship_id\":\"report-orphan-audit-subject-against-graph-requires-project-audit-outcome-remedies-and-routing\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "23d315ffadb7c2c0b2a8cb7c3ba04417",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "241fde755321857252f1d806f5d81059",
       "target_kind": "edge",
       "key": "stale_cause",
@@ -83683,6 +84874,48 @@
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"10\",\"call_witness\":\"find_exact\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands/discover_cmd.rs\",\"entry_symbol\":\"find_exact\",\"grounded_symbol\":\"find_exact\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "27edee401210f65dabd27e5e2d6dc505",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "c28da61dc5013846",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "27edee401210f65dabd27e5e2d6dc505",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "5e085ccd2c79d517",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "27edee401210f65dabd27e5e2d6dc505",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "5a5d78c861116bbf00300a8691d06158",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "27edee401210f65dabd27e5e2d6dc505",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step registers a mechanism and expects the prior behavior named; a command that trims to nothing is the boundary where detection must report no collision rather than group every blank-command behavior.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "27edee401210f65dabd27e5e2d6dc505",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"register-second-proof\":\"ba3e7a3268d6d0cb\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "27edee401210f65dabd27e5e2d6dc505",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"register-second-proof\"]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "284ec4b8f0ae2be0374d73fb6f947ebb",
@@ -83926,7 +85159,7 @@
       "target_id": "2bb357915fdd0d8e60b54bc229490236",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"db542cfbc4964a711cd1b280c790bd15\":{\"manifest_hash\":\"45362f6c0747d85e\",\"rationale\":\"A risk report must be based on an actual shared mechanism and must not flag unique mechanisms.\",\"relationship_id\":\"shared-risk-requires-collision-detector\"}}",
+      "value": "{\"591ee79818c11450fdbc459626195966\":{\"manifest_hash\":\"8c1091f4a1f5bf6e\",\"rationale\":\"A risk report must be based on an actual shared mechanism and must not flag unique mechanisms.\",\"relationship_id\":\"shared-risk-requires-collision-detector\"}}",
       "truth_class": "asserted"
     },
     {
@@ -85799,6 +87032,48 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "49fd508600334e2ed42f34a3acc439e6",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "cf45988e6a690560",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "49fd508600334e2ed42f34a3acc439e6",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "4e9213cfa4ef57af",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "49fd508600334e2ed42f34a3acc439e6",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "56d16653178dd1c50a07e43252a0c22a",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "49fd508600334e2ed42f34a3acc439e6",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects a proposed next evidence move; freezing the baseline is that move in the case where it cannot raise the grade, which is independently falsifiable.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "49fd508600334e2ed42f34a3acc439e6",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"inspect-deepening-opportunity\":\"1bc979ea85590049\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "49fd508600334e2ed42f34a3acc439e6",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"inspect-deepening-opportunity\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "4b0e24fa251fdbf715eefa084a4824f9",
       "target_kind": "node",
       "key": "calls",
@@ -86733,7 +88008,7 @@
       "target_id": "56d6d170020463a2b4523bba78d92575",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"2aff105816f7dbd5f08bd52541435e82\":{\"manifest_hash\":\"6af8f12489ce69a9\",\"rationale\":\"A truthful audit outcome and remedy set must be projected from the detector's clean or defective result.\",\"relationship_id\":\"audit-projection-requires-detector\"}}",
+      "value": "{\"b87c9666e57ff8f5459639defd9463e7\":{\"manifest_hash\":\"54070a7ea2e78492\",\"rationale\":\"A truthful audit outcome and remedy set must be projected from the detector's clean or defective result.\",\"relationship_id\":\"audit-projection-requires-detector\"}}",
       "truth_class": "asserted"
     },
     {
@@ -86828,6 +88103,48 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "589eed0b914b6cc0e531b631bfa6c8f3",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "0dcc2efcd203fd34",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "589eed0b914b6cc0e531b631bfa6c8f3",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "54070a7ea2e78492",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "589eed0b914b6cc0e531b631bfa6c8f3",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "b87c9666e57ff8f5459639defd9463e7",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "589eed0b914b6cc0e531b631bfa6c8f3",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects every finding reported by kind and detail; a finding whose node or edge no longer resolves must still be projected, relabelled against the graph, rather than silently dropped.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "589eed0b914b6cc0e531b631bfa6c8f3",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"audit-defective-graph\":\"c42d93513b33e8e4\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "589eed0b914b6cc0e531b631bfa6c8f3",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"audit-defective-graph\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "58c91c822f9490fa9591ebc4b4a9675d",
       "target_kind": "edge",
       "key": "journey_hash",
@@ -86838,14 +88155,14 @@
       "target_id": "58c91c822f9490fa9591ebc4b4a9675d",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "6af8f12489ce69a9",
+      "value": "54070a7ea2e78492",
       "truth_class": "asserted"
     },
     {
       "target_id": "58c91c822f9490fa9591ebc4b4a9675d",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2aff105816f7dbd5f08bd52541435e82",
+      "value": "b87c9666e57ff8f5459639defd9463e7",
       "truth_class": "asserted"
     },
     {
@@ -87493,6 +88810,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "61594568a6baee9d334f4d354b93ab56",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "c06ab8b7ac30ec50",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "61594568a6baee9d334f4d354b93ab56",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "8c1091f4a1f5bf6e",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "61594568a6baee9d334f4d354b93ab56",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "591ee79818c11450fdbc459626195966",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "61594568a6baee9d334f4d354b93ab56",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects Loom not to report an independent proof; a Validation proving no behavior at all is the boundary of that exclusion and is independently falsifiable.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "61594568a6baee9d334f4d354b93ab56",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"inspect-proof-sharing\":\"4078343a0bfdde4d\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "61594568a6baee9d334f4d354b93ab56",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"inspect-proof-sharing\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "616aba56a908b7f8a138ce09f3052859",
       "target_kind": "node",
       "key": "de_facto",
@@ -87589,6 +88948,48 @@
       "key": "test_symbols",
       "value": "[]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "626f11ce6d591d50a2b1808225a7a9fb",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "0dcc2efcd203fd34",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "626f11ce6d591d50a2b1808225a7a9fb",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "54070a7ea2e78492",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "626f11ce6d591d50a2b1808225a7a9fb",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "b87c9666e57ff8f5459639defd9463e7",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "626f11ce6d591d50a2b1808225a7a9fb",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects only an exact prior hash-bound authorization to be recognized; refusing to seal when no live burst of the threshold size exists is the fail-closed half of that recognition, checked before any human challenge.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "626f11ce6d591d50a2b1808225a7a9fb",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"audit-authorized-batch\":\"d7efe347594de35e\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "626f11ce6d591d50a2b1808225a7a9fb",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"audit-authorized-batch\"]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "62e4fa99796a0427e6a8eef26217d9c7",
@@ -88352,6 +89753,20 @@
       "key": "test_symbols",
       "value": "[]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "6940f99874d432af27b7943f65e6c5ce",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"56d16653178dd1c50a07e43252a0c22a\":{\"manifest_hash\":\"4e9213cfa4ef57af\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"relationship_id\":\"freeze-baseline-without-grade-promise-requires-offer-optional-evidence-improvement\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "6940f99874d432af27b7943f65e6c5ce",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
     },
     {
       "target_id": "695bf151fbb3151a135e320c9d63ddeb",
@@ -89218,7 +90633,7 @@
       "target_id": "7a55897200195985daf2b4753ae517a4",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"916b466af850cb6322c4afa657f5c13f\":{\"manifest_hash\":\"aa8aa124204e6d87\",\"rationale\":\"The diagnostic must name an observed shared mechanism, not infer one from similar behavior names.\",\"relationship_id\":\"collision-diagnostic-requires-detector\"}}",
+      "value": "{\"5a5d78c861116bbf00300a8691d06158\":{\"manifest_hash\":\"5e085ccd2c79d517\",\"rationale\":\"The diagnostic must name an observed shared mechanism, not infer one from similar behavior names.\",\"relationship_id\":\"collision-diagnostic-requires-detector\"}}",
       "truth_class": "asserted"
     },
     {
@@ -89275,6 +90690,20 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "read_git_history; parse_git_name_status_z",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "7a8cb84f88a30e22552eb7e0d87350c5",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"56d16653178dd1c50a07e43252a0c22a\":{\"manifest_hash\":\"4e9213cfa4ef57af\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"relationship_id\":\"rank-empty-serves-no-work-requires-rank-weakest-standing-claim\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "7a8cb84f88a30e22552eb7e0d87350c5",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
       "truth_class": "asserted"
     },
     {
@@ -89540,14 +90969,14 @@
       "target_id": "7d44c4d40f66f204499946043d89e333",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "45362f6c0747d85e",
+      "value": "8c1091f4a1f5bf6e",
       "truth_class": "asserted"
     },
     {
       "target_id": "7d44c4d40f66f204499946043d89e333",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "db542cfbc4964a711cd1b280c790bd15",
+      "value": "591ee79818c11450fdbc459626195966",
       "truth_class": "asserted"
     },
     {
@@ -90087,6 +91516,48 @@
       "target_kind": "edge",
       "key": "journey_derivation_created",
       "value": "true",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83b69682aef267bfb4694ceadadd0f94",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "c06ab8b7ac30ec50",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83b69682aef267bfb4694ceadadd0f94",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "8c1091f4a1f5bf6e",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83b69682aef267bfb4694ceadadd0f94",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "591ee79818c11450fdbc459626195966",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83b69682aef267bfb4694ceadadd0f94",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step distinguishes shared mechanism from independent truth; the failing case is where independence actually bites, and one shared failure must still write a verdict per claim.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83b69682aef267bfb4694ceadadd0f94",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"inspect-proof-sharing\":\"4078343a0bfdde4d\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "83b69682aef267bfb4694ceadadd0f94",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"inspect-proof-sharing\"]",
       "truth_class": "asserted"
     },
     {
@@ -90954,14 +92425,14 @@
       "target_id": "8ed29ec3ea1a1d1c2057ba5372d61ed4",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "cef61c8df842a244",
+      "value": "4e9213cfa4ef57af",
       "truth_class": "asserted"
     },
     {
       "target_id": "8ed29ec3ea1a1d1c2057ba5372d61ed4",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "4d3deb9c8e34c0d9576a76dd3dc36b0a",
+      "value": "56d16653178dd1c50a07e43252a0c22a",
       "truth_class": "asserted"
     },
     {
@@ -91616,6 +93087,48 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "942962bd35262779eebfcd8b205700df",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "cf45988e6a690560",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "942962bd35262779eebfcd8b205700df",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "4e9213cfa4ef57af",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "942962bd35262779eebfcd8b205700df",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "56d16653178dd1c50a07e43252a0c22a",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "942962bd35262779eebfcd8b205700df",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects Loom to name the weakest claim; the case where nothing ranks is the distinct observable outcome of that same inspection and must not invent one.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "942962bd35262779eebfcd8b205700df",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"inspect-deepening-opportunity\":\"1bc979ea85590049\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "942962bd35262779eebfcd8b205700df",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"inspect-deepening-opportunity\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "94595db54524192f2c9a5f18191412ad",
       "target_kind": "node",
       "key": "calls",
@@ -91689,14 +93202,14 @@
       "target_id": "949166342fc7e4f4ddb3f07334fbe6db",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "6af8f12489ce69a9",
+      "value": "54070a7ea2e78492",
       "truth_class": "asserted"
     },
     {
       "target_id": "949166342fc7e4f4ddb3f07334fbe6db",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "2aff105816f7dbd5f08bd52541435e82",
+      "value": "b87c9666e57ff8f5459639defd9463e7",
       "truth_class": "asserted"
     },
     {
@@ -92032,14 +93545,14 @@
       "target_id": "9868ca51c5e9eded979a82cef333231d",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "cef61c8df842a244",
+      "value": "4e9213cfa4ef57af",
       "truth_class": "asserted"
     },
     {
       "target_id": "9868ca51c5e9eded979a82cef333231d",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "4d3deb9c8e34c0d9576a76dd3dc36b0a",
+      "value": "56d16653178dd1c50a07e43252a0c22a",
       "truth_class": "asserted"
     },
     {
@@ -93418,14 +94931,14 @@
       "target_id": "afad29c27335b39311d85684f0ecdb3c",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "45362f6c0747d85e",
+      "value": "8c1091f4a1f5bf6e",
       "truth_class": "asserted"
     },
     {
       "target_id": "afad29c27335b39311d85684f0ecdb3c",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "db542cfbc4964a711cd1b280c790bd15",
+      "value": "591ee79818c11450fdbc459626195966",
       "truth_class": "asserted"
     },
     {
@@ -93593,14 +95106,14 @@
       "target_id": "b14b415dbb2b6d6cbbf248346ca1cc92",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "aa8aa124204e6d87",
+      "value": "5e085ccd2c79d517",
       "truth_class": "asserted"
     },
     {
       "target_id": "b14b415dbb2b6d6cbbf248346ca1cc92",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "916b466af850cb6322c4afa657f5c13f",
+      "value": "5a5d78c861116bbf00300a8691d06158",
       "truth_class": "asserted"
     },
     {
@@ -93838,7 +95351,7 @@
       "target_id": "b4c56f7e54f9c4a154001836f9d950f1",
       "target_kind": "edge",
       "key": "journey_derivation_bindings",
-      "value": "{\"4d3deb9c8e34c0d9576a76dd3dc36b0a\":{\"manifest_hash\":\"cef61c8df842a244\",\"rationale\":\"An evidence-improvement packet must be attached to the explicitly ranked weakness it proposes to strengthen.\",\"relationship_id\":\"optional-improvement-requires-weakness-rank\"}}",
+      "value": "{\"56d16653178dd1c50a07e43252a0c22a\":{\"manifest_hash\":\"4e9213cfa4ef57af\",\"rationale\":\"An evidence-improvement packet must be attached to the explicitly ranked weakness it proposes to strengthen.\",\"relationship_id\":\"optional-improvement-requires-weakness-rank\"}}",
       "truth_class": "asserted"
     },
     {
@@ -94160,14 +95673,14 @@
       "target_id": "b90a47b0e080225e1178a987a354b4f9",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "aa8aa124204e6d87",
+      "value": "5e085ccd2c79d517",
       "truth_class": "asserted"
     },
     {
       "target_id": "b90a47b0e080225e1178a987a354b4f9",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "916b466af850cb6322c4afa657f5c13f",
+      "value": "5a5d78c861116bbf00300a8691d06158",
       "truth_class": "asserted"
     },
     {
@@ -94872,6 +96385,20 @@
     },
     {
       "target_id": "c07c633ad3cf7da139e101213bd755d9",
+      "target_kind": "edge",
+      "key": "journey_derivation_created",
+      "value": "true",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c0ae72ec3335bb0235ff9e357ed95115",
+      "target_kind": "edge",
+      "key": "journey_derivation_bindings",
+      "value": "{\"591ee79818c11450fdbc459626195966\":{\"manifest_hash\":\"8c1091f4a1f5bf6e\",\"rationale\":\"This degraded outcome stands on the behavior whose inspection produces it.\",\"relationship_id\":\"fail-every-claim-on-shared-subprocess-requires-preserve-independent-claim-truth-with-shared-subprocess\"}}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c0ae72ec3335bb0235ff9e357ed95115",
       "target_kind": "edge",
       "key": "journey_derivation_created",
       "value": "true",
@@ -98392,6 +99919,48 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "e810926da7cc5f2751ef940c0f5ad006",
+      "target_kind": "edge",
+      "key": "journey_hash",
+      "value": "c28da61dc5013846",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "e810926da7cc5f2751ef940c0f5ad006",
+      "target_kind": "edge",
+      "key": "manifest_hash",
+      "value": "5e085ccd2c79d517",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "e810926da7cc5f2751ef940c0f5ad006",
+      "target_kind": "edge",
+      "key": "proposal_id",
+      "value": "5a5d78c861116bbf00300a8691d06158",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "e810926da7cc5f2751ef940c0f5ad006",
+      "target_kind": "edge",
+      "key": "rationale",
+      "value": "The authored step expects the warning to name the first behavior; when that endpoint no longer resolves the diagnostic must omit it and still accept the registration, which is independently falsifiable.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "e810926da7cc5f2751ef940c0f5ad006",
+      "target_kind": "edge",
+      "key": "step_hashes",
+      "value": "{\"register-second-proof\":\"ba3e7a3268d6d0cb\"}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "e810926da7cc5f2751ef940c0f5ad006",
+      "target_kind": "edge",
+      "key": "step_ids",
+      "value": "[\"register-second-proof\"]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "e81fa4789ba8aeb64b4d4a0aee77ad08",
       "target_kind": "edge",
       "key": "journey_hash",
@@ -98871,14 +100440,14 @@
       "target_id": "ed58c8518b71ac73eb21b7df5f082c2c",
       "target_kind": "edge",
       "key": "manifest_hash",
-      "value": "45362f6c0747d85e",
+      "value": "8c1091f4a1f5bf6e",
       "truth_class": "asserted"
     },
     {
       "target_id": "ed58c8518b71ac73eb21b7df5f082c2c",
       "target_kind": "edge",
       "key": "proposal_id",
-      "value": "db542cfbc4964a711cd1b280c790bd15",
+      "value": "591ee79818c11450fdbc459626195966",
       "truth_class": "asserted"
     },
     {
@@ -101792,6 +103361,150 @@
         "human_decision": {
           "mode": "mediated",
           "response": "Accept v3, then delete the 3 dupes"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786787943831-97482-2",
+      "ts": "1786787943831",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "b999f926fc735d94573ed77e037b1523",
+      "payload": {
+        "batch_id": "1786787943827-97482-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'green-graph' derivation at semantic hash cf45988e6a690560 from canonical manifest 4e9213cfa4ef57af",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786787943840-97482-3",
+      "ts": "1786787943840",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "18667ffa6b23f6033b3d083d5f1564ca",
+      "payload": {
+        "batch_id": "1786787943827-97482-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'green-graph' derivation at semantic hash cf45988e6a690560 from canonical manifest 4e9213cfa4ef57af",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786788629385-99082-2",
+      "ts": "1786788629385",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "7c3723dfd09f22f847f6932781144386",
+      "payload": {
+        "batch_id": "1786788629381-99082-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest 54070a7ea2e78492",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786788629393-99082-3",
+      "ts": "1786788629393",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "edb36a06142779c3db657ee31edc7e7e",
+      "payload": {
+        "batch_id": "1786788629381-99082-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest 54070a7ea2e78492",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786788689793-99239-2",
+      "ts": "1786788689793",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "68e80c57771ccb2dd8c543fffaa50dfe",
+      "payload": {
+        "batch_id": "1786788689788-99239-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'shared-proof' derivation at semantic hash c06ab8b7ac30ec50 from canonical manifest 8c1091f4a1f5bf6e",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786788689801-99239-3",
+      "ts": "1786788689801",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "00a7e296fbd01d217e4cd38f108fbe6c",
+      "payload": {
+        "batch_id": "1786788689788-99239-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'shared-proof' derivation at semantic hash c06ab8b7ac30ec50 from canonical manifest 8c1091f4a1f5bf6e",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786788764406-99449-2",
+      "ts": "1786788764406",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "14bfa87840f52d59ae0136dcfc6a5f95",
+      "payload": {
+        "batch_id": "1786788764402-99449-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'duplicate-command-warn' derivation at semantic hash c28da61dc5013846 from canonical manifest 5e085ccd2c79d517",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
+        },
+        "presence": "host-mediated",
+        "ratified_by": "human"
+      }
+    },
+    {
+      "id": "1786788764413-99449-3",
+      "ts": "1786788764413",
+      "actor": "llm:builder",
+      "event": "ratification",
+      "target_id": "924c3db7d1c97df3f9edc9b8b13276a5",
+      "payload": {
+        "batch_id": "1786788764402-99449-1",
+        "decision_mode": "batch",
+        "evidence": "accepted Journey 'duplicate-command-warn' derivation at semantic hash c28da61dc5013846 from canonical manifest 5e085ccd2c79d517",
+        "human_decision": {
+          "mode": "mediated",
+          "response": "Accept (Recommended)"
         },
         "presence": "host-mediated",
         "ratified_by": "human"
