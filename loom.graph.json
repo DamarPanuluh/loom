@@ -42216,6 +42216,19 @@
       "batch_id": "1786627637130-7908-1"
     },
     {
+      "id": "f08cf228e084a123c",
+      "subject_kind": "node",
+      "subject_id": "d67e46cf24838583b",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "same failure as the federation collision: one of the two proofs never exercises its behavior. 'Consistent coverage/rung/truth projection' claims one active-realizes predicate feeds ownership, lane depth and truth-gap projections, but grep -c 'coverage|rung' over tests/ring40_packet_closure.rs returns 0 — that suite is entirely about packet closure and target binding. Plan: keep the whole-suite command only for 'contract: target-bound work packets', which the suite does establish (tests/ring40_packet_closure.rs:64 a_served_build_packet_carries_the_complete_role_scope, :278 a_triage_packet_closes_with_finding_verdict_naming_the_finding, :527 every_lane_loom_ships_serves_a_closable_packet_on_this_graph); and repoint 'contract: consistent coverage rung truth projection' at the ladder invariants that actually test it — tests/ring21_lane_ladder.rs:282 the_ladder_is_a_total_bijection_with_lanes and :707 every_per_item_gating_rung_is_unmet_iff_it_serves_something",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:41:27.039Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f08f3e65bdeaf943f",
       "subject_kind": "node",
       "subject_id": "65d827608b44ca5488573c0a04067b42",
@@ -43670,6 +43683,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f46fb795c1fcf10be",
+      "subject_kind": "node",
+      "subject_id": "d6896ac41ee433370",
+      "claim": "adjudication",
+      "state": "justified",
+      "criterion": "src/commands/capture_cmd.rs is one concern: turning a human utterance into a typed graph node and tracking its disposition. The two flagged Intents are the capture half and the routing half of that single flow, which is why they share the file.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:39:41.421Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f4781b02245f81209",
       "subject_kind": "edge",
       "subject_id": "d0bfede64fcd352fdacf88061df39147",
@@ -44878,6 +44904,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f7c1274833cdee3da",
+      "subject_kind": "node",
+      "subject_id": "f26c6e6fae653d394f3f65a3dff547fd",
+      "claim": "adjudication",
+      "state": "blocked",
+      "criterion": "repair requires re-authoring an accepted Journey surface manifest, which only the human can authorize through loom journey surface-accept. The pointer at journeys/surfaces/pagination.surface.json:39 must change from /items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id to a positional pointer so the generic ^[0-9a-f]{32}$ matcher at :38 asserts row shape rather than one graph content. Until then pagination:proof stays red and the proven rung stays blocked.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:42:04.642Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f7cc0eac95e82e347",
       "subject_kind": "edge",
       "subject_id": "ea9440d0f4d74b7c74fd2a34e27777a7",
@@ -45033,6 +45072,19 @@
       "asserted_at": "2026-08-13T13:27:17.478Z",
       "decision_mode": "batch",
       "batch_id": "1786627637130-7908-1"
+    },
+    {
+      "id": "f873a1709e0e67b17",
+      "subject_kind": "node",
+      "subject_id": "dfd4cd8fb0f8bf8d2",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "the suite holds distinct tests for each behavior, so one whole-suite command makes both proofs unfalsifiable individually: a failure in either half reddens both, and neither can be told apart. Plan: narrow 'contract: authoritative graph mutations' to the apply-path tests that establish resolve-before-mutate and rollback — tests/ring12_phase1.rs:97 apply_batch_creates_intents_groundings_relationships_and_records_verdicts, :187 apply_is_atomic_a_rejected_item_rolls_back_the_whole_batch and :308 apply_reapplying_intent_declarations_is_rejected_and_leaves_graph_unchanged; and narrow 'contract: typed evidence-bearing writes' to the gate tests — :459 record_verdict_still_rejects_placeholder_evidence_after_a_settled_verdict, :535 open_read_forbids_writes_but_allows_reads and :375 record_verdict_identical_rerecord_is_a_noop_preserving_updated_at",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:40:57.633Z",
+      "decision_mode": "individual"
     },
     {
       "id": "f8776afd86d020378",
@@ -45443,6 +45495,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-14T22:22:29.509Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f98ad5688ff9880e3",
+      "subject_kind": "node",
+      "subject_id": "df2a2ec3f87aeb0b53e8d045d78a6529",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "src/completeness.rs:1022 journey_axis needs the same early-out that scenarios_axis has at :797-804: read the journey_exemption facet (stored at src/commands/intent.rs:558) and return not_applicable naming the exemption kind, instead of falling through to \"no current Journey derives this behavior — loom next --mode derive\" for an Intent the derive lane deliberately refuses to serve. Four exempt Intents currently need a manual axis waiver to escape the elaborate queue.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:42:04.682Z",
       "decision_mode": "individual"
     },
     {
@@ -46277,6 +46342,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-15T10:30:43.605Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fb6fae76ea77d86d6",
+      "subject_kind": "node",
+      "subject_id": "d8a3d552bcad9724d",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "the shared command hides a proof that does not test its behavior at all. 'Isolated repository integrations' claims managed hooks touch only Loom-owned post-commit and post-merge hooks, refuse foreign hooks, and sync fail-open — but grep -c hook over tests/ring12_federation.rs returns 0, so the suite it points at exercises no hook code; it passes for reasons unrelated to the claim. Plan: repoint 'contract: isolated repository integrations' at the hook tests that actually establish it — tests/ring20_hooks.rs:17 install_is_executable_idempotent_and_remove_cleans_up and :61 install_refuses_a_foreign_hook — and narrow 'contract: deterministic federation' to the shadow/stale/prune tests that establish it, tests/ring12_federation.rs:166 federation_link_sync_and_upstream_change_stales_edges, :312 upstream_shadows_invisible_to_local_queues and :572 prune_orphans_refuses_depends_on_unless_cascade. Neither proof should keep the whole-suite command.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:40:19.637Z",
       "decision_mode": "individual"
     },
     {
@@ -47941,6 +48019,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "ff51830f1d8cdb92a",
+      "subject_kind": "node",
+      "subject_id": "da040baa6f94eca3b",
+      "claim": "adjudication",
+      "state": "justified",
+      "criterion": "src/locator.rs is one concern: the source-anchor lifecycle. Rejecting an invalid anchor and resolving one for navigation are the two faces of the same anchor, not two subjects sharing a file.",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:38:53.292Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "ff5776329521f9c22",
       "subject_kind": "node",
       "subject_id": "14bfa87840f52d59ae0136dcfc6a5f95",
@@ -48187,6 +48278,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-15T04:17:21.583Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fffb75ace1d9ee34b",
+      "subject_kind": "node",
+      "subject_id": "d039957eab9262339",
+      "claim": "adjudication",
+      "state": "needed",
+      "criterion": "src/commands/journey/mod.rs holds four unrelated ladder stages behind one dispatch, so co-owners cannot help but collide. Split by stage into the directory that already exists for it: journey/derive.rs (journey_derive :441, derivation_candidate_state :582, plan_relationships :735, reconcile_derivation_relationships :921, derivation_acceptance_is_current :1038, journey_derive_accept :1140 — the two flagged Intents both land here and become genuine co-owners of one concern), journey/surface.rs (journey_surface :1513, journey_surface_accept :1581), journey/compile.rs (compile_source :1730, compile_internal :1873), and journey/report.rs (journey_lint :77, journey_list :293, journey_show :327, journey_map :386), leaving mod.rs as dispatch :17 only",
+      "verification": "claimed",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_at": "2026-08-15T10:39:18.006Z",
       "decision_mode": "individual"
     }
   ],
@@ -49893,6 +49997,43 @@
         "ref": "1786627637317-7908-41"
       },
       "recorded_at": "2026-08-13T13:27:17.321Z"
+    },
+    {
+      "id": "e3a353835beb73937",
+      "fact_id": "f08cf228e084a123c",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring21_lane_ladder.rs",
+        "start": 282,
+        "end": 282,
+        "hash": "f679a3adc91e754c",
+        "symbol": "the_ladder_is_a_total_bijection_with_lanes",
+        "symbol_hash": "a5f54acf7fa1976b"
+      },
+      "recorded_at": "2026-08-15T10:41:27.039Z"
+    },
+    {
+      "id": "e70d6b9b9cbe2fdbd",
+      "fact_id": "f08cf228e084a123c",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring40_packet_closure.rs",
+        "start": 64,
+        "end": 64,
+        "hash": "b29818205a2beffc",
+        "symbol": "a_served_build_packet_carries_the_complete_role_scope",
+        "symbol_hash": "18cfacd5253d26f2"
+      },
+      "recorded_at": "2026-08-15T10:41:27.039Z"
+    },
+    {
+      "id": "e86ffcd86f19b6849",
+      "fact_id": "f08cf228e084a123c",
+      "payload": {
+        "kind": "claim",
+        "text": "same failure as the federation collision: one of the two proofs never exercises its behavior. 'Consistent coverage/rung/truth projection' claims one active-realizes predicate feeds ownership, lane depth and truth-gap projections, but grep -c 'coverage|rung' over tests/ring40_packet_closure.rs returns 0 — that suite is entirely about packet closure and target binding. Plan: keep the whole-suite command only for 'contract: target-bound work packets', which the suite does establish (tests/ring40_packet_closure.rs:64 a_served_build_packet_carries_the_complete_role_scope, :278 a_triage_packet_closes_with_finding_verdict_naming_the_finding, :527 every_lane_loom_ships_serves_a_closable_packet_on_this_graph); and repoint 'contract: consistent coverage rung truth projection' at the ladder invariants that actually test it — tests/ring21_lane_ladder.rs:282 the_ladder_is_a_total_bijection_with_lanes and :707 every_per_item_gating_rung_is_unmet_iff_it_serves_something"
+      },
+      "recorded_at": "2026-08-15T10:41:27.039Z"
     },
     {
       "id": "e0788d31571df0ce9",
@@ -58145,6 +58286,29 @@
       "recorded_at": "2026-08-14T07:36:24.921Z"
     },
     {
+      "id": "e60d721e0976d9d92",
+      "fact_id": "f46fb795c1fcf10be",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/capture_cmd.rs:11 door captures the utterance and :187 parse_intake_destination names its landing choice; :210 inbox lists and re-routes the same intake nodes through that same destination type, and :356 inbox_json projects them — door and inbox share parse_intake_destination rather than being independent surfaces. The remaining verbs (:370 question, :628 note, :764 task, :983 decide_cmd) are the same capture-to-typed-node concern, not a different subject"
+      },
+      "recorded_at": "2026-08-15T10:39:41.421Z"
+    },
+    {
+      "id": "e7e4b3839fb333e83",
+      "fact_id": "f46fb795c1fcf10be",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/capture_cmd.rs",
+        "start": 11,
+        "end": 11,
+        "hash": "0579482159d3d65b",
+        "symbol": "door",
+        "symbol_hash": "1f4f850f7f298f26"
+      },
+      "recorded_at": "2026-08-15T10:39:41.421Z"
+    },
+    {
       "id": "e99250516ebd6531a",
       "fact_id": "f4781b02245f81209",
       "payload": {
@@ -65066,6 +65230,27 @@
       "recorded_at": "2026-08-14T07:36:25.063Z"
     },
     {
+      "id": "e0e32c5a816b4384e",
+      "fact_id": "f7c1274833cdee3da",
+      "payload": {
+        "kind": "span",
+        "file": "journeys/surfaces/pagination.surface.json",
+        "start": 39,
+        "end": 39,
+        "hash": "8628789eea47aa13"
+      },
+      "recorded_at": "2026-08-15T10:42:04.642Z"
+    },
+    {
+      "id": "e5f8fc792e3bac9f7",
+      "fact_id": "f7c1274833cdee3da",
+      "payload": {
+        "kind": "claim",
+        "text": "repair requires re-authoring an accepted Journey surface manifest, which only the human can authorize through loom journey surface-accept. The pointer at journeys/surfaces/pagination.surface.json:39 must change from /items/[id=c779fbd3cf872b87ef6a8aa3d1678d97]/id to a positional pointer so the generic ^[0-9a-f]{32}$ matcher at :38 asserts row shape rather than one graph content. Until then pagination:proof stays red and the proven rung stays blocked."
+      },
+      "recorded_at": "2026-08-15T10:42:04.642Z"
+    },
+    {
       "id": "ee9cdef28b923460a",
       "fact_id": "f7cc0eac95e82e347",
       "payload": {
@@ -65729,6 +65914,29 @@
         "text": "re-establish local standing for imported wantedness; meaning is unchanged"
       },
       "recorded_at": "2026-08-13T13:27:17.478Z"
+    },
+    {
+      "id": "e29fac5a6d7ae5e7b",
+      "fact_id": "f873a1709e0e67b17",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring12_phase1.rs",
+        "start": 97,
+        "end": 97,
+        "hash": "7ddd526a5a22613d",
+        "symbol": "apply_batch_creates_intents_groundings_relationships_and_records_verdicts",
+        "symbol_hash": "1a0337af603f3181"
+      },
+      "recorded_at": "2026-08-15T10:40:57.633Z"
+    },
+    {
+      "id": "efb5677c48c276eac",
+      "fact_id": "f873a1709e0e67b17",
+      "payload": {
+        "kind": "claim",
+        "text": "the suite holds distinct tests for each behavior, so one whole-suite command makes both proofs unfalsifiable individually: a failure in either half reddens both, and neither can be told apart. Plan: narrow 'contract: authoritative graph mutations' to the apply-path tests that establish resolve-before-mutate and rollback — tests/ring12_phase1.rs:97 apply_batch_creates_intents_groundings_relationships_and_records_verdicts, :187 apply_is_atomic_a_rejected_item_rolls_back_the_whole_batch and :308 apply_reapplying_intent_declarations_is_rejected_and_leaves_graph_unchanged; and narrow 'contract: typed evidence-bearing writes' to the gate tests — :459 record_verdict_still_rejects_placeholder_evidence_after_a_settled_verdict, :535 open_read_forbids_writes_but_allows_reads and :375 record_verdict_identical_rerecord_is_a_noop_preserving_updated_at"
+      },
+      "recorded_at": "2026-08-15T10:40:57.633Z"
     },
     {
       "id": "e8e74d1c281983e51",
@@ -68147,6 +68355,44 @@
         "loom_version": "0.32.0"
       },
       "recorded_at": "2026-08-14T22:22:29.509Z"
+    },
+    {
+      "id": "e229a0f56394efe78",
+      "fact_id": "f98ad5688ff9880e3",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/intent.rs",
+        "start": 558,
+        "end": 558,
+        "hash": "0a4a35cac6f53758",
+        "symbol": "intent_show",
+        "symbol_hash": "b162f4ca993c40b8",
+        "symbol_offset": 14
+      },
+      "recorded_at": "2026-08-15T10:42:04.682Z"
+    },
+    {
+      "id": "eb256b2e10c09abef",
+      "fact_id": "f98ad5688ff9880e3",
+      "payload": {
+        "kind": "claim",
+        "text": "src/completeness.rs:1022 journey_axis needs the same early-out that scenarios_axis has at :797-804: read the journey_exemption facet (stored at src/commands/intent.rs:558) and return not_applicable naming the exemption kind, instead of falling through to \"no current Journey derives this behavior — loom next --mode derive\" for an Intent the derive lane deliberately refuses to serve. Four exempt Intents currently need a manual axis waiver to escape the elaborate queue."
+      },
+      "recorded_at": "2026-08-15T10:42:04.682Z"
+    },
+    {
+      "id": "edb622375a39a746b",
+      "fact_id": "f98ad5688ff9880e3",
+      "payload": {
+        "kind": "span",
+        "file": "src/completeness.rs",
+        "start": 1022,
+        "end": 1022,
+        "hash": "1a400019b150ae9b",
+        "symbol": "journey_axis",
+        "symbol_hash": "e8237540810e8be5"
+      },
+      "recorded_at": "2026-08-15T10:42:04.682Z"
     },
     {
       "id": "e7417235efc62cc94",
@@ -72575,6 +72821,43 @@
         "loom_version": "0.33.0"
       },
       "recorded_at": "2026-08-15T10:30:43.605Z"
+    },
+    {
+      "id": "e4fe36e5dc6f1f2ce",
+      "fact_id": "fb6fae76ea77d86d6",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring12_federation.rs",
+        "start": 166,
+        "end": 166,
+        "hash": "8052badfe75e00c0",
+        "symbol": "federation_link_sync_and_upstream_change_stales_edges",
+        "symbol_hash": "aff44b63c8a8a55e"
+      },
+      "recorded_at": "2026-08-15T10:40:19.637Z"
+    },
+    {
+      "id": "eb61a70e281b39718",
+      "fact_id": "fb6fae76ea77d86d6",
+      "payload": {
+        "kind": "span",
+        "file": "tests/ring20_hooks.rs",
+        "start": 17,
+        "end": 17,
+        "hash": "1ff13e5129914882",
+        "symbol": "install_is_executable_idempotent_and_remove_cleans_up",
+        "symbol_hash": "a17a57d58d243640"
+      },
+      "recorded_at": "2026-08-15T10:40:19.637Z"
+    },
+    {
+      "id": "ee028c45b39689cdc",
+      "fact_id": "fb6fae76ea77d86d6",
+      "payload": {
+        "kind": "claim",
+        "text": "the shared command hides a proof that does not test its behavior at all. 'Isolated repository integrations' claims managed hooks touch only Loom-owned post-commit and post-merge hooks, refuse foreign hooks, and sync fail-open — but grep -c hook over tests/ring12_federation.rs returns 0, so the suite it points at exercises no hook code; it passes for reasons unrelated to the claim. Plan: repoint 'contract: isolated repository integrations' at the hook tests that actually establish it — tests/ring20_hooks.rs:17 install_is_executable_idempotent_and_remove_cleans_up and :61 install_refuses_a_foreign_hook — and narrow 'contract: deterministic federation' to the shadow/stale/prune tests that establish it, tests/ring12_federation.rs:166 federation_link_sync_and_upstream_change_stales_edges, :312 upstream_shadows_invisible_to_local_queues and :572 prune_orphans_refuses_depends_on_unless_cascade. Neither proof should keep the whole-suite command."
+      },
+      "recorded_at": "2026-08-15T10:40:19.637Z"
     },
     {
       "id": "e091a1a657c2dd6fe",
@@ -83266,6 +83549,29 @@
       "recorded_at": "2026-08-11T02:24:50.558Z"
     },
     {
+      "id": "ebb28ce5ad5f10ff5",
+      "fact_id": "ff51830f1d8cdb92a",
+      "payload": {
+        "kind": "claim",
+        "text": "src/locator.rs:61 is_anchor_locator, :79 issue_anchor, :172 resolve_anchor and :236 validate_for_codefile form one lifecycle over the same anchor id, and :568-692 (is_module_scope, symbols, symbol, realizing_navigation_symbols) parse the same locator strings; the file defines no unrelated command, surface, or storage concern"
+      },
+      "recorded_at": "2026-08-15T10:38:53.292Z"
+    },
+    {
+      "id": "ec2cab9433205a796",
+      "fact_id": "ff51830f1d8cdb92a",
+      "payload": {
+        "kind": "span",
+        "file": "src/locator.rs",
+        "start": 61,
+        "end": 61,
+        "hash": "2159a0e7a462a437",
+        "symbol": "is_anchor_locator",
+        "symbol_hash": "50f2e49254898149"
+      },
+      "recorded_at": "2026-08-15T10:38:53.292Z"
+    },
+    {
       "id": "e1ffac3d3b9e25958",
       "fact_id": "ff5776329521f9c22",
       "payload": {
@@ -84719,6 +85025,15 @@
         "text": "compiled Journey 'unratified-ungated:proof' observed passed with 8 typed assertion(s)"
       },
       "recorded_at": "2026-08-15T04:17:21.583Z"
+    },
+    {
+      "id": "e92bb69ede23f2fe5",
+      "fact_id": "fffb75ace1d9ee34b",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/journey/mod.rs holds four unrelated ladder stages behind one dispatch, so co-owners cannot help but collide. Split by stage into the directory that already exists for it: journey/derive.rs (journey_derive :441, derivation_candidate_state :582, plan_relationships :735, reconcile_derivation_relationships :921, derivation_acceptance_is_current :1038, journey_derive_accept :1140 — the two flagged Intents both land here and become genuine co-owners of one concern), journey/surface.rs (journey_surface :1513, journey_surface_accept :1581), journey/compile.rs (compile_source :1730, compile_internal :1873), and journey/report.rs (journey_lint :77, journey_list :293, journey_show :327, journey_map :386), leaving mod.rs as dispatch :17 only"
+      },
+      "recorded_at": "2026-08-15T10:39:18.006Z"
     }
   ],
   "facets": [
@@ -100627,6 +100942,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d039957eab9262339",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:39:18.008Z\",\"hash\":\"\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "d07d180c7138297956c1cb6badbcf1ec",
       "target_kind": "node",
       "key": "de_facto",
@@ -101404,6 +101726,20 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d67e46cf24838583b",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:41:27.040Z\",\"hash\":\"\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "d6896ac41ee433370",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:39:41.423Z\",\"hash\":\"\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "d6ad13fcf69580b43a3108d0ab85c4b0",
       "target_kind": "node",
       "key": "de_facto",
@@ -101663,6 +101999,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "d8a3d552bcad9724d",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:40:19.640Z\",\"hash\":\"\"}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "d932e40515659425b6275dd960a083fa",
       "target_kind": "node",
       "key": "calls",
@@ -101759,6 +102102,13 @@
       "key": "locator",
       "value": "module scripts/local-ci.sh",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "da040baa6f94eca3b",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:38:53.295Z\",\"hash\":\"\"}",
+      "truth_class": "derived"
     },
     {
       "target_id": "da1a6011a0dcbe6e7dc85aaac42538b3",
@@ -102398,6 +102748,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "df2a2ec3f87aeb0b53e8d045d78a6529",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:42:04.683Z\",\"hash\":\"896a8a1e10915cfb\",\"metric\":0}",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "df6fe2053124febe50cf6aa46ffd1aec",
       "target_kind": "node",
       "key": "proof_anchors",
@@ -102416,6 +102773,13 @@
       "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "dfd4cd8fb0f8bf8d2",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:40:57.635Z\",\"hash\":\"\"}",
       "truth_class": "derived"
     },
     {
@@ -104237,6 +104601,13 @@
       "key": "locator",
       "value": "module skills/loom-driver/SKILL.md",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "f26c6e6fae653d394f3f65a3dff547fd",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-15T10:42:04.645Z\",\"hash\":\"96854510adf58de6\",\"metric\":12}",
+      "truth_class": "derived"
     },
     {
       "target_id": "f270b321706fb5d8b1b94fb9535a29db",
