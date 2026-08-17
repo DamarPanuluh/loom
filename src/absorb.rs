@@ -125,6 +125,13 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
     let mut items = Vec::new();
     let graph = crate::callgraph::build(store)?;
     let Claimed { owned, located } = claimed(store)?;
+    // The coverage gap has ONE definition (`coverage::unowned_codefiles`):
+    // exclusion globs, observed files, and verified test files are all out of
+    // scope there. Re-deriving the gap from `owned` alone proposed
+    // resolve_coverage items for deliberately excluded facade files — items
+    // the coverage lane itself would never serve.
+    let coverage_gap: BTreeSet<String> =
+        crate::coverage::unowned_names(store)?.into_iter().collect();
     // Locators grouped by the file they name, so the "symbol is gone" check in
     // the file loop iterates only this file's locators, not every locator per
     // file.
@@ -154,7 +161,7 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
             .unwrap_or_default();
 
         // A registered file nothing owns is coverage work, prefilled.
-        if !owned.contains_key(&cf.name) {
+        if coverage_gap.contains(&cf.name) {
             items.push(Item {
                 kind: Kind::ResolveCoverage,
                 text: format!("{} is registered but no behavior owns it", cf.name),
