@@ -3354,6 +3354,16 @@ fn assertion_holds(
             return false;
         }
     }
+    if let Some(expected) = assertion.minimum_value() {
+        // Numeric lower bound: a non-numeric actual fails closed, exactly as a
+        // non-string actual fails `matches`.
+        let (Some(actual), Some(expected)) = (actual.as_f64(), expected.as_f64()) else {
+            return false;
+        };
+        if actual < expected {
+            return false;
+        }
+    }
     if let Some(source) = assertion.runtime_source() {
         if source_value(source, inputs, captures, run_id).as_deref() != Some(actual) {
             return false;
