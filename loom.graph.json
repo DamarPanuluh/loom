@@ -32326,6 +32326,20 @@
       "updated_at": "2026-08-17T07:32:33.856Z"
     },
     {
+      "id": "1e3427461dbe552ea93b3bad6edbe9bc",
+      "from_id": "d80ce4b1c200e00240a81222b27ab325",
+      "to_id": "d3864a5f8d70c25b772a67ff81e23bbc",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "A derivation proposal stays nonauthoritative precisely because authority is minted only by derive-accept recording the human's exact decision against the journey's current hash; the candidate gate matches proposal_id, manifest_hash, AND journey_hash before any acceptance counts.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm:builder",
+      "created_at": "2026-08-17T08:27:56.507Z",
+      "updated_at": "2026-08-17T08:27:56.538Z"
+    },
+    {
       "id": "1e3647c11a60d659904f06c936aec66b",
       "from_id": "085fb56a168d96226a399f0d95f6dc68",
       "to_id": "f12ddcf7961eee4f13b0676776dd3e19",
@@ -69708,6 +69722,20 @@
       "confidence": 1.0,
       "asserted_by": "llm:analyzer",
       "asserted_at": "2026-08-16T07:05:38.699Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fbe73e3133ec17171",
+      "subject_kind": "edge",
+      "subject_id": "1e3427461dbe552ea93b3bad6edbe9bc",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "A derivation proposal stays nonauthoritative precisely because authority is minted only by derive-accept recording the human's exact decision against the journey's current hash; the candidate gate matches proposal_id, manifest_hash, AND journey_hash before any acceptance counts.",
+      "verification": "cited",
+      "confidence": 0.9,
+      "asserted_by": "llm:builder",
+      "asserted_profile": "drain-2026-08-17",
+      "asserted_at": "2026-08-17T08:27:56.537Z",
       "decision_mode": "individual"
     },
     {
@@ -126611,6 +126639,30 @@
       "recorded_at": "2026-08-16T07:05:38.699Z"
     },
     {
+      "id": "e42ca1dbddbb25e90",
+      "fact_id": "fbe73e3133ec17171",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/journey/mod.rs:32-33,45-51 — derive_accept threads --human-decision into journey_derive_accept (:149,:167 records human_decision verbatim); :606-618 — derivation_candidate_state only matches adopted proposals whose manifest_hash and journey_hash equal the CURRENT manifest and journey hash, so a drifted hash de-authorizes the proposal"
+      },
+      "recorded_at": "2026-08-17T08:27:56.537Z"
+    },
+    {
+      "id": "ec507bb51396f47e9",
+      "fact_id": "fbe73e3133ec17171",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/journey/mod.rs",
+        "start": 32,
+        "end": 33,
+        "hash": "c944626b8613cde0",
+        "symbol": "dispatch",
+        "symbol_hash": "d1ece9afd447e6a1",
+        "symbol_offset": 15
+      },
+      "recorded_at": "2026-08-17T08:27:56.537Z"
+    },
+    {
       "id": "e1be14a5ad0ae4d52",
       "fact_id": "fbecf667dd9cbf988",
       "payload": {
@@ -146862,6 +146914,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands/bootstrap_cmd.rs\",\"start\":1,\"end\":282,\"hash\":\"b7c51295f8218f71\"},{\"file\":\"src/prescan.rs\",\"start\":1,\"end\":166,\"hash\":\"3e633db6b2ee558b\"},{\"file\":\"src/prescan.rs\",\"start\":167,\"end\":296,\"hash\":\"290d27738217c997\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "1e3427461dbe552ea93b3bad6edbe9bc",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/journey/mod.rs\",\"start\":32,\"end\":33,\"hash\":\"c944626b8613cde0\",\"symbol\":\"dispatch\",\"symbol_hash\":\"d1ece9afd447e6a1\",\"symbol_offset\":15}]",
       "truth_class": "asserted"
     },
     {

@@ -362,26 +362,40 @@ pub(crate) fn journey_show(
             "validation": store.get_node(&edge.from_id)?.map(|node| node_json(&node)),
         }));
     }
-    let value = json!({
-        "journey": node_json(&journey),
-        "spec": spec.canonical_value()?,
-        "readiness": readiness,
-        "derivations": derivations,
-        "surfaces": surfaces,
-        "proofs": proofs,
-    });
+    // Identity first, appendices after. `serde_json`'s Map sorts keys, which
+    // buried the journey's name/goal behind an ever-growing `derivations`
+    // section — past the bounded run-excerpt head, so an operator recovering
+    // the product purpose through a recorded response lost exactly those
+    // fields. A struct serializes in declaration order.
+    #[derive(serde::Serialize)]
+    struct JourneyShow {
+        journey: Value,
+        spec: Value,
+        readiness: crate::completeness::JourneyReadiness,
+        derivations: Vec<Value>,
+        surfaces: Vec<Value>,
+        proofs: Vec<Value>,
+    }
+    let value = JourneyShow {
+        journey: node_json(&journey),
+        spec: spec.canonical_value()?,
+        readiness,
+        derivations,
+        surfaces,
+        proofs,
+    };
     if json_output {
         println!("{}", serde_json::to_string_pretty(&value)?);
     } else {
         println!(
             "{}  authored={} derived={} implemented={} surfaced={} compiled={} proven={}",
             journey.name,
-            readiness.authored,
-            readiness.derived,
-            readiness.implemented,
-            readiness.surfaced,
-            readiness.compiled,
-            readiness.proven
+            value.readiness.authored,
+            value.readiness.derived,
+            value.readiness.implemented,
+            value.readiness.surfaced,
+            value.readiness.compiled,
+            value.readiness.proven
         );
     }
     Ok(())
