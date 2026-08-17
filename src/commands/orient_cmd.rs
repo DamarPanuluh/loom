@@ -449,6 +449,14 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                 })).collect::<Vec<_>>(),
                 "closeout": ["loom sync --json", "loom doctor --json", "loom audit --json", "loom journey drift --json", "loom status --json", "loom next --all --json", "loom export --json", "loom export --check"],
                 "operator_loops": operator_loops(),
+                "orchestrator": {
+                    "pattern": "One master driver orchestrates; it claims roles and fans work out to coordinated sub-drivers running in parallel.",
+                    "identity": "Every sub-driver exports the lane's authority (LOOM_AGENT=llm:<role>) plus its OWN distinct LOOM_AGENT_PROFILE — the profile is the judging mind the audit budgets and every fact records.",
+                    "partitioning": "The master partitions targets and hands each sub-driver an explicit disjoint slice; sub-drivers never race `loom next` for packets.",
+                    "pacing": "Judgment writes stay under 10 per profile-minute PER sub-driver; a profile that writes faster is flagged as judgment compression.",
+                    "proofs": "Proof execution stays serial: the harness lock admits one executor, so exactly one sub-driver runs validations/journeys at a time (a second exits 75 — take other work, never reinterpret as a verdict).",
+                    "contention": "Exit 75 anywhere is infrastructure: graph-lock refusals retry briefly; role contention picks another role; harness contention takes a different packet."
+                },
                 "truth_axes": truth_axis_matrix(),
             }))?
         );
@@ -485,6 +493,11 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                 println!("      then:         {}", g.after_write);
             }
             println!("Roles: builder | analyzer | fixer | validator | quality | rectify (see `loom guide --role`).");
+            println!("Parallel drive (orchestrator): one master claims roles and fans out coordinated sub-drivers.");
+            println!("  identity:  each sub-driver exports LOOM_AGENT=llm:<role> + its OWN LOOM_AGENT_PROFILE — the profile is the judging mind the audit budgets, recorded on every fact");
+            println!("  partition: the master hands each sub-driver an explicit disjoint target slice; sub-drivers never race `loom next`");
+            println!("  pacing:    under 10 judgment writes per profile-minute per sub-driver — faster reads as judgment compression");
+            println!("  proofs:    the harness lock admits ONE proof executor; a second exits 75 — take other work, never read 75 as a verdict");
             println!(
                 "Integration monitoring topic (not an agent identity): loom guide --role monitor"
             );
@@ -509,7 +522,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     crate::truth::TruthAxis::Verdict,
                 ),
                 "fixer" => (
-                    "Use Loom first to understand the stale/failing criterion, linked entities, likely files, and prior evidence; then inspect relevant code before repairing the root cause. Findings judged `needed` are queued work — consult `loom finding list --state needed`. After the fix, `loom sync` re-opens the claim and its owning lane re-measures — do not record the verdict yourself.",
+                    "Use Loom first to understand the stale/failing criterion, linked entities, likely files, and prior evidence; then inspect relevant code before repairing the root cause. The fix lane serves both failing claims and findings judged `needed` — `loom next --mode fix` deals them; a repaired needed finding reopens through its adjudication stamp and triage records the resolved verdict. Do not record verdicts yourself.",
                     "loom status; loom next --all; loom edge show <edge_id>; loom intent show <linked intent>; loom codefile show <file>; edit code; loom sync; re-ground; loom finding list --state needed",
                     "suppress the symptom; record the passing verdict from the fixer hat",
                     crate::truth::TruthAxis::Implementation,
