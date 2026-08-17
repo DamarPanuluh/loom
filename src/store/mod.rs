@@ -427,6 +427,20 @@ impl Store {
                     paths.insert(PathBuf::from(artifact));
                 }
             }
+            // Span evidence may cite files beyond the registered CodeFile set
+            // (test files, journey surface manifests). `reverify_all` re-reads
+            // every cited span from disk, so a clone missing one breaks the
+            // anchor and stales its edge — an unchanged snapshot must sync
+            // clean (INV-2). Cited files are graph-addressed artifacts too.
+            let mut cited = self.conn.prepare(
+                "SELECT DISTINCT json_extract(payload, '$.file') FROM evidence WHERE kind = 'span'",
+            )?;
+            let cited_files = cited.query_map([], |row| row.get::<_, Option<String>>(0))?;
+            for file in cited_files {
+                if let Some(file) = file? {
+                    paths.insert(PathBuf::from(file));
+                }
+            }
             paths.insert(PathBuf::from("loom.graph.json"));
             for relative in paths {
                 copy_addressed_file(&self.root, destination_root, &relative)?;
