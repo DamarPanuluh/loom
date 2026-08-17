@@ -224,7 +224,14 @@ impl JudgmentBurstBucket {
     }
 }
 
-type JudgmentBurstKey = (String, String, crate::batch_auth::BatchClaim);
+/// (actor, declared executor profile, minute, claim). The profile is part of
+/// the key: an authorization identity (`llm:quality`) may be driven by several
+/// COORDINATED sub-drivers at once, and each declared profile is one judging
+/// mind with its own honest inspection budget. Every fact still records which
+/// mind judged (`asserted_profile`), so speed laundered across minted profiles
+/// stays visible in the finding detail and in the fact rows themselves. Facts
+/// with no declared profile share the empty-profile bucket, exactly as before.
+type JudgmentBurstKey = (String, String, String, crate::batch_auth::BatchClaim);
 type JudgmentBurstState = (BTreeSet<String>, BTreeSet<String>, BTreeSet<String>, i64);
 
 fn group_judgment_facts<F>(
@@ -248,8 +255,9 @@ where
         let Some(minute) = crate::journal::minute_key(&fact.asserted_at) else {
             continue;
         };
+        let profile = fact.asserted_profile.clone().unwrap_or_default();
         let (subjects, profiles, batch_ids, latest_assertion_millis) = buckets
-            .entry((fact.asserted_by, minute, claim))
+            .entry((fact.asserted_by, profile, minute, claim))
             .or_insert_with(|| (BTreeSet::new(), BTreeSet::new(), BTreeSet::new(), i64::MIN));
         *latest_assertion_millis = (*latest_assertion_millis).max(asserted_millis);
         subjects.insert(fact.subject_id);
@@ -263,7 +271,10 @@ where
     Ok(buckets
         .into_iter()
         .map(
-            |((actor, minute, claim), (subjects, profiles, batch_ids, latest_assertion_millis))| {
+            |(
+                (actor, _profile, minute, claim),
+                (subjects, profiles, batch_ids, latest_assertion_millis),
+            )| {
                 JudgmentBurstBucket {
                     actor,
                     profiles,
