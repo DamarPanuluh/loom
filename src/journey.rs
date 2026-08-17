@@ -1566,6 +1566,11 @@ const ASSERTION_NOT_EQUALS: &str = "$loom.assertion/not_equals/";
 const ASSERTION_EXISTS: &str = "$loom.assertion/exists/";
 const ASSERTION_CONTAINS: &str = "$loom.assertion/contains/";
 const ASSERTION_MATCHES: &str = "$loom.assertion/matches/";
+/// Lower bound for numeric pointers. Exact `equals` on a graph-shape metric
+/// (a spare/stale count) pins incidental state and breaks on unrelated graph
+/// growth; `minimum` expresses the behavior — "at least the sentinel survived"
+/// — and stays true as the graph grows.
+const ASSERTION_MINIMUM: &str = "$loom.assertion/minimum/";
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -1585,6 +1590,8 @@ struct OutputAssertionWire {
     #[serde(default)]
     matches: Option<String>,
     #[serde(default)]
+    minimum: Option<Value>,
+    #[serde(default)]
     source: Option<String>,
 }
 
@@ -1602,6 +1609,7 @@ impl<'de> Deserialize<'de> for OutputAssertion {
             wire.exists.is_some(),
             wire.contains.is_some(),
             wire.matches.is_some(),
+            wire.minimum.is_some(),
             wire.source.is_some(),
         ]
         .into_iter()
@@ -1627,6 +1635,11 @@ impl<'de> Deserialize<'de> for OutputAssertion {
         } else if let Some(value) = wire.matches {
             Some(format!(
                 "{ASSERTION_MATCHES}{}",
+                serde_json::to_string(&value).map_err(D::Error::custom)?
+            ))
+        } else if let Some(value) = wire.minimum {
+            Some(format!(
+                "{ASSERTION_MINIMUM}{}",
                 serde_json::to_string(&value).map_err(D::Error::custom)?
             ))
         } else {
@@ -1668,6 +1681,8 @@ impl Serialize for OutputAssertion {
             object.insert("contains".into(), value);
         } else if let Some(pattern) = self.matches_pattern() {
             object.insert("matches".into(), Value::String(pattern));
+        } else if let Some(value) = self.minimum_value() {
+            object.insert("minimum".into(), value);
         } else if let Some(source) = self.runtime_source() {
             object.insert("source".into(), Value::String(source.to_string()));
         }
@@ -1682,6 +1697,7 @@ impl OutputAssertion {
                 && !source.starts_with(ASSERTION_EXISTS)
                 && !source.starts_with(ASSERTION_CONTAINS)
                 && !source.starts_with(ASSERTION_MATCHES)
+                && !source.starts_with(ASSERTION_MINIMUM)
         })
     }
 
@@ -1704,6 +1720,10 @@ impl OutputAssertion {
     pub(crate) fn matches_pattern(&self) -> Option<String> {
         let encoded = self.source.as_deref()?.strip_prefix(ASSERTION_MATCHES)?;
         serde_json::from_str(encoded).ok()
+    }
+
+    pub(crate) fn minimum_value(&self) -> Option<Value> {
+        decode_assertion_value(self.source.as_deref()?, ASSERTION_MINIMUM)
     }
 }
 
@@ -1919,6 +1939,7 @@ impl InterfaceSurfaceDefinition {
                     assertion.not_equals_value().is_some(),
                     assertion.contains_value().is_some(),
                     assertion.matches_pattern().is_some(),
+                    assertion.minimum_value().is_some(),
                     assertion.runtime_source().is_some(),
                 ]
                 .into_iter()
@@ -1926,9 +1947,25 @@ impl InterfaceSurfaceDefinition {
                 .count();
                 if comparisons > 1 {
                     bail!(
-                        "assertion '{}' must declare at most one of equals, not_equals, contains, matches, or source",
+                        "assertion '{}' must declare at most one of equals, not_equals, contains, matches, minimum, or source",
                         assertion.id
                     );
+                }
+                if let Some(value) = assertion.minimum_value() {
+                    if !value.is_number() {
+                        bail!(
+                            "assertion '{}' minimum operand must be a number",
+                            assertion.id
+                        );
+                    }
+                    if assertion.value_type.is_some_and(|value_type| {
+                        !matches!(value_type, ValueType::Integer | ValueType::Number)
+                    }) {
+                        bail!(
+                            "assertion '{}' minimum operator requires type integer, number, or no explicit type",
+                            assertion.id
+                        );
+                    }
                 }
                 if assertion.exists_value().is_some()
                     && (comparisons > 0 || assertion.value_type.is_some())
