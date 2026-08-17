@@ -264,10 +264,19 @@ impl Store {
         /// re-creates the finding and the verdict re-attaches, so importing it
         /// against an absent target is correct behavior, never corruption.
         fn is_soft_ref_facet(f: &Facet) -> bool {
-            f.target_kind == TargetKind::Node
-                && f.truth_class == TruthClass::Asserted
-                && f.key == "adjudication"
-                && super::is_derived_node_id(&f.target_id)
+            if f.target_kind != TargetKind::Node || !super::is_derived_node_id(&f.target_id) {
+                return false;
+            }
+            match f.key.as_str() {
+                "adjudication" => f.truth_class == TruthClass::Asserted,
+                // The derived staleness band travels WITH its durable
+                // adjudication: a dissolved smell's judgment stays dormant and
+                // answers the same smell if it reappears, and without the
+                // stamp's recorded hash/metric the reawakened judgment could
+                // never go stale (an empty stamp hash reads as never-changed).
+                "adjudication_stamp" => true,
+                _ => false,
+            }
         }
 
         fn is_soft_ref_fact(f: &crate::evidence::Fact) -> bool {

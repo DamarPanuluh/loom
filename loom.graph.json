@@ -2000,6 +2000,24 @@
       "updated_at": "2026-08-13T13:44:50.018Z"
     },
     {
+      "id": "1737212a8c323081c119f5f317e59cef",
+      "type": "finding",
+      "name": "Identity-sensitive unit tests inherit ambient LOOM_AGENT; a driver running cargo test under a claimed lane identity sees 7 spurious failures",
+      "description": "Any orchestrated driver that runs cargo test directly mid-session misreads infrastructure identity as code regression; tests should pin their execution identity in-process",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.9,
+        "evidence": "Observed 2026-08-17: cargo test --release --lib under LOOM_AGENT=llm:validator fails 7 tests (divergence::tests x3, locator::tests x1, proofstrength::tests x1, store::facts::imported_tests x1, store::tests x1, panics at src/divergence.rs:823, src/locator.rs:835, src/proofstrength.rs:1821, src/store/facts.rs:1937); identical suite passes 310/310 with LOOM_AGENT unset. The validation door already pins identity (src/subprocess.rs:616-618 SoloTestFixture sets LOOM_AGENT=solo), but in-process #[cfg(test)] runs do not pin theirs",
+        "file": "src/store/facts.rs",
+        "impact": "Any orchestrated driver that runs cargo test directly mid-session misreads infrastructure identity as code regression; tests should pin their execution identity in-process",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-17T08:32:40.514Z",
+      "updated_at": "2026-08-17T08:32:40.514Z"
+    },
+    {
       "id": "18667ffa6b23f6033b3d083d5f1564ca",
       "type": "intent",
       "name": "A freeze-baseline move deepens evidence without promising a higher grade",
@@ -17643,7 +17661,7 @@
         "type": "test"
       },
       "created_at": "2026-08-11T18:18:00.849Z",
-      "updated_at": "2026-08-13T13:45:47.525Z"
+      "updated_at": "2026-08-17T08:58:13.655Z"
     },
     {
       "id": "a8d72b70165f1f4d50b66bfb9dacf1b1",
@@ -25942,12 +25960,12 @@
       "id": "df0c493b2fe97f7ec",
       "type": "finding",
       "name": "src/store/facets.rs::restore_inner is long",
-      "description": "303 lines (> 120)",
+      "description": "312 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "large_symbol",
-        "metric": 303,
+        "metric": 312,
         "symbol": "restore_inner"
       },
       "created_at": "",
@@ -35223,13 +35241,13 @@
       "to_id": "d5bea5201b443f0556a6f0f66b040096",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "failing",
+      "status": "needs_reverification",
       "criterion": "every fallible operation in deterministic history and export handles or propagates its failure",
       "confidence": 0.93,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:26:47.236Z",
-      "updated_at": "2026-08-17T07:26:47.249Z"
+      "updated_at": "2026-08-17T08:57:52.190Z"
     },
     {
       "id": "4897f83da2854262f2f63ec35cfdb278",
@@ -37379,13 +37397,13 @@
       "to_id": "d5bea5201b443f0556a6f0f66b040096",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
+      "status": "needs_reverification",
       "criterion": "deterministic history and export source contains no credential-loading or authentication-secret concern",
       "confidence": 0.96,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:28:27.756Z",
-      "updated_at": "2026-08-17T07:28:27.770Z"
+      "updated_at": "2026-08-17T08:57:51.858Z"
     },
     {
       "id": "6844335785547d79441a02026be01b22",
@@ -43819,7 +43837,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-11T18:18:00.850Z",
-      "updated_at": "2026-08-13T13:45:47.523Z"
+      "updated_at": "2026-08-17T08:58:13.654Z"
     },
     {
       "id": "c604196c0e2345fc1e8321c1a8ca7315",
@@ -54536,7 +54554,7 @@
       "claim": "verdict",
       "state": "independent",
       "criterion": "deterministic history and export source contains no credential-loading or authentication-secret concern",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 0.96,
       "asserted_by": "llm:quality",
       "asserted_profile": "drain-2026-08-17-w12",
@@ -61109,7 +61127,7 @@
       "claim": "verdict",
       "state": "failing",
       "criterion": "every fallible operation in deterministic history and export handles or propagates its failure",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 0.93,
       "asserted_by": "llm:quality",
       "asserted_profile": "drain-2026-08-17-w12",
@@ -67051,7 +67069,8 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-13T13:45:47.522Z",
+      "asserted_profile": "drain-2026-08-17",
+      "asserted_at": "2026-08-17T08:58:13.652Z",
       "decision_mode": "individual"
     },
     {
@@ -110410,7 +110429,7 @@
       "recorded_at": "2026-08-17T07:28:34.811Z"
     },
     {
-      "id": "e85d5b48d1d797425",
+      "id": "e9833a92370cd095f",
       "fact_id": "f82dad61b68006fc3",
       "payload": {
         "kind": "run",
@@ -110422,13 +110441,13 @@
         "stderr_hash": "cbf29ce484222325",
         "covered": {
           "src/journal.rs": "beffcf6f05d6c0b7",
-          "src/store/facets.rs": "96faef04d6afd814",
+          "src/store/facets.rs": "429599a6ac0d59bf",
           "src/travel.rs": "a9fa5c4d467a3a29"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786951714813",
+        "ran_at": "1786957072367",
         "loom_version": "0.33.0"
       },
       "recorded_at": "2026-08-17T07:28:34.811Z"
@@ -118124,7 +118143,7 @@
       "recorded_at": "2026-08-16T07:13:08.440Z"
     },
     {
-      "id": "e9173e23676da0cab",
+      "id": "e42f512226e05fcfc",
       "fact_id": "fa16a2b4df0cfdbd2",
       "payload": {
         "kind": "run",
@@ -118132,22 +118151,22 @@
         "command": "cargo test --test ring1",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "ed1c752d6845ea39",
-        "stderr_hash": "5af9b8e24030c2c5",
-        "stdout_excerpt": "\nrunning 25 tests\ntest delete_node_refuses_derived_nodes ... ok\ntest exposes_is_asserted_only ... ok\ntest import_refuses_nonempty_graph ... ok\ntest edge_remove_refuses_derived_edges ... ok\ntest a_graph_from_the_future_says_upgrade_rather_than_migrate ... ok\ntest inv4_independent_requires_evidence ... ok\ntest edge_remove_prunes_asserted_edge_and_its_facets ... ok\ntest malformed_import_is_rejected_loudly ... ok\ntest delete_node_cleans_incident_edge_facets ... ok\ntest inv5_verdict_path_rejects_derived_edge ... ok\ntest inv5_derived_path_rejects_asserted_edge ... ok\ntest export_is_byte_deterministic_and_roundtrips ... ok\ntest inv6_passing_requires_criterion_and_evidence ... ok\ntest registry_rejects_disallowed_truth_class ... ok\ntest registry_rejects_wrong_endpoint_types ... ok\ntest inv_atom_rejects_symbol_named_intent ... ok\ntest restore_repairing_still_refuses_nonempty_graph ... ok\ntest welcome_tolerates_a_missing_graph ... ok\ntest set_node_body_roundtrips ... ok\ntest journal_collision_fails_before_graph_restore_and_corrected_import_can_retry ... ok\ntest welcome_orients_on_a_real_graph ... ok\ntest restore_rejects_genuine_orphan_facet ... ok\ntest restore_rejects_orphan_tag ... ok\ntest restore_repairing_drops_orphans_keeps_soft_refs ... ok\ntest restore_preserves_soft_ref_adjudication_by_default ... ok\n\ntest result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s\n\n",
-        "stderr_excerpt": "   Compiling loom v0.31.4 (/private/tmp/loom-v12-finish.I2R9bl)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.75s\n     Running tests/ring1.rs (/Users/laptopdp/Developer/damarpanuluh/loom/target/debug/deps/ring1-390f038cfa331af5)\n",
+        "stdout_hash": "ed38b1237bd64d68",
+        "stderr_hash": "83b0a18ec0be6a56",
+        "stdout_excerpt": "\nrunning 25 tests\ntest delete_node_refuses_derived_nodes ... ok\ntest exposes_is_asserted_only ... ok\ntest import_refuses_nonempty_graph ... ok\ntest a_graph_from_the_future_says_upgrade_rather_than_migrate ... ok\ntest edge_remove_prunes_asserted_edge_and_its_facets ... ok\ntest edge_remove_refuses_derived_edges ... ok\ntest delete_node_cleans_incident_edge_facets ... ok\ntest malformed_import_is_rejected_loudly ... ok\ntest inv5_derived_path_rejects_asserted_edge ... ok\ntest inv4_independent_requires_evidence ... ok\ntest inv6_passing_requires_criterion_and_evidence ... ok\ntest inv5_verdict_path_rejects_derived_edge ... ok\ntest registry_rejects_disallowed_truth_class ... ok\ntest export_is_byte_deterministic_and_roundtrips ... ok\ntest inv_atom_rejects_symbol_named_intent ... ok\ntest registry_rejects_wrong_endpoint_types ... ok\ntest restore_repairing_still_refuses_nonempty_graph ... ok\ntest welcome_tolerates_a_missing_graph ... ok\ntest journal_collision_fails_before_graph_restore_and_corrected_import_can_retry ... ok\ntest set_node_body_roundtrips ... ok\ntest restore_rejects_genuine_orphan_facet ... ok\ntest welcome_orients_on_a_real_graph ... ok\ntest restore_rejects_orphan_tag ... ok\ntest restore_repairing_drops_orphans_keeps_soft_refs ... ok\ntest restore_preserves_soft_ref_adjudication_by_default ... ok\n\ntest result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.77s\n\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s\n     Running tests/ring1.rs (target/debug/deps/ring1-ae2114fd63b00557)\n",
         "covered": {
           "src/journal.rs": "beffcf6f05d6c0b7",
-          "src/store/facets.rs": "96faef04d6afd814",
+          "src/store/facets.rs": "429599a6ac0d59bf",
           "src/travel.rs": "a9fa5c4d467a3a29"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 2615,
-        "ran_at": "1786628747516",
-        "loom_version": "0.31.4"
+        "duration_ms": 3688,
+        "ran_at": "1786957093647",
+        "loom_version": "0.33.0"
       },
-      "recorded_at": "2026-08-13T13:45:47.522Z"
+      "recorded_at": "2026-08-17T08:58:13.652Z"
     },
     {
       "id": "ec26415b756ff7b3c",
@@ -118156,7 +118175,7 @@
         "kind": "claim",
         "text": "`cargo test --test ring1` exit 0"
       },
-      "recorded_at": "2026-08-13T13:45:47.522Z"
+      "recorded_at": "2026-08-17T08:58:13.652Z"
     },
     {
       "id": "e676010b765e3b7b3",
@@ -151236,6 +151255,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "4878120ca69e98a8454ee261599a8cde",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "scan 'iso5055-rel-no-unchecked-failure' [cef404846eae1cd3] (3 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "4897f83da2854262f2f63ec35cfdb278",
       "target_kind": "edge",
       "key": "binding_hashes",
@@ -154482,6 +154508,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/journal.rs\",\"start\":79,\"end\":150,\"hash\":\"bd82a1e3beb22c37\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "6806a43da6ebe5863176fd3ca2a8efb9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "scan 'iso5055-sec-no-hardcoded-secrets' [6cdd3a413869db4b] (2 pattern(s)) over 3 realizing file(s) no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "6808563516646ae785a81cdd1cb16d78",
@@ -161423,6 +161456,20 @@
     {
       "target_id": "a8d4b4c3cf18bac6269c608046ae6127",
       "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"d5bea5201b443f0556a6f0f66b040096\":\"src/journal.rs=beffcf6f05d6c0b7,src/store/facets.rs=429599a6ac0d59bf,src/travel.rs=a9fa5c4d467a3a29\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a8d4b4c3cf18bac6269c608046ae6127",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a8d4b4c3cf18bac6269c608046ae6127",
+      "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"25 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
@@ -163146,14 +163193,14 @@
       "target_id": "bb2c0e270aa9b602f84459ebc78932fb",
       "target_kind": "node",
       "key": "calls",
-      "value": "[\"clear_facet>Ok\",\"clear_facet>as_str\",\"clear_facet>conn::execute\",\"clear_facet>params\",\"is_soft_ref_facet>is_derived_node_id\",\"is_soft_ref_fact>is_derived_node_id\",\"list_all_facets>Ok\",\"list_all_facets>Ok\",\"list_all_facets>conn::prepare\",\"list_all_facets>parse_col\",\"list_all_facets>parse_col\",\"list_all_facets>r::get\",\"list_all_facets>r::get\",\"list_all_facets>r::get\",\"list_all_facets>rows::collect\",\"list_all_facets>stmt::query_map\",\"list_all_nodes>Ok\",\"list_all_nodes>conn::prepare\",\"list_all_nodes>rows::collect\",\"list_all_nodes>stmt::query_map\",\"list_all_tags>Ok\",\"list_all_tags>Ok\",\"list_all_tags>conn::prepare\",\"list_all_tags>parse_col\",\"list_all_tags>r::get\",\"list_all_tags>r::get\",\"list_all_tags>rows::collect\",\"list_all_tags>stmt::query_map\",\"nodes_where_facet>Ok\",\"nodes_where_facet>conn::prepare\",\"nodes_where_facet>params\",\"nodes_where_facet>r::get\",\"nodes_where_facet>rows::collect\",\"nodes_where_facet>stmt::query_map\",\"nodes_with_tag>Ok\",\"nodes_with_tag>conn::prepare\",\"nodes_with_tag>params\",\"nodes_with_tag>r::get\",\"nodes_with_tag>rows::collect\",\"nodes_with_tag>stmt::query_map\",\"remove_tag>Ok\",\"remove_tag>as_str\",\"remove_tag>conn::execute\",\"remove_tag>params\",\"require_annotation_target>Ok\",\"require_annotation_target>bail\",\"require_annotation_target>get_edge\",\"require_annotation_target>get_node\",\"require_annotation_target>is_some\",\"require_annotation_target>is_some\",\"restore>restore_inner\",\"restore>restore_inner::map\",\"restore_inner>BTreeSet::new\",\"restore_inner>Ok\",\"restore_inner>PORTABLE_META_KEYS::contains\",\"restore_inner>RestoreReport::default\",\"restore_inner>Utc::now\",\"restore_inner>Vec::with_capacity\",\"restore_inner>Vec::with_capacity\",\"restore_inner>Vec::with_capacity\",\"restore_inner>anyhow\",\"restore_inner>anyhow\",\"restore_inner>anyhow\",\"restore_inner>as_str\",\"restore_inner>as_str\",\"restore_inner>as_str\",\"restore_inner>as_str\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>asserted_by::starts_with\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>claim::as_str\",\"restore_inner>claim::as_str\",\"restore_inner>cloned::collect\",\"restore_inner>conn::query_row\",\"restore_inner>conn::transaction\",\"restore_inner>dropped_facets::push\",\"restore_inner>dropped_facts::push\",\"restore_inner>dropped_facts::push\",\"restore_inner>dropped_tags::push\",\"restore_inner>edge_ids::contains\",\"restore_inner>edges::iter\",\"restore_inner>evidence::iter\",\"restore_inner>f::clone\",\"restore_inner>f::clone\",\"restore_inner>facets::iter\",\"restore_inner>facets::len\",\"restore_inner>facets::push\",\"restore_inner>facets::push\",\"restore_inner>fact_id::as_str\",\"restore_inner>fact_ids::contains\",\"restore_inner>facts::insert_imported\",\"restore_inner>facts::iter\",\"restore_inner>facts::len\",\"restore_inner>facts::push\",\"restore_inner>facts::push\",\"restore_inner>filter::cloned\",\"restore_inner>filter::collect\",\"restore_inner>find::ok_or_else\",\"restore_inner>format\",\"restore_inner>format\",\"restore_inner>from_id::as_str\",\"restore_inner>get::is_some_and\",\"restore_inner>get::ok_or_else\",\"restore_inner>get::ok_or_else\",\"restore_inner>has_target\",\"restore_inner>has_target\",\"restore_inner>has_target\",\"restore_inner>id::as_str\",\"restore_inner>id::as_str\",\"restore_inner>id::as_str\",\"restore_inner>is_soft_ref_facet\",\"restore_inner>is_soft_ref_fact\",\"restore_inner>iter::filter\",\"restore_inner>iter::filter\",\"restore_inner>iter::find\",\"restore_inner>iter::map\",\"restore_inner>iter::map\",\"restore_inner>iter::map\",\"restore_inner>key::as_str\",\"restore_inner>key::clone\",\"restore_inner>locators::len\",\"restore_inner>map::collect\",\"restore_inner>map::collect\",\"restore_inner>map::collect\",\"restore_inner>matches\",\"restore_inner>node_types::contains_key\",\"restore_inner>node_types::get\",\"restore_inner>node_types::get\",\"restore_inner>node_types::get\",\"restore_inner>nodes::iter\",\"restore_inner>nodes::iter\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>pattern::validate_node_body\",\"restore_inner>r::get\",\"restore_inner>registry::node_allows_truth_class\",\"restore_inner>registry::spec\",\"restore_inner>research::validate_record\",\"restore_inner>reverify_all\",\"restore_inner>runner::unique_locator_probe\",\"restore_inner>spec::allows_from\",\"restore_inner>spec::allows_to\",\"restore_inner>spec::allows_truth_class\",\"restore_inner>subject_id::as_str\",\"restore_inner>subject_id::clone\",\"restore_inner>subject_id::clone\",\"restore_inner>subject_kind::as_str\",\"restore_inner>subject_kind::as_str\",\"restore_inner>tags::len\",\"restore_inner>tags::push\",\"restore_inner>target_id::clone\",\"restore_inner>target_id::clone\",\"restore_inner>target_kind::as_str\",\"restore_inner>target_kind::as_str\",\"restore_inner>term::clone\",\"restore_inner>to_id::as_str\",\"restore_inner>to_string\",\"restore_inner>to_string\",\"restore_inner>trim::is_empty\",\"restore_inner>tx::commit\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>unique_locator_probe::is_none\",\"restore_inner>validate_node_body::with_context\",\"restore_inner>validate_record::with_context\",\"restore_inner>value::trim\",\"restore_repairing>restore_inner\",\"set_facet>Ok\",\"set_facet>RESERVED_FACET_KEYS::contains\",\"set_facet>anyhow\",\"set_facet>as_str\",\"set_facet>bail\",\"set_facet>bail\",\"set_facet>bail\",\"set_facet>conn::execute\",\"set_facet>get_edge\",\"set_facet>get_node\",\"set_facet>matches\",\"set_facet>ok_or_else\",\"set_facet>params\",\"set_facet>require_annotation_target\",\"set_facet>runner::unique_locator_probe\",\"set_facet>trim::is_empty\",\"set_facet>unique_locator_probe::is_none\",\"set_facet>value::trim\",\"set_tag>Ok\",\"set_tag>as_str\",\"set_tag>conn::execute\",\"set_tag>params\",\"set_tag>require_annotation_target\",\"snapshot>BTreeMap::new\",\"snapshot>Ok\",\"snapshot>Vec::new\",\"snapshot>all_facts\",\"snapshot>config::insert\",\"snapshot>evidence::extend\",\"snapshot>evidence_for\",\"snapshot>get_meta\",\"snapshot>identity\",\"snapshot>list_all_facets\",\"snapshot>list_all_nodes\",\"snapshot>list_all_tags\",\"snapshot>list_edges\",\"snapshot>to_string\",\"tags_of>Ok\",\"tags_of>as_str\",\"tags_of>conn::prepare\",\"tags_of>params\",\"tags_of>r::get\",\"tags_of>rows::collect\",\"tags_of>stmt::query_map\"]",
+      "value": "[\"clear_facet>Ok\",\"clear_facet>as_str\",\"clear_facet>conn::execute\",\"clear_facet>params\",\"is_soft_ref_facet>is_derived_node_id\",\"is_soft_ref_facet>key::as_str\",\"is_soft_ref_fact>is_derived_node_id\",\"list_all_facets>Ok\",\"list_all_facets>Ok\",\"list_all_facets>conn::prepare\",\"list_all_facets>parse_col\",\"list_all_facets>parse_col\",\"list_all_facets>r::get\",\"list_all_facets>r::get\",\"list_all_facets>r::get\",\"list_all_facets>rows::collect\",\"list_all_facets>stmt::query_map\",\"list_all_nodes>Ok\",\"list_all_nodes>conn::prepare\",\"list_all_nodes>rows::collect\",\"list_all_nodes>stmt::query_map\",\"list_all_tags>Ok\",\"list_all_tags>Ok\",\"list_all_tags>conn::prepare\",\"list_all_tags>parse_col\",\"list_all_tags>r::get\",\"list_all_tags>r::get\",\"list_all_tags>rows::collect\",\"list_all_tags>stmt::query_map\",\"nodes_where_facet>Ok\",\"nodes_where_facet>conn::prepare\",\"nodes_where_facet>params\",\"nodes_where_facet>r::get\",\"nodes_where_facet>rows::collect\",\"nodes_where_facet>stmt::query_map\",\"nodes_with_tag>Ok\",\"nodes_with_tag>conn::prepare\",\"nodes_with_tag>params\",\"nodes_with_tag>r::get\",\"nodes_with_tag>rows::collect\",\"nodes_with_tag>stmt::query_map\",\"remove_tag>Ok\",\"remove_tag>as_str\",\"remove_tag>conn::execute\",\"remove_tag>params\",\"require_annotation_target>Ok\",\"require_annotation_target>bail\",\"require_annotation_target>get_edge\",\"require_annotation_target>get_node\",\"require_annotation_target>is_some\",\"require_annotation_target>is_some\",\"restore>restore_inner\",\"restore>restore_inner::map\",\"restore_inner>BTreeSet::new\",\"restore_inner>Ok\",\"restore_inner>PORTABLE_META_KEYS::contains\",\"restore_inner>RestoreReport::default\",\"restore_inner>Utc::now\",\"restore_inner>Vec::with_capacity\",\"restore_inner>Vec::with_capacity\",\"restore_inner>Vec::with_capacity\",\"restore_inner>anyhow\",\"restore_inner>anyhow\",\"restore_inner>anyhow\",\"restore_inner>as_str\",\"restore_inner>as_str\",\"restore_inner>as_str\",\"restore_inner>as_str\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>as_str::to_string\",\"restore_inner>asserted_by::starts_with\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>bail\",\"restore_inner>claim::as_str\",\"restore_inner>claim::as_str\",\"restore_inner>cloned::collect\",\"restore_inner>conn::query_row\",\"restore_inner>conn::transaction\",\"restore_inner>dropped_facets::push\",\"restore_inner>dropped_facts::push\",\"restore_inner>dropped_facts::push\",\"restore_inner>dropped_tags::push\",\"restore_inner>edge_ids::contains\",\"restore_inner>edges::iter\",\"restore_inner>evidence::iter\",\"restore_inner>f::clone\",\"restore_inner>f::clone\",\"restore_inner>facets::iter\",\"restore_inner>facets::len\",\"restore_inner>facets::push\",\"restore_inner>facets::push\",\"restore_inner>fact_id::as_str\",\"restore_inner>fact_ids::contains\",\"restore_inner>facts::insert_imported\",\"restore_inner>facts::iter\",\"restore_inner>facts::len\",\"restore_inner>facts::push\",\"restore_inner>facts::push\",\"restore_inner>filter::cloned\",\"restore_inner>filter::collect\",\"restore_inner>find::ok_or_else\",\"restore_inner>format\",\"restore_inner>format\",\"restore_inner>from_id::as_str\",\"restore_inner>get::is_some_and\",\"restore_inner>get::ok_or_else\",\"restore_inner>get::ok_or_else\",\"restore_inner>has_target\",\"restore_inner>has_target\",\"restore_inner>has_target\",\"restore_inner>id::as_str\",\"restore_inner>id::as_str\",\"restore_inner>id::as_str\",\"restore_inner>is_soft_ref_facet\",\"restore_inner>is_soft_ref_fact\",\"restore_inner>iter::filter\",\"restore_inner>iter::filter\",\"restore_inner>iter::find\",\"restore_inner>iter::map\",\"restore_inner>iter::map\",\"restore_inner>iter::map\",\"restore_inner>key::as_str\",\"restore_inner>key::clone\",\"restore_inner>locators::len\",\"restore_inner>map::collect\",\"restore_inner>map::collect\",\"restore_inner>map::collect\",\"restore_inner>matches\",\"restore_inner>node_types::contains_key\",\"restore_inner>node_types::get\",\"restore_inner>node_types::get\",\"restore_inner>node_types::get\",\"restore_inner>nodes::iter\",\"restore_inner>nodes::iter\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>params\",\"restore_inner>pattern::validate_node_body\",\"restore_inner>r::get\",\"restore_inner>registry::node_allows_truth_class\",\"restore_inner>registry::spec\",\"restore_inner>research::validate_record\",\"restore_inner>reverify_all\",\"restore_inner>runner::unique_locator_probe\",\"restore_inner>spec::allows_from\",\"restore_inner>spec::allows_to\",\"restore_inner>spec::allows_truth_class\",\"restore_inner>subject_id::as_str\",\"restore_inner>subject_id::clone\",\"restore_inner>subject_id::clone\",\"restore_inner>subject_kind::as_str\",\"restore_inner>subject_kind::as_str\",\"restore_inner>tags::len\",\"restore_inner>tags::push\",\"restore_inner>target_id::clone\",\"restore_inner>target_id::clone\",\"restore_inner>target_kind::as_str\",\"restore_inner>target_kind::as_str\",\"restore_inner>term::clone\",\"restore_inner>to_id::as_str\",\"restore_inner>to_string\",\"restore_inner>to_string\",\"restore_inner>trim::is_empty\",\"restore_inner>tx::commit\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>tx::execute\",\"restore_inner>unique_locator_probe::is_none\",\"restore_inner>validate_node_body::with_context\",\"restore_inner>validate_record::with_context\",\"restore_inner>value::trim\",\"restore_repairing>restore_inner\",\"set_facet>Ok\",\"set_facet>RESERVED_FACET_KEYS::contains\",\"set_facet>anyhow\",\"set_facet>as_str\",\"set_facet>bail\",\"set_facet>bail\",\"set_facet>bail\",\"set_facet>conn::execute\",\"set_facet>get_edge\",\"set_facet>get_node\",\"set_facet>matches\",\"set_facet>ok_or_else\",\"set_facet>params\",\"set_facet>require_annotation_target\",\"set_facet>runner::unique_locator_probe\",\"set_facet>trim::is_empty\",\"set_facet>unique_locator_probe::is_none\",\"set_facet>value::trim\",\"set_tag>Ok\",\"set_tag>as_str\",\"set_tag>conn::execute\",\"set_tag>params\",\"set_tag>require_annotation_target\",\"snapshot>BTreeMap::new\",\"snapshot>Ok\",\"snapshot>Vec::new\",\"snapshot>all_facts\",\"snapshot>config::insert\",\"snapshot>evidence::extend\",\"snapshot>evidence_for\",\"snapshot>get_meta\",\"snapshot>identity\",\"snapshot>list_all_facets\",\"snapshot>list_all_nodes\",\"snapshot>list_all_tags\",\"snapshot>list_edges\",\"snapshot>to_string\",\"tags_of>Ok\",\"tags_of>as_str\",\"tags_of>conn::prepare\",\"tags_of>params\",\"tags_of>r::get\",\"tags_of>rows::collect\",\"tags_of>stmt::query_map\"]",
       "truth_class": "derived"
     },
     {
       "target_id": "bb2c0e270aa9b602f84459ebc78932fb",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "96faef04d6afd814",
+      "value": "429599a6ac0d59bf",
       "truth_class": "derived"
     },
     {
@@ -163174,7 +163221,7 @@
       "target_id": "bb2c0e270aa9b602f84459ebc78932fb",
       "target_kind": "node",
       "key": "loc",
-      "value": "564",
+      "value": "573",
       "truth_class": "derived"
     },
     {
@@ -163195,7 +163242,7 @@
       "target_id": "bb2c0e270aa9b602f84459ebc78932fb",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"RESERVED_FACET_KEYS\":\"092555431d87b070\",\"clear_facet\":\"c6c26233bc00d879\",\"is_soft_ref_facet\":\"b52ee0af77fdb3e4\",\"is_soft_ref_fact\":\"5f7b4239c1fa01b3\",\"list_all_facets\":\"24bac6a53e9e70e0\",\"list_all_nodes\":\"4a096029e2be7f7d\",\"list_all_tags\":\"a09a5a48080554ba\",\"nodes_where_facet\":\"4ad14c5c3c7558f8\",\"nodes_with_tag\":\"62953c4a41cfad69\",\"remove_tag\":\"90935107370cb005\",\"require_annotation_target\":\"196c12b15f961793\",\"restore\":\"8177287df4778e52\",\"restore_inner\":\"15b7ce8c052de868\",\"restore_repairing\":\"a3fba707331f381f\",\"set_facet\":\"6a869d98b7d4585b\",\"set_tag\":\"ded112bfa013ee83\",\"snapshot\":\"1a750a2e6a82821a\",\"tags_of\":\"96efe89802174a99\"}",
+      "value": "{\"RESERVED_FACET_KEYS\":\"092555431d87b070\",\"clear_facet\":\"c6c26233bc00d879\",\"is_soft_ref_facet\":\"e8844c6d7ed8cfbf\",\"is_soft_ref_fact\":\"5f7b4239c1fa01b3\",\"list_all_facets\":\"24bac6a53e9e70e0\",\"list_all_nodes\":\"4a096029e2be7f7d\",\"list_all_tags\":\"a09a5a48080554ba\",\"nodes_where_facet\":\"4ad14c5c3c7558f8\",\"nodes_with_tag\":\"62953c4a41cfad69\",\"remove_tag\":\"90935107370cb005\",\"require_annotation_target\":\"196c12b15f961793\",\"restore\":\"8177287df4778e52\",\"restore_inner\":\"aa5ba8f3fe5f3b1d\",\"restore_repairing\":\"a3fba707331f381f\",\"set_facet\":\"6a869d98b7d4585b\",\"set_tag\":\"ded112bfa013ee83\",\"snapshot\":\"1a750a2e6a82821a\",\"tags_of\":\"96efe89802174a99\"}",
       "truth_class": "derived"
     },
     {
@@ -164268,6 +164315,13 @@
       "key": "journey_derivation_created",
       "value": "true",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "c5e8ba9a149245f787e5322c90f3736b",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring1 no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "c604196c0e2345fc1e8321c1a8ca7315",
