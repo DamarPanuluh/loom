@@ -79,6 +79,9 @@ fn list(graph: Option<&Path>, json: bool) -> Result<()> {
     for line in crate::rolelease::describe(store.root(), &queues) {
         println!("  {line}");
     }
-    println!("  claim a free one: LOOM_AGENT=llm:<role> LOOM_AGENT_PROFILE=<you> loom role claim <role>");
+    println!(
+        "  claim a free one: LOOM_AGENT=llm:<role> LOOM_AGENT_PROFILE=<you> loom role claim <role>"
+    );
+    println!("  parallelize within a lane: keep the holder's LOOM_AGENT=llm:<role>, give every coordinated sub-driver its OWN LOOM_AGENT_PROFILE and a disjoint target slice — the audit budgets judgment per profile-minute (see `loom guide`)");
     Ok(())
 }
