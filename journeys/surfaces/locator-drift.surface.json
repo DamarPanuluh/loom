@@ -114,7 +114,7 @@
               "type": "integer"
             },
             {
-              "equals": 6,
+              "minimum": 1,
               "id": "unchanged-grounding-spared",
               "pointer": "/edges_spared",
               "type": "integer"

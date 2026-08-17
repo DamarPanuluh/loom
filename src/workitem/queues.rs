@@ -10,10 +10,10 @@ use super::context::{edge_context, node_context};
 use super::contracts::{
     analyzer_contract, builder_contract, coverage_contract, derive_contract, elaborator_contract,
     exemplar_contract, fixer_contract, inbox_triage_contract, journey_proof_contract,
-    journey_proof_contract_for_profile, prove_contract, quality_contract, quality_contract_body,
-    ratify_contract, rectify_contract, research_contract, reviewer_contract,
-    structural_finding_triage_contract, surface_contract, triage_contract, unproven_contract,
-    validator_contract,
+    journey_proof_contract_for_profile, needed_finding_fix_contract, prove_contract,
+    quality_contract, quality_contract_body, ratify_contract, rectify_contract, research_contract,
+    reviewer_contract, structural_finding_triage_contract, surface_contract, triage_contract,
+    unproven_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -408,7 +408,50 @@ pub(super) fn fix_item(store: &Store) -> Result<Option<WorkItem>> {
             "failing verdict — repair at root cause",
         )?));
     }
+    // Second intake: findings a triager adjudicated `needed` — a routed
+    // demand for a repair that previously no lane served (the fixer guide
+    // said "consult loom finding list --state needed" but the router never
+    // dealt the work). Failing claims outrank them: a red claim misleads
+    // every reader, a needed finding only waits.
+    if let Some(fv) = crate::signal::needed_findings(store)?.into_iter().next() {
+        return Ok(Some(needed_finding_work(store, &fv)?));
+    }
     Ok(None)
+}
+
+/// A fix packet for a finding adjudicated `needed`. The repair loop closes
+/// through existing machinery: the fixer edits the cited code and syncs; the
+/// content-hash stamp on the open adjudication then goes stale, the finding
+/// re-enters triage, and the analyzer records `resolved` from the observed
+/// repair — so this packet carries no adjudication authority at all.
+fn needed_finding_work(store: &Store, fv: &crate::signal::FindingView) -> Result<WorkItem> {
+    let reason = format!(
+        "adjudicated needed — repair at root cause: {}",
+        fv.reason.trim()
+    );
+    Ok(WorkItem {
+        packet_id: None,
+        pattern_guidance: None,
+        mode: "fix".into(),
+        owner_role: "fixer".into(),
+        effort: "mid".into(),
+        routing_hint: super::hint_judgment(),
+        reason,
+        target: node_target(&fv.node),
+        stale_causes: Vec::new(),
+        prompt_contract: needed_finding_fix_contract(
+            &crate::model::short(&fv.node.id),
+            fv.node.body.get("file").and_then(|v| v.as_str()),
+        ),
+        context: node_context(
+            store,
+            &fv.node,
+            "Read the finding's evidence and the cited code before repairing; the triager's reason says what to do, the evidence says where.",
+        )?,
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Implementation.gap(),
+        next_step: "after the repair + sync, return to loom status — the reopened finding routes to triage for its resolved verdict".into(),
+    })
 }
 
 pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
@@ -1932,6 +1975,17 @@ fn roster_fix(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
             "fix",
             "failing verdict — repair at root cause",
         )?);
+    }
+    for fv in crate::signal::needed_findings(store)? {
+        out.push(node_entry(
+            "fix",
+            "mid",
+            &fv.node,
+            format!(
+                "adjudicated needed — repair at root cause: {}",
+                fv.reason.trim()
+            ),
+        ));
     }
     Ok(())
 }

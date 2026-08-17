@@ -102,7 +102,7 @@
               "type": "integer"
             },
             {
-              "equals": 6,
+              "minimum": 1,
               "id": "changed-sync-spares-one-grounding",
               "pointer": "/edges_spared",
               "type": "integer"

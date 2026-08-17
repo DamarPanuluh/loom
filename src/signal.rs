@@ -923,6 +923,18 @@ pub fn untriaged_findings(store: &Store) -> Result<Vec<FindingView>> {
         .collect())
 }
 
+/// Findings adjudicated `needed` whose judgment still stands (not stale).
+/// This is the fix lane's repair backlog: `needed` is a routed demand for a
+/// code repair, and a queue nobody serves is a decision that silently expires.
+/// Stale `needed` findings are excluded — the file changed, so they are back
+/// in triage for re-adjudication, and one finding must never sit in two queues.
+pub fn needed_findings(store: &Store) -> Result<Vec<FindingView>> {
+    Ok(findings_view(store)?
+        .into_iter()
+        .filter(|fv| fv.state == "needed" && !fv.stale)
+        .collect())
+}
+
 pub fn stale_findings(store: &Store) -> Result<Vec<FindingView>> {
     Ok(findings_view(store)?
         .into_iter()

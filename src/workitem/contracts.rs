@@ -582,6 +582,54 @@ pub(super) fn fixer_contract(
     }
 }
 
+/// The fix contract for a finding adjudicated `needed`. The packet grants no
+/// adjudication authority: the repair reopens the finding through the
+/// adjudication stamp (any edit to the cited file stales an open verdict),
+/// and triage re-serves it for the analyzer's `resolved`.
+pub(super) fn needed_finding_fix_contract(id: &str, file: Option<&str>) -> PromptContract {
+    let file_action = match file {
+        Some(file) => format!("loom codefile show {}", q(file)),
+        None => "loom codefile show <cited file>".into(),
+    };
+    PromptContract {
+        role: "fixer".into(),
+        mindset: "A triager already judged this finding `needed`: the reason says what to do, \
+                  the evidence says where. Read the cited code fresh, repair the root cause the \
+                  evidence names — not the symptom, not the finding text. After the fix, sync: \
+                  the edit stales the open adjudication, the finding re-enters triage, and the \
+                  analyzer records `resolved` from the observed repair."
+            .into(),
+        why_now: "an adjudicated-needed finding is routed repair work; a needed verdict nobody serves is a decision that silently expires".into(),
+        allowed_actions: vec![
+            format!("loom finding list --state needed"),
+            file_action,
+            "read the cited code and the finding's evidence".into(),
+            "edit code".into(),
+            "loom sync".into(),
+            "loom edge implement (re-ground if the fix moved code)".into(),
+            FINDING_ADD_ACTION.into(),
+        ],
+        forbidden_actions: vec![
+            format!(
+                "loom finding verdict {id} resolved — the analyzer records resolution after \
+                 observing the repair, never the fixer"
+            ),
+            "suppress the symptom without a root-cause fix".into(),
+            "rewording the finding instead of repairing the code".into(),
+            NON_BLOCKING_SMELL_RULE.into(),
+        ],
+        evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
+        required_evidence: "the finding's cited spans read, the repair made at the named cause, sync clean afterwards".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screen: None,
+        pre_screened_hits: Vec::new(),
+        write_back: "fix the cited code at root cause, then loom sync — the edit stales this finding's open adjudication and triage re-serves it for the resolved verdict".into(),
+        stop_condition: "after the repair + sync, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
 pub(super) fn quality_contract(
     store: &Store,
     edge: &Edge,

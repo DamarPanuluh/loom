@@ -274,6 +274,8 @@ The lease is a **heartbeat**, not a held lock: drivers are many short-lived proc
 
 `loom role list` (and the `roles` block in `loom status --json` / `loom session --json`) announces every claimable role with its holder, freshness, per-lane queue depths, and their sum as `debt` — a joining driver picks the free role with the most debt behind it. The `review` lane is shared: its packet runs as the low-confidence edge's owning lane, so it is listed under analyzer, validator, and quality alike. Solo operators need none of this: solo drives every lane and `claim` refuses it. `loom next` cooperates: when the served packet's owning role is freshly leased to a different profile, the output carries a `lease_conflict` warning naming the holder — the packet is still served (the lease stays advisory), so a collision is chosen, never accidental.
 
+**Orchestrated sub-drivers (within one lane).** A master driver that holds a role's lease may fan the lane's targets out to coordinated sub-drivers: each exports the same lane authority (`LOOM_AGENT=llm:<role>`) with its **own** `LOOM_AGENT_PROFILE`, and works an explicit disjoint slice handed to it by the master (sub-drivers never race `loom next`). The judgment-burst audit budgets asserted writes per (actor, profile, minute) and every fact records `asserted_profile`, so each declared profile is one independently budgeted, fully attributed judging mind — parallel speed stays defensible because the attribution stays visible. Proof execution remains serial regardless: the harness lock admits one executor and refuses the second with exit 75.
+
 ```text
 loom detect [--json]
 ```

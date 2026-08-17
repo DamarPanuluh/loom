@@ -186,18 +186,29 @@ or invent broad graph structure; if meaning is missing, raise a linked question
 or mark the proof blocked.
 
 **Parallel drivers** partition by role, one profile per role. `loom next` has
-no per-item reservation, so two drivers in one lane are served the same packet
-and their combined write rate pools into one audit bucket; distinct roles have
-disjoint write authority and largely disjoint queues. The coordination surface
-is the advisory role lease (`loom role claim <role>`, heartbeat-refreshed by
-every command run under the claimed identity): a joining driver reads the
-`roles` block in `loom session --json` / `loom status --json`, picks a free —
-or stale, via `--take-stale` — role with debt behind it, claims it, and drains
-that lane. A lease grants no authority (the lane gate does) and a crashed
-driver frees its role by heartbeat silence. Draining a lane whose role another
-profile holds fresh puts a `lease_conflict` warning on the served packet —
-honor it: take a free role instead of racing the holder to the write. See
-`commands.md` → Role leases.
+no per-item reservation, so two INDEPENDENT drivers in one lane are served the
+same packet; distinct roles have disjoint write authority and largely disjoint
+queues. The coordination surface is the advisory role lease (`loom role claim
+<role>`, heartbeat-refreshed by every command run under the claimed identity):
+a joining driver reads the `roles` block in `loom session --json` /
+`loom status --json`, picks a free — or stale, via `--take-stale` — role with
+debt behind it, claims it, and drains that lane. A lease grants no authority
+(the lane gate does) and a crashed driver frees its role by heartbeat silence.
+Draining a lane whose role another profile holds fresh puts a `lease_conflict`
+warning on the served packet — honor it: take a free role instead of racing
+the holder to the write. See `commands.md` → Role leases.
+
+**Orchestrated sub-drivers** parallelize WITHIN a lane without racing packets:
+one master driver holds the role lease, partitions the lane's targets into
+explicit disjoint slices, and hands each slice to a coordinated sub-driver.
+Every sub-driver exports the lane's authority (`LOOM_AGENT=llm:<role>`) plus
+its OWN distinct `LOOM_AGENT_PROFILE`: the profile is the judging mind — the
+judgment-burst audit budgets asserted writes per (actor, profile, minute), and
+every fact records `asserted_profile`, so attribution is what keeps parallel
+speed defensible. Sub-drivers never call `loom next` (the master routes), keep
+under 10 judgment writes per profile-minute each, and leave proof execution to
+exactly one executor (the harness lock refuses a second with exit 75).
+`loom guide --json` exposes this as `orchestrator`.
 
 Contention discipline for parallel drivers: exit 75 is infrastructure, never a
 verdict. On a graph-lock refusal (`loom-lock-contention`), wait briefly and

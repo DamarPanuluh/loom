@@ -263,6 +263,7 @@ impl LadderInputs {
             ungrounded: crate::workitem::ungrounded_implemented_intents(store)?.len(),
             unowned_codefiles: crate::coverage::unowned_codefiles(store)?.len(),
             failing,
+            needed_findings: crate::signal::needed_findings(store)?.len(),
             derive_gaps,
             surface_gaps,
             failing_exemplars,
