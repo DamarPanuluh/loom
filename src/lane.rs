@@ -215,7 +215,12 @@ impl Lane {
         }
         match self {
             Lane::Seed => usize::from(c.authored_journeys == 0),
-            Lane::Fix => c.failing,
+            // Repair demand has two doors: a failing claim, and a finding a
+            // triager already adjudicated `needed`. Both are routed work; a
+            // `needed` verdict nobody serves is a decision that silently
+            // expires (observed 2026-08-17: 30 needed architecture findings
+            // with no autonomous repair lane).
+            Lane::Fix => c.failing + c.needed_findings,
             Lane::Derive => c.derive_gaps,
             Lane::Build => c.planned + c.ungrounded,
             Lane::Surface => c.surface_gaps,
@@ -254,7 +259,10 @@ impl Lane {
     pub fn detail(self, c: &LadderInputs) -> String {
         match self {
             Lane::Seed => format!("{} authored journey(s)", c.authored_journeys),
-            Lane::Fix => format!("{} failing claim(s)", c.failing),
+            Lane::Fix => format!(
+                "{} failing claim(s), {} adjudicated-needed finding(s)",
+                c.failing, c.needed_findings
+            ),
             Lane::Derive => format!(
                 "{} unmapped/stale journey step(s) or unrooted intent(s)",
                 c.derive_gaps
@@ -375,6 +383,9 @@ pub struct LadderInputs {
     pub ungrounded: usize,
     pub unowned_codefiles: usize,
     pub failing: usize,
+    /// Findings adjudicated `needed` and not stale — the fix lane's second
+    /// intake beside failing claims.
+    pub needed_findings: usize,
     pub derive_gaps: usize,
     pub surface_gaps: usize,
     pub failing_exemplars: usize,
