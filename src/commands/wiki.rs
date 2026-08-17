@@ -186,17 +186,14 @@ fn wiki_next(graph: Option<&Path>, json: bool) -> Result<()> {
         let Some(intent) = store.get_node(&e.to_id)? else {
             continue;
         };
-        let realized_in: Vec<Value> = store
-            .realizing_groundings(&intent.id)?
-            .into_iter()
-            .filter_map(|g| {
-                store
-                    .get_node(&g.to_id)
-                    .ok()
-                    .flatten()
-                    .map(|f| json!(f.name))
-            })
-            .collect();
+        let mut realized_in: Vec<Value> = Vec::new();
+        for g in store.realizing_groundings(&intent.id)? {
+            // A store failure must surface — silently omitting a grounding
+            // would document the intent as thinner than it is.
+            if let Some(f) = store.get_node(&g.to_id)? {
+                realized_in.push(json!(f.name));
+            }
+        }
         let proven = store
             .edges_with(Some(EdgeKind::Validates), None, Some(&intent.id))?
             .iter()

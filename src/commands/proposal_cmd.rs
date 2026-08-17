@@ -265,6 +265,33 @@ fn item_add(
     Ok(())
 }
 
+// An absorb item carries what loom SAW on disk. Recompute it and compare
+// byte-for-byte before acting: the proposal body is ordinary JSON an agent
+// can rewrite, so trusting the stamp would make absorb a way to write
+// anything into the graph while looking like an observation. This also
+// catches an honest staleness — a batch adopted after the file moved on.
+fn validate_absorb_stamp(store: &crate::store::Store, item: &Value, number: usize) -> Result<()> {
+    if let Some(stamped) = item.get("absorb_evidence") {
+        let parsed: crate::absorb::AbsorbEvidence = serde_json::from_value(stamped.clone())
+            .map_err(|e| anyhow!("item #{number} has a malformed absorb stamp: {e}"))?;
+        let probe = crate::absorb::Item {
+            kind: crate::absorb::Kind::ExtendLocator,
+            text: String::new(),
+            intent_id: None,
+            evidence: parsed,
+            needs: Vec::new(),
+        };
+        if !crate::absorb::still_holds(store.root(), &probe) {
+            bail!(
+                "item #{number} no longer describes {} — re-run `loom absorb` rather than \
+                 adopting an observation that has stopped being true",
+                probe.evidence.file
+            );
+        }
+    }
+    Ok(())
+}
+
 fn item_adopt(
     graph: Option<&Path>,
     proposal: String,
@@ -294,29 +321,7 @@ fn item_adopt(
         .iter_mut()
         .find(|it| it.get("number").and_then(|v| v.as_u64()) == Some(number as u64))
         .ok_or_else(|| anyhow!("proposal '{}' has no item #{}", node.name, number))?;
-    // An absorb item carries what loom SAW on disk. Recompute it and compare
-    // byte-for-byte before acting: the proposal body is ordinary JSON an agent
-    // can rewrite, so trusting the stamp would make absorb a way to write
-    // anything into the graph while looking like an observation. This also
-    // catches an honest staleness — a batch adopted after the file moved on.
-    if let Some(stamped) = item.get("absorb_evidence") {
-        let parsed: crate::absorb::AbsorbEvidence = serde_json::from_value(stamped.clone())
-            .map_err(|e| anyhow!("item #{number} has a malformed absorb stamp: {e}"))?;
-        let probe = crate::absorb::Item {
-            kind: crate::absorb::Kind::ExtendLocator,
-            text: String::new(),
-            intent_id: None,
-            evidence: parsed,
-            needs: Vec::new(),
-        };
-        if !crate::absorb::still_holds(store.root(), &probe) {
-            bail!(
-                "item #{number} no longer describes {} — re-run `loom absorb` rather than \
-                 adopting an observation that has stopped being true",
-                probe.evidence.file
-            );
-        }
-    }
+    validate_absorb_stamp(&store, item, number)?;
     let item_status = item.get("status").and_then(Value::as_str).unwrap_or("open");
     if item_status != "open" {
         if let Some(spawned) = item.get("spawned").and_then(Value::as_str) {
@@ -489,29 +494,7 @@ fn item_dispose(
         .iter_mut()
         .find(|it| it.get("number").and_then(|v| v.as_u64()) == Some(number as u64))
         .ok_or_else(|| anyhow!("proposal '{}' has no item #{}", node.name, number))?;
-    // An absorb item carries what loom SAW on disk. Recompute it and compare
-    // byte-for-byte before acting: the proposal body is ordinary JSON an agent
-    // can rewrite, so trusting the stamp would make absorb a way to write
-    // anything into the graph while looking like an observation. This also
-    // catches an honest staleness — a batch adopted after the file moved on.
-    if let Some(stamped) = item.get("absorb_evidence") {
-        let parsed: crate::absorb::AbsorbEvidence = serde_json::from_value(stamped.clone())
-            .map_err(|e| anyhow!("item #{number} has a malformed absorb stamp: {e}"))?;
-        let probe = crate::absorb::Item {
-            kind: crate::absorb::Kind::ExtendLocator,
-            text: String::new(),
-            intent_id: None,
-            evidence: parsed,
-            needs: Vec::new(),
-        };
-        if !crate::absorb::still_holds(store.root(), &probe) {
-            bail!(
-                "item #{number} no longer describes {} — re-run `loom absorb` rather than \
-                 adopting an observation that has stopped being true",
-                probe.evidence.file
-            );
-        }
-    }
+    validate_absorb_stamp(&store, item, number)?;
     let item_status = item.get("status").and_then(Value::as_str).unwrap_or("open");
     if item_status != "open" {
         bail!(

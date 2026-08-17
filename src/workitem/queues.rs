@@ -103,7 +103,7 @@ fn build_reason(intent: &Node) -> String {
     }
 }
 
-pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
+fn build_candidates(store: &Store, include_remainder: bool) -> Result<Vec<(Node, String)>> {
     let mut intents = store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
     // Implemented-but-ungrounded intents block the `realized` rung exactly like
     // planned ones, and the compass routes them to `build`; serve them here (after
@@ -116,34 +116,39 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
             .cmp(&rank_lifecycle(&b.status))
             .then(a.name.cmp(&b.name))
     });
-    // Serve a prerequisite before the intent that `requires` it: prefer the
-    // highest-ranked candidate whose prerequisites are all implemented. If every
-    // candidate is blocked (a requires cycle, or all deps still pending), fall
-    // back to the top-ranked one carrying a blocked reason — never stall the lane.
-    let mut blocked: Option<(Node, String)> = None;
-    let mut ready: Option<Node> = None;
+    // Prerequisite-ready candidates come first; blocked candidates retain their
+    // lifecycle order behind them. Blocked candidates are deliberately still
+    // served when nothing is ready (a requires cycle, or all deps pending):
+    // the singular packet then carries its blocked reason instead of stalling
+    // the lane — the driver's move is to build what it stands on or break the
+    // cycle, and an empty queue would hide that work entirely.
+    let mut ready = Vec::new();
+    let mut blocked = Vec::new();
     for intent in intents {
         let unmet = unmet_prerequisites(store, &intent.id)?;
         if unmet.is_empty() {
-            ready = Some(intent);
-            break;
-        } else if blocked.is_none() {
+            let reason = build_reason(&intent);
+            ready.push((intent, reason));
+            // Singular serving has always stopped at the first ready intent;
+            // preserve that query boundary while the roster requests all rows.
+            if !include_remainder {
+                break;
+            }
+        } else {
             let reason = format!(
                 "blocked: {} — build what it stands on first, or break the cycle",
                 unmet.join(", ")
             );
-            blocked = Some((intent, reason));
+            blocked.push((intent, reason));
         }
     }
-    let (intent, reason) = match ready {
-        Some(i) => {
-            let reason = build_reason(&i);
-            (i, reason)
-        }
-        None => match blocked {
-            Some(pair) => pair,
-            None => return Ok(None),
-        },
+    ready.extend(blocked);
+    Ok(ready)
+}
+
+pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some((intent, reason)) = build_candidates(store, false)?.into_iter().next() else {
+        return Ok(None);
     };
     Ok(Some(WorkItem {
         packet_id: None,
@@ -1081,7 +1086,7 @@ pub(crate) fn unproven_implemented_intents(store: &Store) -> Result<Vec<Node>> {
 /// records an honest low-confidence verdict, and this queue routes it to a
 /// stronger reviewer instead of letting it stand as settled truth. Failing
 /// verdicts are excluded — they already route to the fix queue.
-pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
+fn review_candidates(store: &Store) -> Result<Vec<(Edge, String)>> {
     let floor = crate::policy::load(store)?.review_confidence_floor;
     let mut candidates: Vec<Edge> = store
         .live_edges_by_status(
@@ -1097,13 +1102,22 @@ pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
             .unwrap_or(std::cmp::Ordering::Equal)
             .then_with(|| a.id.cmp(&b.id))
     });
-    let Some(edge) = candidates.into_iter().next() else {
+    Ok(candidates
+        .into_iter()
+        .map(|edge| {
+            let reason = format!(
+                "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
+                edge.confidence, floor
+            );
+            (edge, reason)
+        })
+        .collect())
+}
+
+pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some((edge, reason)) = review_candidates(store)?.into_iter().next() else {
         return Ok(None);
     };
-    let reason = format!(
-        "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
-        edge.confidence, floor
-    );
     // Review runs AS the owning lane: the re-record command is gated by the
     // edge's owner (governs → quality, validates → validator, …), so the
     // packet's owner_role must match or the write-back would be rejected
@@ -2145,33 +2159,9 @@ fn roster_quality(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// `queue_items` was a 297-line match that only dispatched, so every lane's
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_build(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
-    let mut intents = store.nodes_by_status(NodeType::Intent, &["needs_change", "planned"])?;
-    intents.extend(ungrounded_implemented_intents(store)?);
-    intents.sort_by(|a, b| {
-        rank_lifecycle(&a.status)
-            .cmp(&rank_lifecycle(&b.status))
-            .then(a.name.cmp(&b.name))
-    });
-    // Prerequisite-ready candidates first (entry 0 is what the lane
-    // serves), then blocked ones carrying their blocked reason.
-    let mut blocked = Vec::new();
-    for intent in &intents {
-        let unmet = unmet_prerequisites(store, &intent.id)?;
-        if unmet.is_empty() {
-            out.push(node_entry("build", "mid", intent, build_reason(intent)));
-        } else {
-            blocked.push(node_entry(
-                "build",
-                "mid",
-                intent,
-                format!(
-                    "blocked: {} — build what it stands on first, or break the cycle",
-                    unmet.join(", ")
-                ),
-            ));
-        }
+    for (intent, reason) in build_candidates(store, true)? {
+        out.push(node_entry("build", "mid", &intent, reason));
     }
-    out.extend(blocked);
     Ok(())
 }
 
@@ -2261,28 +2251,8 @@ fn roster_triage(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// `queue_items` was a 297-line match that only dispatched, so every lane's
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_review(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
-    use crate::model::TruthClass;
-    let floor = crate::policy::load(store)?.review_confidence_floor;
-    let mut candidates: Vec<Edge> = store
-        .live_edges_by_status(
-            TruthClass::Asserted,
-            &[InspectionStatus::Passing, InspectionStatus::Independent],
-        )?
-        .into_iter()
-        .filter(|e| e.confidence > 0.0 && e.confidence < floor)
-        .collect();
-    candidates.sort_by(|a, b| {
-        a.confidence
-            .partial_cmp(&b.confidence)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.id.cmp(&b.id))
-    });
-    for e in &candidates {
-        let reason = format!(
-            "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
-            e.confidence, floor
-        );
-        out.push(edge_entry(store, e, "review", &reason)?);
+    for (edge, reason) in review_candidates(store)? {
+        out.push(edge_entry(store, &edge, "review", &reason)?);
     }
     Ok(())
 }

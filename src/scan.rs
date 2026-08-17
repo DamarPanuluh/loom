@@ -289,7 +289,7 @@ fn write_results(store: &Store, root: &Path, outputs: &[AdapterOutput]) -> Resul
         }
         let (parsed, skipped) = match adapter.format {
             ScanFormat::Lines => {
-                parse_output(&adapter_regex(adapter)?, &out.output, adapter.map.is_none())
+                parse_output(&adapter_regex(adapter)?, &out.output, adapter.map.is_none())?
             }
             ScanFormat::Json => {
                 parse_json_output(&json_field_map(adapter.map.as_deref())?, &out.output)
@@ -617,9 +617,10 @@ fn parse_output(
     regex: &Regex,
     output: &str,
     pair_locations: bool,
-) -> (Vec<ParsedDiagnostic>, usize) {
-    let location_only =
-        pair_locations.then(|| Regex::new(LOCATION_ONLY_MAP).expect("static location regex"));
+) -> Result<(Vec<ParsedDiagnostic>, usize)> {
+    let location_only = pair_locations
+        .then(|| Regex::new(LOCATION_ONLY_MAP))
+        .transpose()?;
     let mut diagnostics = Vec::new();
     let mut skipped = 0usize;
     // A location line still waiting for its message line.
@@ -663,7 +664,7 @@ fn parse_output(
         }
     }
     skipped += usize::from(pending.is_some());
-    (diagnostics, skipped)
+    Ok((diagnostics, skipped))
 }
 
 fn parse_diagnostic(regex: &Regex, line: &str) -> Option<ParsedDiagnostic> {
@@ -981,7 +982,7 @@ mod tests {
                 "Error: missing semicolon",
             ),
             true,
-        );
+        )?;
         assert_eq!(
             diags.len(),
             2,
@@ -1026,7 +1027,7 @@ mod tests {
              src/App.svelte:12:5\n\
              Warn: unused export (svelte)",
             true,
-        );
+        )?;
         assert_eq!(
             diags.len(),
             2,
@@ -1063,7 +1064,7 @@ mod tests {
             "src/App.svelte:12\n\
              Warn: unused export (svelte)",
             false,
-        );
+        )?;
         assert!(
             diags.is_empty(),
             "with pairing off a bare location line must not produce a diagnostic, got {diags:?}",
@@ -1080,7 +1081,7 @@ mod tests {
     #[test]
     fn blank_line_after_location_drops_pending() -> Result<()> {
         let regex = Regex::new(DEFAULT_MAP)?;
-        let (diags, skipped) = parse_output(&regex, "src/App.svelte:12:5\n\n", true);
+        let (diags, skipped) = parse_output(&regex, "src/App.svelte:12:5\n\n", true)?;
         assert!(
             diags.is_empty(),
             "a blank line after a location must drop the pending location, got {diags:?}",
@@ -1097,7 +1098,7 @@ mod tests {
     #[test]
     fn dangling_location_at_end_of_output_is_not_a_diagnostic() -> Result<()> {
         let regex = Regex::new(DEFAULT_MAP)?;
-        let (diags, skipped) = parse_output(&regex, "src/App.svelte:12:5", true);
+        let (diags, skipped) = parse_output(&regex, "src/App.svelte:12:5", true)?;
         assert!(
             diags.is_empty(),
             "a dangling location with no message must not yield a diagnostic, got {diags:?}",

@@ -278,7 +278,10 @@ pub(crate) fn strict_simple_tokens(command: &str) -> Option<Vec<String>> {
 
         let mut token = String::new();
         if first == '\'' || first == '"' {
-            let quote = chars.next().expect("peeked quote");
+            // `first` came from peek(); consuming it cannot miss.
+            let Some(quote) = chars.next() else {
+                return None;
+            };
             let mut closed = false;
             for c in chars.by_ref() {
                 if c == quote {
@@ -608,8 +611,8 @@ pub(crate) fn run_observed_with_environment(
             .arg(shell_script(command, current_exe.as_deref()));
         cmd
     };
-    if current_exe.as_deref().is_some_and(is_loom_executable) {
-        cmd.env(CURRENT_LOOM_ENV, current_exe.as_ref().unwrap());
+    if let Some(current) = current_exe.as_deref().filter(|exe| is_loom_executable(exe)) {
+        cmd.env(CURRENT_LOOM_ENV, current);
     } else {
         cmd.env_remove(CURRENT_LOOM_ENV);
     }

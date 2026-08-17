@@ -15,7 +15,7 @@ mod validate;
 mod validation;
 
 pub(crate) use observe::observe_run;
-pub(crate) use rule::rule;
+pub(crate) use rule::{rule, verdict_status_quality as rule_verdict_status};
 pub(crate) use support::{
     mark_validation, regrade, validation_targets, warn_if_command_already_proves_another,
     ProofCommandCollision,

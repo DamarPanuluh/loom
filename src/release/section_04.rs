@@ -157,7 +157,15 @@ pub fn inspect_candidate_manifest_operations(
     for inspection in plan.inspections() {
         let operation = operations
             .get(inspection.operation_id.as_str())
-            .expect("policy inspected one declared operation");
+            .ok_or_else(|| {
+                // A plan referencing an operation the manifest no longer
+                // declares is an inconsistent trust artifact — a release
+                // gate refuses it instead of panicking mid-ledger.
+                anyhow!(
+                    "candidate surface plan references operation '{}' that the manifest does not declare",
+                    inspection.operation_id
+                )
+            })?;
         ledger.push(ArgvLedgerEntry {
             source: format!(
                 "candidate_manifest:{}:{}",

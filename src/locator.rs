@@ -799,7 +799,7 @@ mod tests {
                 .as_nanos()
         ));
         std::fs::create_dir_all(&root).unwrap();
-        let store = Store::init(&root, Some("locator roles"), false).unwrap();
+        let store = Store::init_with_identity(&root, Some("locator roles"), false, crate::identity::ExecutionIdentity::solo()).unwrap();
         let intent = store
             .add_node(
                 NodeType::Intent,

@@ -3,7 +3,7 @@
 //! Plane: CLI surface over the judgment plane — asserted relationships and
 //! verdicts; every settled write goes through the store's evidence gates.
 
-use super::{open, pulse, verdict_status};
+use super::{open_fact_write, pulse, verdict_status};
 use crate::cli::EdgeCmd;
 use crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
@@ -120,7 +120,8 @@ fn grounding_lints(
 }
 
 pub fn dispatch(graph: Option<&Path>, cmd: EdgeCmd, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    // Verdict-family door: absorb brief lock contention (see open_fact_write).
+    let store = open_fact_write(graph)?;
     match cmd {
         EdgeCmd::Implement {
             intent,
@@ -213,6 +214,85 @@ fn edge_depends_on(store: &Store, intent: String, upstream: String, json: bool) 
     )
 }
 
+/// The one grounding write path. `loom edge implement` and `loom apply`
+/// groundings must gate identically — existing-edge role/locator conflicts,
+/// locator resolution, create-or-reuse, and facet writes — or a batch could
+/// persist a grounding the interactive door would refuse. Returns the edge
+/// and whether it was newly created.
+pub(super) fn ground_intent(
+    store: &Store,
+    intent: &crate::model::Node,
+    codefile: &crate::model::Node,
+    locator: Option<&str>,
+    role: GroundingRole,
+) -> Result<(crate::model::Edge, bool)> {
+    let existing = store
+        .edges_with(
+            Some(EdgeKind::Implements),
+            Some(&intent.id),
+            Some(&codefile.id),
+        )?
+        .into_iter()
+        .next();
+    let mut update_existing_locator = false;
+    if let Some(edge) = &existing {
+        let current_role = store.grounding_role(&edge.id)?;
+        let current_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+        let locator_changed = locator.is_some_and(|new| current_locator.as_deref() != Some(new));
+        if current_role != role
+            || (locator_changed && edge.status != crate::model::InspectionStatus::Uninspected)
+        {
+            bail!(
+                "edge exists for intent '{}' and codefile '{}' as {} [{}] — \
+                 use `loom edge set-role {}` / `loom edge set-locator {}` or remove it first",
+                intent.name,
+                codefile.name,
+                current_role,
+                crate::model::short(&edge.id),
+                crate::model::short(&edge.id),
+                crate::model::short(&edge.id),
+            );
+        }
+        // Preserve the long-standing pre-verdict re-grounding convenience.
+        // Once inspected, locator changes cross the explicit set-locator gate.
+        update_existing_locator = locator_changed;
+    }
+    // Ordinary symbol resolution is required only for realizing groundings.
+    // Anchor cardinality/attachment is strict for every role because a graph
+    // write may never persist an ambiguous navigation identity.
+    if let Some(loc) = locator {
+        if role == GroundingRole::Realizes || crate::locator::is_anchor_locator(loc) {
+            crate::locator::validate_for_codefile(store, codefile, loc)?;
+        }
+    }
+    let created = existing.is_none();
+    let edge = match existing {
+        Some(edge) => edge,
+        None => store.add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &codefile.id,
+            TruthClass::Asserted,
+        )?,
+    };
+    if created || update_existing_locator {
+        if let Some(loc) = locator {
+            store.set_facet(
+                &edge.id,
+                TargetKind::Edge,
+                "locator",
+                loc,
+                TruthClass::Asserted,
+            )?;
+        }
+    }
+    // Persist the role facet only for a newly-created non-default grounding.
+    if created && role != GroundingRole::Realizes {
+        store.set_grounding_role(&edge.id, role)?;
+    }
+    Ok((edge, created))
+}
+
 fn edge_implement(
     store: &Store,
     intent: String,
@@ -227,63 +307,7 @@ fn edge_implement(
         Some(r) => parse_grounding_role(r)?,
         None => GroundingRole::Realizes,
     };
-    let existing = store
-        .edges_with(Some(EdgeKind::Implements), Some(&i.id), Some(&cf.id))?
-        .into_iter()
-        .next();
-    let mut update_existing_locator = false;
-    if let Some(edge) = &existing {
-        let current_role = store.grounding_role(&edge.id)?;
-        let current_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
-        let locator_changed = locator
-            .as_deref()
-            .is_some_and(|new| current_locator.as_deref() != Some(new));
-        if current_role != role
-            || (locator_changed && edge.status != crate::model::InspectionStatus::Uninspected)
-        {
-            bail!(
-                "edge exists for intent '{}' and codefile '{}' as {} [{}] — \
-                 use `loom edge set-role {}` / `loom edge set-locator {}` or remove it first",
-                i.name,
-                cf.name,
-                current_role,
-                crate::model::short(&edge.id),
-                crate::model::short(&edge.id),
-                crate::model::short(&edge.id),
-            );
-        }
-        // Preserve the long-standing pre-verdict re-grounding convenience.
-        // Once inspected, locator changes cross the explicit set-locator gate.
-        update_existing_locator = locator_changed;
-    }
-    // Ordinary symbol resolution is required only for realizing groundings.
-    // Anchor cardinality/attachment is strict for every role because a graph
-    // write may never persist an ambiguous navigation identity.
-    if let Some(loc) = &locator {
-        if role == GroundingRole::Realizes || crate::locator::is_anchor_locator(loc) {
-            require_resolvable_locator(store, &cf, loc)?;
-        }
-    }
-    let created = existing.is_none();
-    let e = match existing {
-        Some(edge) => edge,
-        None => store.add_edge(EdgeKind::Implements, &i.id, &cf.id, TruthClass::Asserted)?,
-    };
-    if created || update_existing_locator {
-        if let Some(loc) = &locator {
-            store.set_facet(
-                &e.id,
-                TargetKind::Edge,
-                "locator",
-                loc,
-                TruthClass::Asserted,
-            )?;
-        }
-    }
-    // Persist the role facet only for a newly-created non-default grounding.
-    if created && role != GroundingRole::Realizes {
-        store.set_grounding_role(&e.id, role)?;
-    }
+    let (e, _created) = ground_intent(store, &i, &cf, locator.as_deref(), role)?;
     let lints = grounding_lints(store.root(), &cf.name, locator.as_deref(), role);
     for l in &lints {
         eprintln!("lint: {l}");

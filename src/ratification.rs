@@ -205,44 +205,48 @@ fn used(
     store: &Store,
     intent_id: &str,
     named: &std::collections::BTreeSet<String>,
-) -> (Option<String>, usize) {
+) -> Result<(Option<String>, usize)> {
     if named.contains(intent_id) {
-        return (Some("exercised directly".into()), 0);
+        return Ok((Some("exercised directly".into()), 0));
     }
     let mut frontier = vec![intent_id.to_string()];
     let mut seen: std::collections::BTreeSet<String> = frontier.iter().cloned().collect();
     for hop in 1..=2 {
         let mut next = Vec::new();
         for id in &frontier {
-            for from in callers_of(store, id) {
+            for from in callers_of(store, id)? {
                 if !seen.insert(from.clone()) {
                     continue;
                 }
                 if named.contains(&from) {
-                    return (
+                    return Ok((
                         Some(format!("reached from recorded usage, {hop} hop(s)")),
                         hop,
-                    );
+                    ));
                 }
                 next.push(from);
             }
         }
         frontier = next;
     }
-    (None, 0)
+    Ok((None, 0))
 }
 
 /// Everything one hop upstream of an intent over the flow relationships.
 ///
 /// Split out of `used` so the walk reads as a breadth-first search rather than
 /// four nested loops — the shape loom flagged.
-fn callers_of(store: &Store, intent_id: &str) -> Vec<String> {
-    [EdgeKind::Sequence, EdgeKind::Triggers, EdgeKind::Hierarchy]
-        .into_iter()
-        .filter_map(|kind| store.edges_with(Some(kind), None, Some(intent_id)).ok())
-        .flatten()
-        .map(|e| e.from_id)
-        .collect()
+fn callers_of(store: &Store, intent_id: &str) -> Result<Vec<String>> {
+    let mut callers = Vec::new();
+    for kind in [EdgeKind::Sequence, EdgeKind::Triggers, EdgeKind::Hierarchy] {
+        callers.extend(
+            store
+                .edges_with(Some(kind), None, Some(intent_id))?
+                .into_iter()
+                .map(|edge| edge.from_id),
+        );
+    }
+    Ok(callers)
 }
 
 /// Intent ids with RECORDED USAGE: a validation or journey that validates
@@ -290,7 +294,7 @@ pub fn recompute(store: &Store) -> Result<usize> {
         if intent.status == "deprecated" {
             continue;
         }
-        let (used_by, usage_hops) = used(store, &intent.id, &named);
+        let (used_by, usage_hops) = used(store, &intent.id, &named)?;
         let witness = DeFactoWitness {
             demonstrated_in: demonstrated(store, &intent.id)?,
             proven_by: proven(store, &intent.id)?,

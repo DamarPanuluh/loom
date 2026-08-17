@@ -150,7 +150,7 @@ done < <(find journeys/surfaces -type f -name '*.surface.json' -print0)
 
 echo "== reconstruct-v12: review manifests =="
 python3 - "$B" "$DEST" <<'PY'
-import json, os, subprocess, sys, collections
+import json, subprocess, sys, collections
 from pathlib import Path
 
 binary, dest = sys.argv[1], Path(sys.argv[2])

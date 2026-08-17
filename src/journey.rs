@@ -2992,8 +2992,8 @@ pub fn settle_compiled_validation(
     // persisted hashes are the evidence; settlement never resamples them.
     for file in &covered_files {
         let current = std::fs::read_to_string(store.root().join(file))
-            .map(|content| crate::artifact::fingerprint(&content))
-            .unwrap_or_default();
+            .with_context(|| format!("reading covered Journey file '{file}' during settlement"))
+            .map(|content| crate::artifact::fingerprint(&content))?;
         if anchors.covered_hashes.get(file) != Some(&current) {
             bail!(
                 "covered file '{}' changed between execution and settlement; refusing to settle",
@@ -3296,6 +3296,97 @@ fn trusted_compile(store: &crate::store::Store, validation_id: &str) -> Result<T
     })
 }
 
+fn reacquire_graph_lock_after_failure(
+    store: &crate::store::Store,
+    error: anyhow::Error,
+) -> anyhow::Error {
+    match store.reacquire_graph_lock() {
+        Ok(()) => error,
+        Err(lock_error) => {
+            anyhow!("{error:#}; additionally failed to reacquire the graph lock: {lock_error:#}")
+        }
+    }
+}
+
+fn execute_and_settle_interactive<F>(
+    store: &crate::store::Store,
+    validation_id: &str,
+    compiled: &TrustedCompile,
+    purpose: &'static str,
+    drift_phase: &'static str,
+    pending_error: Option<&'static str>,
+    execute: F,
+) -> Result<InteractiveJourneyRun>
+where
+    F: FnOnce(&Path) -> Result<crate::journey_runtime::ExecutionOutcome>,
+{
+    let root = store.root().to_path_buf();
+    let identity = store.execution_identity();
+    // Child loom processes must be able to open the graph during execution;
+    // every preparation failure retakes the lock before it can escape.
+    store.release_graph_lock();
+    let _guard = match crate::harness::acquire(&root, purpose, &identity) {
+        Ok(guard) => guard,
+        Err(error) => return Err(reacquire_graph_lock_after_failure(store, error)),
+    };
+    if let Err(error) = store.append_journal(
+        crate::audit::PROOF_EXECUTION_STARTED_EVENT,
+        validation_id,
+        json!({ "purpose": purpose, "pid": std::process::id() }),
+    ) {
+        return Err(reacquire_graph_lock_after_failure(store, error));
+    }
+
+    let outcome = match (execute(&root), store.reacquire_graph_lock()) {
+        (Ok(outcome), Ok(())) => Ok(outcome),
+        (Err(error), Ok(())) => Err(error),
+        (Ok(_), Err(lock_error)) => return Err(lock_error),
+        (Err(error), Err(lock_error)) => {
+            return Err(anyhow!(
+                "{error:#}; additionally failed to reacquire the graph lock: {lock_error:#}"
+            ));
+        }
+    };
+    store.append_journal(
+        crate::audit::PROOF_EXECUTION_ENDED_EVENT,
+        validation_id,
+        json!({ "purpose": purpose, "pid": std::process::id() }),
+    )?;
+
+    match outcome? {
+        crate::journey_runtime::ExecutionOutcome::Pending(pending) => {
+            if let Some(message) = pending_error {
+                bail!("{message}");
+            }
+            Ok(InteractiveJourneyRun::Pending(pending))
+        }
+        crate::journey_runtime::ExecutionOutcome::Completed {
+            report,
+            mut observation,
+            human_decisions,
+        } => {
+            if store
+                .get_node(validation_id)?
+                .map(|node| node.body)
+                .as_ref()
+                != Some(&compiled.validation_body)
+            {
+                bail!(
+                    "validation '{}' changed during Journey {}; refusing settlement",
+                    validation_id,
+                    drift_phase
+                );
+            }
+            observation.mark_trusted();
+            settle_compiled_validation(store, validation_id, &observation)?;
+            for decision in human_decisions {
+                store.append_journal("journey_human_decision", validation_id, decision)?;
+            }
+            Ok(InteractiveJourneyRun::Completed(report))
+        }
+    }
+}
+
 /// Store-owned compile → execute → settle for a machine-only Journey.
 ///
 /// The canonical proof, the execution root, the covered-file evidence, and the
@@ -3328,65 +3419,24 @@ pub fn run_interactive_and_settle_compiled_validation(
     validation_id: &str,
     overrides: &BTreeMap<String, Value>,
 ) -> Result<InteractiveJourneyRun> {
-    let root = store.root().to_path_buf();
-    let identity = store.execution_identity();
     let compiled = trusted_compile(store, validation_id)?;
-    // Release the graph write lock for the execution window: compiled
-    // operations may spawn child loom processes that open the graph. The
-    // harness guard serializes proof execution; settlement re-derives
-    // everything and refuses on drift.
-    store.release_graph_lock();
-
-    let _guard = crate::harness::acquire(&root, "journey run", &identity)?;
-    // Bracket the execution window in the journal: the audit's
-    // `writes_during_proof` check pairs these to spot solo-actor graph writes
-    // landing while the lock was released for children.
-    store.append_journal(
-        crate::audit::PROOF_EXECUTION_STARTED_EVENT,
+    execute_and_settle_interactive(
+        store,
         validation_id,
-        json!({ "purpose": "journey run", "pid": std::process::id() }),
-    )?;
-    let outcome = crate::journey_runtime::execute_interactive_with_anchors(
-        &root,
-        &compiled.spec,
-        &compiled.proof,
-        overrides,
-        Some(&compiled.covered_files),
-    );
-    store.reacquire_graph_lock()?;
-    store.append_journal(
-        crate::audit::PROOF_EXECUTION_ENDED_EVENT,
-        validation_id,
-        json!({ "purpose": "journey run", "pid": std::process::id() }),
-    )?;
-    match outcome {
-        crate::journey_runtime::ExecutionOutcome::Pending(pending) => {
-            Ok(InteractiveJourneyRun::Pending(pending))
-        }
-        crate::journey_runtime::ExecutionOutcome::Completed {
-            report,
-            mut observation,
-            human_decisions,
-        } => {
-            if store
-                .get_node(validation_id)?
-                .map(|node| node.body)
-                .as_ref()
-                != Some(&compiled.validation_body)
-            {
-                bail!(
-                    "validation '{}' changed during Journey execution; refusing settlement",
-                    validation_id
-                );
-            }
-            observation.mark_trusted();
-            settle_compiled_validation(store, validation_id, &observation)?;
-            for decision in human_decisions {
-                store.append_journal("journey_human_decision", validation_id, decision)?;
-            }
-            Ok(InteractiveJourneyRun::Completed(report))
-        }
-    }
+        &compiled,
+        "journey run",
+        "execution",
+        None,
+        |root| {
+            Ok(crate::journey_runtime::execute_interactive_with_anchors(
+                root,
+                &compiled.spec,
+                &compiled.proof,
+                overrides,
+                Some(&compiled.covered_files),
+            ))
+        },
+    )
 }
 
 /// Store-owned resume of a paused interactive Journey: re-derives the
@@ -3399,66 +3449,28 @@ pub fn resume_and_settle_compiled_validation(
     answer: crate::journey_gate::ResumeAnswer,
     executor: &str,
 ) -> Result<InteractiveJourneyRun> {
-    let root = store.root().to_path_buf();
-    let identity = store.execution_identity();
     let pending = crate::journey_runtime::pending_continuation(token)?;
     let binding = &pending.binding;
     let validation_id = resolve_journey_validation(store, &binding.journey_id, &binding.profile)?;
     let compiled = trusted_compile(store, &validation_id)?;
-    store.release_graph_lock();
-
-    let _guard = crate::harness::acquire(&root, "journey resume", &identity)?;
-    // Same execution-window bracketing as `journey run` (see
-    // `audit::writes_during_proof`); the window closes even when the resumed
-    // execution itself errored, because the lock was released either way.
-    store.append_journal(
-        crate::audit::PROOF_EXECUTION_STARTED_EVENT,
+    execute_and_settle_interactive(
+        store,
         &validation_id,
-        json!({ "purpose": "journey resume", "pid": std::process::id() }),
-    )?;
-    let outcome = crate::journey_runtime::resume_interactive(
-        &root,
-        &compiled.spec,
-        &compiled.proof,
-        token,
-        answer,
-        executor,
-    );
-    store.reacquire_graph_lock()?;
-    store.append_journal(
-        crate::audit::PROOF_EXECUTION_ENDED_EVENT,
-        &validation_id,
-        json!({ "purpose": "journey resume", "pid": std::process::id() }),
-    )?;
-    let outcome = outcome?;
-    match outcome {
-        crate::journey_runtime::ExecutionOutcome::Pending(_) => {
-            bail!("resumed Journey unexpectedly paused at a second human gate")
-        }
-        crate::journey_runtime::ExecutionOutcome::Completed {
-            report,
-            mut observation,
-            human_decisions,
-        } => {
-            if store
-                .get_node(&validation_id)?
-                .map(|node| node.body)
-                .as_ref()
-                != Some(&compiled.validation_body)
-            {
-                bail!(
-                    "validation '{}' changed during Journey resume; refusing settlement",
-                    validation_id
-                );
-            }
-            observation.mark_trusted();
-            settle_compiled_validation(store, &validation_id, &observation)?;
-            for decision in human_decisions {
-                store.append_journal("journey_human_decision", &validation_id, decision)?;
-            }
-            Ok(InteractiveJourneyRun::Completed(report))
-        }
-    }
+        &compiled,
+        "journey resume",
+        "resume",
+        Some("resumed Journey unexpectedly paused at a second human gate"),
+        |root| {
+            crate::journey_runtime::resume_interactive(
+                root,
+                &compiled.spec,
+                &compiled.proof,
+                token,
+                answer,
+                executor,
+            )
+        },
+    )
 }
 
 /// The compiler-owned Validation node for a Journey id/profile pair, by the

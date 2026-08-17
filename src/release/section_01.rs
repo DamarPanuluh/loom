@@ -252,6 +252,16 @@ pub fn rehearse(root: &Path, phase: ReleasePhase) -> Result<ReleaseRehearsalRepo
     rehearse_with_executor(root, phase, &mut executor)
 }
 
+fn discard_snapshot_stage(stage: &Path) {
+    // Cleanup cannot replace the failure that explains why no snapshot was installed.
+    if let Err(cleanup_error) = fs::remove_dir_all(stage) {
+        eprintln!(
+            "failed to remove release snapshot staging directory {}: {cleanup_error}",
+            stage.display()
+        );
+    }
+}
+
 /// Materialize the exact source-controlled release inventory into an empty
 /// destination without reading or creating Loom graph state.
 pub fn snapshot(root: &Path, destination: &Path) -> Result<SourceSnapshotReport> {
@@ -292,14 +302,24 @@ pub fn snapshot(root: &Path, destination: &Path) -> Result<SourceSnapshotReport>
     let source_inventory = match copy_candidate(&root, &stage, &mut ledger) {
         Ok(inventory) => inventory,
         Err(error) => {
-            let _ = fs::remove_dir_all(&stage);
+            discard_snapshot_stage(&stage);
             return Err(error);
         }
     };
-    fs::rename(&destination, &backup)?;
+    if let Err(error) = fs::rename(&destination, &backup) {
+        discard_snapshot_stage(&stage);
+        return Err(error.into());
+    }
     if let Err(error) = fs::rename(&stage, &destination) {
-        let _ = fs::rename(&backup, &destination);
-        let _ = fs::remove_dir_all(&stage);
+        // Rollback failures are secondary to the activation failure but must remain visible.
+        if let Err(rollback_error) = fs::rename(&backup, &destination) {
+            eprintln!(
+                "failed to restore release snapshot destination {} from {}: {rollback_error}",
+                destination.display(),
+                backup.display()
+            );
+        }
+        discard_snapshot_stage(&stage);
         return Err(error.into());
     }
     fs::remove_dir(&backup)?;
@@ -417,6 +437,33 @@ fn caller_state_changed(effects: &EffectAttestation) -> bool {
         || effects.installed_binary_changed
 }
 
+fn run_fixpoint_gates(
+    root: &Path,
+    phase: ReleasePhase,
+    runtime: &mut GateRuntime<'_>,
+    ledger: &mut Vec<ArgvLedgerEntry>,
+    source_inventory: &mut Option<SourceInventoryAttestation>,
+    disagreement: &str,
+) -> Result<(GateResult, WorkspaceAttestation, FixpointAttestation)> {
+    let first_permit = claim_candidate_permit(runtime.derivation_authority, phase, 0)?;
+    let second_permit = claim_candidate_permit(runtime.derivation_authority, phase, 1)?;
+    let probes = probe_empty_workspace_policy(root, ledger)?;
+    let first = run_isolated_gate(root, &first_permit, runtime, ledger, source_inventory)?;
+    let second = run_isolated_gate(root, &second_permit, runtime, ledger, source_inventory)?;
+    if first.candidate_hash != second.candidate_hash || first.result_hash != second.result_hash {
+        bail!("{disagreement}");
+    }
+    Ok((
+        second,
+        probes,
+        FixpointAttestation {
+            performed: true,
+            candidate_hash_equal: true,
+            result_hash_equal: true,
+        },
+    ))
+}
+
 fn rehearse_inner(
     root: &Path,
     phase: ReleasePhase,
@@ -435,55 +482,25 @@ fn rehearse_inner(
                 FixpointAttestation::default(),
             )
         }
-        ReleasePhase::FreshFixpoint => {
-            let first_permit = claim_candidate_permit(runtime.derivation_authority, phase, 0)?;
-            let second_permit = claim_candidate_permit(runtime.derivation_authority, phase, 1)?;
-            let probes = probe_empty_workspace_policy(root, ledger)?;
-            let first = run_isolated_gate(root, &first_permit, runtime, ledger, source_inventory)?;
-            let second =
-                run_isolated_gate(root, &second_permit, runtime, ledger, source_inventory)?;
-            if first.candidate_hash != second.candidate_hash
-                || first.result_hash != second.result_hash
-            {
-                bail!("independent release rehearsals produced different semantic attestations");
-            }
-            (
-                second,
-                vec![event("fresh_fixpoint", "passed")],
-                probes,
-                FixpointAttestation {
-                    performed: true,
-                    candidate_hash_equal: true,
-                    result_hash_equal: true,
-                },
-            )
-        }
-        ReleasePhase::GatedPreparation => {
-            let first_permit = claim_candidate_permit(runtime.derivation_authority, phase, 0)?;
-            let second_permit = claim_candidate_permit(runtime.derivation_authority, phase, 1)?;
-            let probes = probe_empty_workspace_policy(root, ledger)?;
-            let first = run_isolated_gate(root, &first_permit, runtime, ledger, source_inventory)?;
-            let second =
-                run_isolated_gate(root, &second_permit, runtime, ledger, source_inventory)?;
-            if first.candidate_hash != second.candidate_hash
-                || first.result_hash != second.result_hash
-            {
-                bail!("release preparation gates disagree on semantic readiness");
-            }
-            (
-                second,
-                vec![
-                    event("isolated_dogfood", "passed"),
-                    event("fresh_fixpoint", "passed"),
-                    event("mutation", "skipped_rehearsal"),
-                ],
-                probes,
-                FixpointAttestation {
-                    performed: true,
-                    candidate_hash_equal: true,
-                    result_hash_equal: true,
-                },
-            )
+        phase @ (ReleasePhase::FreshFixpoint | ReleasePhase::GatedPreparation) => {
+            let (disagreement, timeline) = match phase {
+                ReleasePhase::FreshFixpoint => (
+                    "independent release rehearsals produced different semantic attestations",
+                    vec![event("fresh_fixpoint", "passed")],
+                ),
+                ReleasePhase::GatedPreparation => (
+                    "release preparation gates disagree on semantic readiness",
+                    vec![
+                        event("isolated_dogfood", "passed"),
+                        event("fresh_fixpoint", "passed"),
+                        event("mutation", "skipped_rehearsal"),
+                    ],
+                ),
+                ReleasePhase::IsolatedDogfood => unreachable!(),
+            };
+            let (gate, workspace, fixpoint) =
+                run_fixpoint_gates(root, phase, runtime, ledger, source_inventory, disagreement)?;
+            (gate, timeline, workspace, fixpoint)
         }
     };
 

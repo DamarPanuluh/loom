@@ -207,15 +207,17 @@ fn tools() -> Vec<Tool> {
                 })
             },
             call: |graph, args| {
-                let command: Vec<String> = args
+                let command = args
                     .get("command")
-                    .and_then(|v| v.as_array())
-                    .map(|a| {
-                        a.iter()
-                            .filter_map(|x| x.as_str().map(str::to_string))
-                            .collect()
+                    .and_then(Value::as_array)
+                    .ok_or_else(|| anyhow::anyhow!("`command` must be a non-empty argv array"))?
+                    .iter()
+                    .map(|token| {
+                        token.as_str().map(str::to_string).ok_or_else(|| {
+                            anyhow::anyhow!("`command` must be a non-empty argv array")
+                        })
                     })
-                    .unwrap_or_default();
+                    .collect::<Result<Vec<_>>>()?;
                 if command.is_empty() {
                     anyhow::bail!("`command` must be a non-empty argv array");
                 }
@@ -539,7 +541,9 @@ fn inspect_tool_call(params: &Value, number: usize) -> Result<InspectedMcpReques
     )?;
     let (effect, nested_argv) = match name {
         "loom_next" => {
-            let args = arguments.as_object().expect("tool schema requires object");
+            let args = arguments.as_object().ok_or_else(|| {
+                anyhow::anyhow!("request {number} loom_next arguments must be an object")
+            })?;
             if !args.is_empty()
                 && !(args.len() == 1 && args.get("lane").and_then(Value::as_str) == Some("ratify"))
             {
@@ -548,14 +552,18 @@ fn inspect_tool_call(params: &Value, number: usize) -> Result<InspectedMcpReques
             (McpTranscriptEffect::Read, None)
         }
         "loom_observe" => {
-            let args = arguments.as_object().expect("tool schema requires object");
+            let args = arguments.as_object().ok_or_else(|| {
+                anyhow::anyhow!("request {number} loom_observe arguments must be an object")
+            })?;
             if args.len() != 1 {
                 bail!("request {number} loom_observe admits only an exact command argv");
             }
             let argv = args
                 .get("command")
                 .and_then(Value::as_array)
-                .expect("tool schema requires command array")
+                .ok_or_else(|| {
+                    anyhow::anyhow!("request {number} loom_observe command must be an array")
+                })?
                 .iter()
                 .map(|token| {
                     token

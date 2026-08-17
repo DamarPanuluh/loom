@@ -372,7 +372,13 @@ fn issue_derivation_authority(root: &Path, pending: &PendingDerivationAuthority)
         Ok(token)
     })();
     if result.is_err() {
-        let _ = fs::remove_file(marker);
+        // The unknown token issuer cannot revoke it; a failed marker discard is only visible here.
+        if let Err(cleanup_error) = fs::remove_file(&marker) {
+            eprintln!(
+                "failed to remove release derivation authority batch marker {}: {cleanup_error}",
+                marker.display()
+            );
+        }
     }
     result
 }

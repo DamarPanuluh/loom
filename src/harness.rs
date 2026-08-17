@@ -178,8 +178,18 @@ fn acquire_at(
     });
     let mut f = &file;
     use std::io::Write;
-    let _ = f.set_len(0);
-    let _ = f.write_all(holder.to_string().as_bytes());
+    if let Err(error) = f.set_len(0) {
+        eprintln!(
+            "warning: could not clear harness holder identity at {}: {error}",
+            path.display()
+        );
+    }
+    if let Err(error) = f.write_all(holder.to_string().as_bytes()) {
+        eprintln!(
+            "warning: could not record harness holder identity at {}: {error}",
+            path.display()
+        );
+    }
     HELD.with(|held| held.borrow_mut().insert(key.clone()));
     Ok(HarnessGuard {
         _file: Some(file),

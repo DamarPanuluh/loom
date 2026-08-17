@@ -435,18 +435,7 @@ fn create_shadow_nodes(store: &Store, export: &travel::Export, alias: &str) -> R
         if existing.contains(&shadow_name) {
             continue;
         }
-        let body = serde_json::json!({
-            "graph_id": export.graph_id,
-            "node_id": node.id,
-            "alias": alias,
-        });
-        store.add_node(
-            NodeType::UpstreamIntent,
-            &shadow_name,
-            &node.description,
-            &node.status,
-            body,
-        )?;
+        crate::federation::add_shadow_node(store, &export.graph_id, alias, node)?;
         created += 1;
     }
     Ok(created)

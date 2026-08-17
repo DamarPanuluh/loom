@@ -21,10 +21,10 @@
 
 use super::intent::{create_intent, IntentAddArgs};
 use super::{open, pulse, verdict_status};
-use crate::model::{EdgeKind, GroundingRole, NodeType, TargetKind, TruthClass};
+use crate::model::{EdgeKind, GroundingRole, NodeType, TruthClass};
 use crate::store::Store;
 use crate::{workitem, Result};
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, Context};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -56,6 +56,8 @@ struct ApplyTx {
     relationships: Vec<RelationSpec>,
     #[serde(default)]
     verdicts: Vec<VerdictSpec>,
+    #[serde(default)]
+    rule_verdicts: Vec<RuleVerdictSpec>,
     #[serde(default)]
     adjudications: Vec<AdjudicationSpec>,
     #[serde(default)]
@@ -185,6 +187,24 @@ struct TagSpec {
     terms: Vec<String>,
 }
 
+/// A quality-rule measurement (`kind: passing | failing | independent`),
+/// mirroring `loom rule verdict` — the same governs-edge mint, the same
+/// store-level prescreen hit gate, so a batch can never accept what the CLI
+/// would reject. This is the door coordinated sub-drivers submit a measured
+/// slice through in one lock acquisition instead of one call per pair.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RuleVerdictSpec {
+    rule: String,
+    intent: String,
+    outcome: String,
+    criterion: String,
+    #[serde(default)]
+    evidence: String,
+    #[serde(default = "default_confidence")]
+    confidence: f64,
+}
+
 /// What a batch did. Emitted as the JSON result; `intent_ids` hands the agent
 /// the ids of intents it just created so a follow-up need not re-resolve them.
 #[derive(Debug, Default, Serialize)]
@@ -193,6 +213,7 @@ struct ApplyReport {
     groundings: usize,
     relationships: usize,
     verdicts: usize,
+    rule_verdicts: usize,
     adjudications: usize,
     vocab: usize,
     tags: usize,
@@ -259,11 +280,12 @@ pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()>
     }
     pulse::emit(&store, json, payload, "loom sync", || {
         println!(
-            "applied: {} intent(s), {} grounding(s), {} relationship(s), {} verdict(s), {} adjudication(s), {} vocab term(s), {} tag(s)",
+            "applied: {} intent(s), {} grounding(s), {} relationship(s), {} verdict(s), {} rule verdict(s), {} adjudication(s), {} vocab term(s), {} tag(s)",
             report.intents_added,
             report.groundings,
             report.relationships,
             report.verdicts,
+            report.rule_verdicts,
             report.adjudications,
             report.vocab,
             report.tags
@@ -327,67 +349,10 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
                 g.role
             )
         })?;
-        let existing = store
-            .edges_with(
-                Some(EdgeKind::Implements),
-                Some(&intent.id),
-                Some(&codefile.id),
-            )?
-            .into_iter()
-            .next();
-        let mut update_existing_locator = false;
-        if let Some(edge) = &existing {
-            let current_role = store.grounding_role(&edge.id)?;
-            let current_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
-            let locator_changed = g
-                .locator
-                .as_deref()
-                .is_some_and(|new| current_locator.as_deref() != Some(new));
-            if current_role != role
-                || (locator_changed && edge.status != crate::model::InspectionStatus::Uninspected)
-            {
-                bail!(
-                    "edge exists for intent '{}' and codefile '{}' as {} [{}] — \
-                     use `loom edge set-role {}` / `loom edge set-locator {}` or remove it first",
-                    intent.name,
-                    codefile.name,
-                    current_role,
-                    crate::model::short(&edge.id),
-                    crate::model::short(&edge.id),
-                    crate::model::short(&edge.id),
-                );
-            }
-            update_existing_locator = locator_changed;
-        }
-        if let Some(loc) = &g.locator {
-            if role == GroundingRole::Realizes || crate::locator::is_anchor_locator(loc) {
-                crate::locator::validate_for_codefile(store, &codefile, loc)?;
-            }
-        }
-        let created = existing.is_none();
-        let edge = match existing {
-            Some(edge) => edge,
-            None => store.add_edge(
-                EdgeKind::Implements,
-                &intent.id,
-                &codefile.id,
-                TruthClass::Asserted,
-            )?,
-        };
-        if created || update_existing_locator {
-            if let Some(loc) = &g.locator {
-                store.set_facet(
-                    &edge.id,
-                    TargetKind::Edge,
-                    "locator",
-                    loc,
-                    TruthClass::Asserted,
-                )?;
-            }
-        }
-        if created && role != GroundingRole::Realizes {
-            store.set_grounding_role(&edge.id, role)?;
-        }
+        // One write path with `loom edge implement`: the batch must gate
+        // exactly like the interactive door (see edge::ground_intent).
+        let (edge, _created) =
+            super::edge::ground_intent(store, &intent, &codefile, g.locator.as_deref(), role)?;
         report.groundings += 1;
         if let Some(v) = &g.verdict {
             record_body(store, &edge.id, v)
@@ -435,6 +400,29 @@ fn apply_tx(store: &Store, spec: &ApplyTx) -> Result<ApplyReport> {
         )
         .with_context(|| format!("verdict on edge '{}'", v.edge))?;
         report.verdicts += 1;
+    }
+    for rv in &spec.rule_verdicts {
+        let rule = store
+            .resolve_node(&rv.rule, Some(NodeType::QualityRule))
+            .with_context(|| format!("rule verdict rule '{}'", rv.rule))?;
+        let intent = store
+            .resolve_node(&rv.intent, Some(NodeType::Intent))
+            .with_context(|| format!("rule verdict intent '{}'", rv.intent))?;
+        let edge = store.ensure_edge(EdgeKind::Governs, &rule.id, &intent.id)?;
+        let status = super::proof_cmd::rule_verdict_status(&rv.outcome)
+            .with_context(|| format!("rule verdict '{}' × '{}'", rv.rule, rv.intent))?;
+        let actor = store.execution_identity().actor();
+        store
+            .record_verdict(
+                &edge.id,
+                status,
+                &rv.criterion,
+                &rv.evidence,
+                rv.confidence,
+                &actor,
+            )
+            .with_context(|| format!("rule verdict '{}' × '{}'", rv.rule, rv.intent))?;
+        report.rule_verdicts += 1;
     }
     let adj_batch_id = if spec.adjudications.len() > 1 {
         let actor = store.execution_identity().actor();

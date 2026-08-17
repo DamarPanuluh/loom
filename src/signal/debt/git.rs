@@ -42,8 +42,6 @@ pub(super) struct GitChange {
 
 #[derive(Clone, Debug)]
 pub(super) struct GitCommit {
-    #[allow(dead_code)]
-    pub(super) hash: String,
     pub(super) changes: Vec<GitChange>,
 }
 
@@ -137,7 +135,7 @@ pub(super) fn parse_git_name_status_z(bytes: &[u8]) -> Option<Vec<GitCommit>> {
             Some(at_marker) => i = at_marker,
             None => break,
         }
-        let (hash, after_hash) = match parse_commit_hash(bytes, i) {
+        let after_hash = match parse_commit_hash(bytes, i) {
             Some(parsed) => parsed,
             None => {
                 // One malformed hash record must not discard the whole sample:
@@ -149,7 +147,7 @@ pub(super) fn parse_git_name_status_z(bytes: &[u8]) -> Option<Vec<GitCommit>> {
         i = after_hash;
         let (changes, after_changes) = parse_commit_changes(bytes, i);
         i = after_changes;
-        commits.push(GitCommit { hash, changes });
+        commits.push(GitCommit { changes });
         if commits.len() >= CO_CHANGE_MAX_COMMITS {
             break;
         }
@@ -184,26 +182,22 @@ fn advance_to_commit_marker(bytes: &[u8], mut i: usize) -> Option<usize> {
     None
 }
 
-/// Parse hash after a commit marker at `i` (byte at `i` is 0x1e).
-/// Returns `(hash, index_after_hash_nul)`. Empty/non-UTF-8 hash → None (malformed).
-fn parse_commit_hash(bytes: &[u8], mut i: usize) -> Option<(String, usize)> {
+/// Validate and skip the hash after a commit marker at `i`.
+/// Empty/non-UTF-8 hash → None (malformed).
+fn parse_commit_hash(bytes: &[u8], mut i: usize) -> Option<usize> {
     let n = bytes.len();
     i += 1; // skip 0x1e
     let hash_start = i;
     while i < n && bytes[i] != 0 {
         i += 1;
     }
-    if i == hash_start {
-        return None; // empty hash
+    if i == hash_start || std::str::from_utf8(&bytes[hash_start..i]).is_err() {
+        return None;
     }
-    let hash = match std::str::from_utf8(&bytes[hash_start..i]) {
-        Ok(s) if !s.is_empty() => s.to_string(),
-        _ => return None,
-    };
     if i < n {
         i += 1; // consume hash-trailing NUL
     }
-    Some((hash, i))
+    Some(i)
 }
 
 /// Consume name-status records until next 0x1e (at boundary) or EOF.
@@ -374,7 +368,6 @@ y.rs",
 
         let parsed = parse_git_name_status_z(&bytes).expect("parse");
         assert_eq!(parsed.len(), 3);
-        assert_eq!(parsed[0].hash, "h1");
         assert_eq!(parsed[0].changes.len(), 2);
         assert_eq!(parsed[0].changes[0].path, "a.rs");
         assert_eq!(
@@ -382,7 +375,6 @@ y.rs",
             "x
 y.rs"
         );
-        assert_eq!(parsed[1].hash, "h2");
         assert_eq!(parsed[1].changes.len(), 1);
         assert_eq!(parsed[1].changes[0].path, "b.rs");
         assert_eq!(parsed[2].changes.len(), 1);
@@ -420,9 +412,7 @@ y.rs"
             2,
             "the malformed record must be skipped, keeping both good commits: {parsed:?}"
         );
-        assert_eq!(parsed[0].hash, "h1");
         assert_eq!(parsed[0].changes[0].path, "a.rs");
-        assert_eq!(parsed[1].hash, "h2");
         assert_eq!(parsed[1].changes[0].path, "b.rs");
     }
 }

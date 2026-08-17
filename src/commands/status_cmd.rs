@@ -286,55 +286,88 @@ pub(crate) fn sync_cmd(graph: Option<&Path>, json: bool, quiet: bool, rebuild: b
     }
     Ok(())
 }
-/// The machine-readable graph pulse. One implementation behind `loom status
-/// --json` and the `loom_status` MCP tool — the text renderer below reads the
-/// same values, so no surface can report a number another surface does not.
-pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
-    let id = store.identity()?;
+/// Every read the status surfaces share, fetched once. The JSON pulse and the
+/// text renderer consume the SAME snapshot, so the two can never report
+/// numbers from different graph states within one invocation.
+struct StatusFacts {
+    id: crate::store::Identity,
+    journeys: usize,
+    intents: usize,
+    files: usize,
+    edges: usize,
+    ladder: crate::maturity::Ladder,
+    queues: crate::lane::QueueDepths,
+    pulse: workitem::GraphState,
+    scope: crate::coverage::CoverageScopeSummary,
+    doctor_issues: Vec<crate::signal::DoctorIssue>,
+    layering: serde_json::Value,
+}
+
+fn gather_status_facts(store: &Store) -> Result<StatusFacts> {
     let (ladder, queues) = crate::maturity::ladder_and_depths(store)?;
-    let scope = crate::coverage::coverage_scope_summary(store)?;
-    let doctor_issues = crate::signal::doctor(store)?;
-    let roles = crate::rolelease::roster_value(store.root(), &queues);
+    Ok(StatusFacts {
+        id: store.identity()?,
+        journeys: store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len(),
+        intents: store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len(),
+        files: store
+            .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
+            .len(),
+        edges: store.list_edges(None, usize::MAX)?.len(),
+        ladder,
+        queues,
+        pulse: workitem::graph_state(store)?,
+        scope: crate::coverage::coverage_scope_summary(store)?,
+        doctor_issues: crate::signal::doctor(store)?,
+        layering: super::domain_cmd::layer_detector_state(store)?,
+    })
+}
+
+/// The machine-readable graph pulse. One implementation behind `loom status
+/// --json` and the `loom_status` MCP tool — the text renderer reads the same
+/// gathered facts, so no surface can report a number another surface does not.
+pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
+    let facts = gather_status_facts(store)?;
+    let roles = crate::rolelease::roster_value(store.root(), &facts.queues);
     Ok(serde_json::json!({
         "graph": {
-            "name": id.name,
-            "graph_id": id.graph_id,
-            "schema_version": id.schema_version,
-            "observed": id.observed,
+            "name": facts.id.name,
+            "graph_id": facts.id.graph_id,
+            "schema_version": facts.id.schema_version,
+            "observed": facts.id.observed,
         },
         "counts": {
-            "journeys": store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len(),
-            "intents": store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len(),
-            "codefiles": store.list_nodes(Some(NodeType::CodeFile), usize::MAX)?.len(),
-            "edges": store.list_edges(None, usize::MAX)?.len(),
+            "journeys": facts.journeys,
+            "intents": facts.intents,
+            "codefiles": facts.files,
+            "edges": facts.edges,
         },
-        "compass": { "phase": ladder.phase, "rung": ladder.rung, "next_command": ladder.next_command },
+        "compass": { "phase": facts.ladder.phase, "rung": facts.ladder.rung, "next_command": facts.ladder.next_command },
         "integrity": {
-            "valid": doctor_issues.is_empty(),
-            "doctor_issues": doctor_issues,
+            "valid": facts.doctor_issues.is_empty(),
+            "doctor_issues": facts.doctor_issues,
         },
-        "maturity": ladder,
-        "graph_state": workitem::graph_state(store)?,
-        "queues": queues,
+        "maturity": facts.ladder,
+        "graph_state": facts.pulse,
+        "queues": facts.queues,
         // Advisory driver-role leases: which roles are held (and how fresh)
         // and the queue debt behind each, so a joining driver picks a free
         // role with work instead of colliding on a held one.
         "roles": roles,
         "validation_summary": crate::maturity::validation_summary(store)?,
         "code_ownership": {
-            "registered": scope.total_registered,
-            "in_scope": scope.in_scope,
-            "owned": scope.owned,
-            "unowned": scope.unowned(),
-            "unowned_files": scope.unowned_files,
-            "observed": scope.observed,
-            "excluded": scope.excluded(),
-            "excluded_files": scope.excluded_files,
-            "exclusions_by_reason": scope.exclusions_by_reason,
-            "blocking": scope.unowned() > 0,
+            "registered": facts.scope.total_registered,
+            "in_scope": facts.scope.in_scope,
+            "owned": facts.scope.owned,
+            "unowned": facts.scope.unowned(),
+            "unowned_files": facts.scope.unowned_files,
+            "observed": facts.scope.observed,
+            "excluded": facts.scope.excluded(),
+            "excluded_files": facts.scope.excluded_files,
+            "exclusions_by_reason": facts.scope.exclusions_by_reason,
+            "blocking": facts.scope.unowned() > 0,
         },
         "detectors": {
-            "layering": super::domain_cmd::layer_detector_state(store)?,
+            "layering": facts.layering,
         },
     }))
 }
@@ -345,18 +378,19 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(&status_value(&store)?)?);
         return Ok(());
     }
-    let id = store.identity()?;
-    let journeys = store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len();
-    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
-    let files = store
-        .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
-        .len();
-    let edges = store.list_edges(None, usize::MAX)?.len();
-    let (ladder, queues) = crate::maturity::ladder_and_depths(&store)?;
-    let pulse = workitem::graph_state(&store)?;
-    let scope = crate::coverage::coverage_scope_summary(&store)?;
-    let doctor_issues = crate::signal::doctor(&store)?;
-    let layering = super::domain_cmd::layer_detector_state(&store)?;
+    let StatusFacts {
+        id,
+        journeys,
+        intents,
+        files,
+        edges,
+        ladder,
+        queues,
+        pulse,
+        scope,
+        doctor_issues,
+        layering,
+    } = gather_status_facts(&store)?;
     println!(
         "graph: {} ({}){}",
         id.name,
@@ -462,7 +496,7 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
             String::new()
         },
         {
-            let staged = store.count_judgments("staged".parse()?).unwrap_or(0);
+            let staged = store.count_judgments("staged".parse()?)?;
             if staged > 0 {
                 format!("  ({staged} staged judgment proposal(s) — loom judgment digest)")
             } else {

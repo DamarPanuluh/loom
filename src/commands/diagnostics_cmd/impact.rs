@@ -22,17 +22,21 @@ pub(crate) fn impact_report(
     let symbols: Vec<String> = match &anchor {
         Some(anchor) => anchor.callable_symbol.iter().cloned().collect(),
         None => match store.codefiles()?.into_iter().find(|c| c.name == target) {
-            Some(cf) => store
-                .get_facet(
-                    &cf.id,
-                    TargetKind::Node,
-                    crate::seed::SYMBOL_FINGERPRINTS_KEY,
-                )?
-                .and_then(|j| {
-                    serde_json::from_str::<std::collections::BTreeMap<String, String>>(&j).ok()
-                })
-                .map(|m| m.keys().cloned().collect())
-                .unwrap_or_default(),
+            Some(cf) => match store.get_facet(
+                &cf.id,
+                TargetKind::Node,
+                crate::seed::SYMBOL_FINGERPRINTS_KEY,
+            )? {
+                Some(j) => serde_json::from_str::<std::collections::BTreeMap<String, String>>(&j)
+                    .map(|m| m.keys().cloned().collect())
+                    .with_context(|| {
+                        format!(
+                            "symbol fingerprints for '{target}' are malformed — \
+                             run `loom sync` to rebuild the derived facet"
+                        )
+                    })?,
+                None => Vec::new(),
+            },
             None => vec![target.to_string()],
         },
     };

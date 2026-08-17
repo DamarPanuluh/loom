@@ -176,11 +176,24 @@ impl Store {
     /// Initialize a fresh graph at `root/.loom/graph.sqlite`. Idempotent: if the
     /// store already exists, opens it and backfills identity defaults.
     pub fn init(root: &Path, name: Option<&str>, observed: bool) -> Result<Store> {
+        let identity = crate::identity::ExecutionIdentity::resolve_env()?;
+        Self::init_with_identity(root, name, observed, identity)
+    }
+
+    /// [`Store::init`] with a caller-pinned execution identity. Tests use this
+    /// to stay hermetic: identity-sensitive writes (ratification, lane gates)
+    /// must not change verdict when an ambient `LOOM_AGENT` leaks into the
+    /// test process from a driver's shell.
+    pub fn init_with_identity(
+        root: &Path,
+        name: Option<&str>,
+        observed: bool,
+        identity: crate::identity::ExecutionIdentity,
+    ) -> Result<Store> {
         let loom_dir = root.join(LOOM_DIR);
         std::fs::create_dir_all(&loom_dir)
             .with_context(|| format!("creating {}", loom_dir.display()))?;
         let db_path = loom_dir.join(GRAPH_DB);
-        let identity = crate::identity::ExecutionIdentity::resolve_env()?;
         let lock = acquire_lock(&loom_dir, true, &identity)?;
         let fresh = !db_path.exists();
         let mut conn =
@@ -448,14 +461,24 @@ impl Store {
             Ok(())
         })();
         if let Err(error) = result {
-            let _ = std::fs::remove_dir_all(&destination_loom);
+            if let Err(cleanup_error) = std::fs::remove_dir_all(&destination_loom) {
+                return Err(error).context(format!(
+                    "removing incomplete local snapshot {} also failed: {cleanup_error}",
+                    destination_loom.display()
+                ));
+            }
             return Err(error);
         }
         if let Err(error) = std::fs::write(
             destination_loom.join(LOCAL_SNAPSHOT_MARKER),
             b"{\"schema\":\"loom.local-snapshot/v1\"}\n",
         ) {
-            let _ = std::fs::remove_dir_all(&destination_loom);
+            if let Err(cleanup_error) = std::fs::remove_dir_all(&destination_loom) {
+                return Err(error).context(format!(
+                    "marking the cloned graph as a local snapshot failed, and removing {} also failed: {cleanup_error}",
+                    destination_loom.display()
+                ));
+            }
             return Err(error).context("marking the cloned graph as a local snapshot");
         }
         Ok(())
@@ -1589,7 +1612,13 @@ mod tests {
     #[test]
     fn grounding_roles_reject_non_implements_edges() {
         let tmp = TmpRoot::new("loom-store-grounding-role-kind");
-        let store = Store::init(tmp.path(), Some("grounding-role-kind"), false).unwrap();
+        let store = Store::init_with_identity(
+            tmp.path(),
+            Some("grounding-role-kind"),
+            false,
+            crate::identity::ExecutionIdentity::solo(),
+        )
+        .unwrap();
         let first = store
             .add_node(
                 NodeType::Intent,

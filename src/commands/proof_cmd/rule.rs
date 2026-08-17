@@ -1,7 +1,8 @@
 use super::*;
 
 pub(crate) fn rule(graph: Option<&Path>, cmd: RuleCmd, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    // Verdict-family door: absorb brief lock contention (see open_fact_write).
+    let store = open_fact_write(graph)?;
     match cmd {
         RuleCmd::Seed { pack } => rule_seed(&store, json, pack),
         RuleCmd::Verdict {
@@ -381,7 +382,7 @@ fn rule_suppressions(store: &Store, json: bool, rule: Option<String>) -> Result<
     Ok(())
 }
 
-fn verdict_status_quality(s: &str) -> Result<InspectionStatus> {
+pub(crate) fn verdict_status_quality(s: &str) -> Result<InspectionStatus> {
     match s {
         "passing" => Ok(InspectionStatus::Passing),
         "failing" => Ok(InspectionStatus::Failing),

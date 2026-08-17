@@ -492,13 +492,7 @@ static JOURNAL_RE: LazyLock<Regex> = LazyLock::new(|| {
 /// [`Evidence::Run`]: `CitedEvidence` has no such variant.
 pub fn cite(root: &Path, prose: &str) -> Result<Vec<CitedEvidence>> {
     let mut out: Vec<CitedEvidence> = Vec::new();
-    for cap in JOURNAL_RE.captures_iter(prose) {
-        let id = &cap[1];
-        if !crate::journal::exists(root, id)? {
-            bail!("evidence cites journal:{id}, but no such append-only journal entry exists");
-        }
-        out.push(CitedEvidence::Journal(id.to_string()));
-    }
+    validate_journal_citations(root, prose, &mut |id| out.push(CitedEvidence::Journal(id)))?;
     out.extend(stamp(root, prose)?.into_iter().map(CitedEvidence::Span));
     // Placeholder prose ("…", "TBD", "<reason>") is not weak evidence — it is
     // NO evidence, so it produces no row at all. The floor then refuses the
@@ -523,13 +517,28 @@ enum RawCitation {
     Symbol(String),
 }
 
-pub fn stamp(root: &Path, evidence: &str) -> Result<Vec<SpanStamp>> {
-    for cap in JOURNAL_RE.captures_iter(evidence) {
+/// Gate every `journal:<id>` reference in the prose on the append-only
+/// journal actually holding such an entry, in citation order so the first
+/// forged reference is the one named. Citations to nothing are fabrication of
+/// the same kind as a citation into lines that do not exist. `stamp` passes a
+/// no-op `on_id` because it records only spans.
+fn validate_journal_citations(
+    root: &Path,
+    prose: &str,
+    on_id: &mut dyn FnMut(String),
+) -> Result<()> {
+    for cap in JOURNAL_RE.captures_iter(prose) {
         let id = &cap[1];
         if !crate::journal::exists(root, id)? {
             bail!("evidence cites journal:{id}, but no such append-only journal entry exists");
         }
+        on_id(id.to_string());
     }
+    Ok(())
+}
+
+pub fn stamp(root: &Path, evidence: &str) -> Result<Vec<SpanStamp>> {
+    validate_journal_citations(root, evidence, &mut |_| {})?;
     let mut raws: Vec<(String, RawCitation)> = Vec::new();
     for cap in CITATION_RE.captures_iter(evidence) {
         raws.push((

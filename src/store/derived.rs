@@ -719,14 +719,14 @@ impl Store {
         }
         let prefix = format!("{key}%");
         let matches = self.find_nodes_by(
-            "id LIKE ?1",
+            crate::store::nodes::NodeFilter::IdPrefix,
             params![prefix],
             Some(NodeType::Finding.as_str()),
         )?;
         match matches.len() {
             0 => {
                 let named = self.find_nodes_by(
-                    "name = ?1",
+                    crate::store::nodes::NodeFilter::ExactName,
                     params![key],
                     Some(NodeType::Finding.as_str()),
                 )?;

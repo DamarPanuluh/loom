@@ -14,6 +14,25 @@ use globset::{GlobBuilder, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use std::path::Path;
 
+fn walk_files(root: &Path) -> Result<Vec<String>> {
+    let mut paths = Vec::new();
+    for entry in WalkBuilder::new(root)
+        .hidden(true)
+        .require_git(false)
+        .build()
+    {
+        let entry = entry?;
+        if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+            continue;
+        }
+        let Ok(rel) = entry.path().strip_prefix(root) else {
+            continue;
+        };
+        paths.push(rel.to_string_lossy().replace('\\', "/"));
+    }
+    Ok(paths)
+}
+
 /// Expand a glob (relative to `root`) into matching relative file paths, sorted.
 /// A pattern with no glob metacharacters is returned as a single literal path if
 /// it exists as a file; missing literal paths error loudly instead of
@@ -41,19 +60,7 @@ pub fn expand(root: &Path, pattern: &str) -> Result<Vec<String>> {
         .compile_matcher();
     let mut out = Vec::new();
 
-    for entry in WalkBuilder::new(root)
-        .hidden(true)
-        .require_git(false)
-        .build()
-        .flatten()
-    {
-        if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-            continue;
-        }
-        let Ok(rel) = entry.path().strip_prefix(root) else {
-            continue;
-        };
-        let rel = rel.to_string_lossy().replace('\\', "/");
+    for rel in walk_files(root)? {
         if matcher.is_match(&rel) {
             out.push(rel);
         }
@@ -204,19 +211,18 @@ mod tests {
 pub fn suggest(root: &Path, extension: Option<&str>) -> Vec<(String, usize)> {
     const SOURCE_EXTS: &[&str] = &["rs", "py", "go", "ts", "tsx", "js", "jsx", "mjs", "cjs"];
     let mut counts: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    for entry in WalkBuilder::new(root)
-        .hidden(true)
-        .require_git(false)
-        .build()
-        .flatten()
-    {
-        if !entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
-            continue;
+    // Suggestions are advisory, so a failed walk must not fail codefile registration.
+    let paths = match walk_files(root) {
+        Ok(paths) => paths,
+        Err(err) => {
+            eprintln!(
+                "warning: could not inspect '{}' for glob suggestions: {err}",
+                root.display()
+            );
+            return Vec::new();
         }
-        let Ok(rel) = entry.path().strip_prefix(root) else {
-            continue;
-        };
-        let rel = rel.to_string_lossy().replace('\\', "/");
+    };
+    for rel in paths {
         let Some(ext) = rel.rsplit('.').next() else {
             continue;
         };

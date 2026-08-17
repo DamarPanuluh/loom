@@ -26,15 +26,18 @@ pub(crate) fn covered_hashes(
     intent_id: &str,
 ) -> Result<std::collections::BTreeMap<String, String>> {
     let files = store.files_grounding(intent_id)?;
-    Ok(files
-        .into_iter()
-        .map(|f| {
-            let hash = std::fs::read_to_string(store.root().join(&f))
-                .map(|c| crate::artifact::fingerprint(&c))
-                .unwrap_or_default();
-            (f, hash)
-        })
-        .collect())
+    let mut hashes = std::collections::BTreeMap::new();
+    for file in files {
+        let path = store.root().join(&file);
+        let contents = std::fs::read_to_string(&path).map_err(|error| {
+            anyhow::anyhow!(
+                "reading grounded file '{}' for proof coverage: {error}",
+                path.display()
+            )
+        })?;
+        hashes.insert(file, crate::artifact::fingerprint(&contents));
+    }
+    Ok(hashes)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -217,12 +220,18 @@ pub fn observe_validation(
     if val.body.get("type").and_then(serde_json::Value::as_str) == Some("journey") {
         bail!("Journey validations cannot run through the generic proof runner; remove an orphaned proof or use `loom journey run <journey> --profile <profile>`");
     }
-    let ty = val
-        .body
-        .get("type")
-        .and_then(|v| v.as_str())
-        .and_then(|s| s.parse::<crate::model::ValidationType>().ok())
-        .unwrap_or(crate::model::ValidationType::Test);
+    let ty = match val.body.get("type") {
+        None => crate::model::ValidationType::Test,
+        Some(value) => {
+            let Some(raw) = value.as_str() else {
+                bail!("validation '{}' has a non-string type", val.id);
+            };
+            match raw.parse::<crate::model::ValidationType>() {
+                Ok(ty) => ty,
+                Err(_) => bail!("validation '{}' has unknown type '{raw}'", val.id),
+            }
+        }
+    };
     let outcome = crate::proof::runner_for(ty).run(store.root(), val);
     match &outcome {
         ProofOutcome::Passed { evidence, run } => {

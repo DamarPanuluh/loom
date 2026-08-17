@@ -202,7 +202,8 @@ fn finding_verdict(
     evidence: &str,
     json: bool,
 ) -> Result<()> {
-    let store = open(graph)?;
+    // Verdict-family door: absorb brief lock contention (see open_fact_write).
+    let store = open_fact_write(graph)?;
     let finding = adjudicate_finding(&store, id, verdict, reason, evidence)?;
     pulse::emit_line(
         &store,

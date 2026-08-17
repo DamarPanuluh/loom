@@ -1921,7 +1921,7 @@ mod imported_tests {
     fn imported_ratification_and_rejection_journal_rows_have_no_local_authority() {
         for (state, event) in [("ratified", "ratification"), ("rejected", "rejection")] {
             let tmp = Tmp::new();
-            let store = Store::init(&tmp.0, Some("origin test"), false).unwrap();
+            let store = Store::init_with_identity(&tmp.0, Some("origin test"), false, crate::identity::ExecutionIdentity::solo()).unwrap();
             let intent = store
                 .add_node(
                     NodeType::Intent,

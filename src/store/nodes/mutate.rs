@@ -151,6 +151,24 @@ impl Store {
         Ok(item)
     }
 
+    fn delete_edge_records(&self, id: &str) -> Result<usize> {
+        self.conn.execute(
+            "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='edge'",
+            params![id],
+        )?;
+        self.conn.execute(
+            "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
+            params![id],
+        )?;
+        self.conn.execute(
+            "DELETE FROM tag WHERE target_id=?1 AND target_kind='edge'",
+            params![id],
+        )?;
+        Ok(self
+            .conn
+            .execute("DELETE FROM edge WHERE id=?1", params![id])?)
+    }
+
     /// Hard-delete an asserted node and everything keyed to it. Incident edges
     /// and body-linked Notes are deleted explicitly (not via FK cascade) so
     /// their facets and tags cannot orphan. Notes are followed recursively: a
@@ -198,20 +216,7 @@ impl Store {
         }
         let tx = self.maybe_tx()?;
         for eid in &incident {
-            self.conn.execute(
-                "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='edge'",
-                params![eid],
-            )?;
-            self.conn.execute(
-                "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
-                params![eid],
-            )?;
-            self.conn.execute(
-                "DELETE FROM tag WHERE target_id=?1 AND target_kind='edge'",
-                params![eid],
-            )?;
-            self.conn
-                .execute("DELETE FROM edge WHERE id=?1", params![eid])?;
+            self.delete_edge_records(eid)?;
         }
         self.conn.execute(
             "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='node'",
@@ -279,21 +284,7 @@ impl Store {
         // single unit and a lone call still gets its own. A `bail` on a missing
         // edge drops the tx (or bubbles to the outer batch) and rolls back.
         let tx = self.maybe_tx()?;
-        self.conn.execute(
-            "DELETE FROM fact WHERE subject_id=?1 AND subject_kind='edge'",
-            params![id],
-        )?;
-        self.conn.execute(
-            "DELETE FROM facet WHERE target_id=?1 AND target_kind='edge'",
-            params![id],
-        )?;
-        self.conn.execute(
-            "DELETE FROM tag WHERE target_id=?1 AND target_kind='edge'",
-            params![id],
-        )?;
-        let n = self
-            .conn
-            .execute("DELETE FROM edge WHERE id=?1", params![id])?;
+        let n = self.delete_edge_records(id)?;
         if n == 0 {
             bail!("no edge '{id}'");
         }

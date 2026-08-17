@@ -387,7 +387,81 @@ pub(crate) fn resolve_root(graph: Option<&Path>) -> Result<PathBuf> {
 
 pub(crate) fn open(graph: Option<&Path>) -> Result<Store> {
     let root = resolve_root(graph)?;
-    Store::open(&root)
+    let store = Store::open(&root)?;
+    stamp_writer_version(&store);
+    Ok(store)
+}
+
+/// The loom version that last wrote this graph, stamped at every write open
+/// and compared at every read open. A driver whose PATH serves an older
+/// binary than the one maintaining the graph gets a plain warning instead of
+/// a trail of inexplicable errors (observed: a stale installed binary
+/// hard-failing on graph content a newer loom wrote). Version-only: two
+/// builds of the same version still drift silently, which this cannot see.
+const WRITER_VERSION_KEY: &str = "loom_writer_version";
+
+fn stamp_writer_version(store: &Store) {
+    let current = env!("CARGO_PKG_VERSION");
+    // Best-effort operational breadcrumb: never fail a real command over it.
+    if let Ok(stamped) = store.get_meta(WRITER_VERSION_KEY) {
+        if stamped.as_deref() != Some(current) {
+            let _ = store.set_meta(WRITER_VERSION_KEY, current);
+        }
+    }
+}
+
+fn parse_version(value: &str) -> Option<(u64, u64, u64)> {
+    let mut parts = value.split('.').map(|part| part.parse::<u64>().ok());
+    Some((parts.next()??, parts.next()??, parts.next()??))
+}
+
+fn warn_on_writer_drift(store: &Store) {
+    let current = env!("CARGO_PKG_VERSION");
+    let Ok(Some(stamped)) = store.get_meta(WRITER_VERSION_KEY) else {
+        return;
+    };
+    if let (Some(mine), Some(writer)) = (parse_version(current), parse_version(&stamped)) {
+        if mine < writer {
+            eprintln!(
+                "warning: this loom binary is v{current}, but the graph was last written by \
+                 loom v{stamped} — reads may misinterpret newer state; upgrade or rebuild \
+                 the binary on PATH"
+            );
+        }
+    }
+}
+
+/// Open the store for a single-fact write (a verdict or adjudication),
+/// absorbing brief graph-lock contention with a bounded, jittered retry.
+///
+/// The store's exclusive lock stays fail-fast (`lock_wait_ms`) — that contract
+/// protects long writers from queueing invisibly. But a verdict is one row and
+/// a journal line: when parallel sub-drivers collide on it, every driver was
+/// hand-rolling the same wait-and-retry loop the docs prescribe, and a missed
+/// retry misread infrastructure contention as a failed write. The retry lives
+/// here, at the door those commands share, so the playbook is the default.
+pub(crate) fn open_fact_write(graph: Option<&Path>) -> Result<Store> {
+    const ATTEMPTS: u32 = 4;
+    let root = resolve_root(graph)?;
+    let mut last = None;
+    for attempt in 0..ATTEMPTS {
+        match Store::open(&root) {
+            Ok(store) => return Ok(store),
+            Err(error)
+                if error
+                    .to_string()
+                    .contains(crate::store::LOCK_CONTENTION_MARKER) =>
+            {
+                // Deterministic jitter from pid+attempt: spreads colliding
+                // retries without pulling in a rng dependency.
+                let jitter = u64::from((std::process::id().wrapping_add(attempt * 7919)) % 500);
+                std::thread::sleep(std::time::Duration::from_millis(300 + jitter));
+                last = Some(error);
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    Err(last.expect("retry loop exits early unless a contention error was seen"))
 }
 
 /// Is a person operating this CLI right now? Silent — no prompt, no failure.
@@ -477,7 +551,9 @@ pub(crate) fn mediated_decision(response: String) -> Result<crate::ratification:
 /// each other; only a writer holding the boundary makes them wait.
 pub(crate) fn open_read(graph: Option<&Path>) -> Result<Store> {
     let root = resolve_root(graph)?;
-    Store::open_read(&root)
+    let store = Store::open_read(&root)?;
+    warn_on_writer_drift(&store);
+    Ok(store)
 }
 
 /// Read typed JSON configuration from meta. Absence means the type's default;

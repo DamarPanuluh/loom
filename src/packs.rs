@@ -108,10 +108,28 @@ fn count_exts(
     if depth > 6 {
         return;
     }
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
+    let entries = match std::fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(err) => {
+            // Recommendations are advisory, so keep the public API infallible while making omissions visible.
+            eprintln!(
+                "warning: could not inspect '{}' for pack guidance: {err}",
+                dir.display()
+            );
+            return;
+        }
     };
-    for e in entries.flatten() {
+    for entry in entries {
+        let e = match entry {
+            Ok(entry) => entry,
+            Err(err) => {
+                eprintln!(
+                    "warning: could not inspect an entry in '{}' for pack guidance: {err}",
+                    dir.display()
+                );
+                continue;
+            }
+        };
         let name = e.file_name().to_string_lossy().to_string();
         if name.starts_with('.') || name == "target" || name == "node_modules" {
             continue;

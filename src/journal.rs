@@ -558,6 +558,14 @@ pub fn minute_key(stamp: &str) -> Option<String> {
     Some(millis_to_iso(millis).chars().take(16).collect())
 }
 
+/// [`minute_key`] that also accepts an already-normalized `YYYY-MM-DDTHH:MM`
+/// minute (as printed in audit findings), by re-expanding it to a full stamp.
+/// One definition: the audit and the batch-authorization seal must normalize
+/// a human-quoted minute identically or an attestation could miss its burst.
+pub fn normalized_minute(stamp_or_minute: &str) -> Option<String> {
+    minute_key(stamp_or_minute).or_else(|| minute_key(&format!("{stamp_or_minute}:00.000Z")))
+}
+
 fn timestamp() -> String {
     let millis = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

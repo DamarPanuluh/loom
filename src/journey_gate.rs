@@ -370,8 +370,11 @@ impl CapsuleStore {
 
         self.validate_store_roots()?;
         // Collection is opportunistic: a stale damaged child or concurrently
-        // changing entry must never prevent issuance of a new continuation.
-        let _ = self.collect_stale(SystemTime::now());
+        // changing entry must never prevent issuance of a new continuation,
+        // but abandoning it silently would hide unbounded gate clutter.
+        if let Err(error) = self.collect_stale(SystemTime::now()) {
+            eprintln!("loom: stale Journey gate collection failed, continuing issuance: {error:#}");
+        }
         self.validate_store_roots()?;
 
         for _ in 0..16 {
@@ -396,7 +399,15 @@ impl CapsuleStore {
             };
             let installed = write_new_json(&paths.capsule, &capsule);
             if let Err(error) = installed {
-                let _ = fs::remove_dir_all(&paths.directory);
+                // The capsule write error is the answer issuance must return;
+                // cleanup is best-effort, but a failed cleanup leaves an
+                // allocated pending directory behind and must be said aloud.
+                if let Err(cleanup) = fs::remove_dir_all(&paths.directory) {
+                    eprintln!(
+                        "loom: failed to remove pending Journey gate continuation {}: {cleanup:#}",
+                        paths.directory.display()
+                    );
+                }
                 return Err(error);
             }
             return Ok(IssuedGate {

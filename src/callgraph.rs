@@ -16,6 +16,7 @@
 use crate::model::{NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
+use anyhow::Context;
 use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
@@ -256,9 +257,14 @@ fn symbols_of(store: &Store, cf: &crate::model::Node) -> Result<Vec<String>> {
     else {
         return Ok(Vec::new());
     };
-    Ok(serde_json::from_str::<BTreeMap<String, String>>(&json)
-        .map(|map| map.into_keys().collect())
-        .unwrap_or_default())
+    let symbols = serde_json::from_str::<BTreeMap<String, String>>(&json).with_context(|| {
+        format!(
+            "code file '{}' has malformed '{}' facet JSON",
+            cf.name,
+            crate::seed::SYMBOL_FINGERPRINTS_KEY
+        )
+    })?;
+    Ok(symbols.into_keys().collect())
 }
 
 /// The harness-executed test functions a code file defines, from the derived
@@ -268,7 +274,13 @@ fn test_symbols_of(store: &Store, cf: &crate::model::Node) -> Result<Vec<String>
     else {
         return Ok(Vec::new());
     };
-    Ok(serde_json::from_str::<Vec<String>>(&json).unwrap_or_default())
+    serde_json::from_str::<Vec<String>>(&json).with_context(|| {
+        format!(
+            "code file '{}' has malformed '{}' facet JSON",
+            cf.name,
+            crate::seed::TEST_SYMBOLS_KEY
+        )
+    })
 }
 
 /// The `caller > callee` pairs a file records, already split.
@@ -276,8 +288,14 @@ fn calls_of(store: &Store, cf: &crate::model::Node) -> Result<Vec<(String, Strin
     let Some(json) = store.get_facet(&cf.id, TargetKind::Node, crate::seed::CALLS_KEY)? else {
         return Ok(Vec::new());
     };
-    Ok(serde_json::from_str::<Vec<String>>(&json)
-        .unwrap_or_default()
+    let calls = serde_json::from_str::<Vec<String>>(&json).with_context(|| {
+        format!(
+            "code file '{}' has malformed '{}' facet JSON",
+            cf.name,
+            crate::seed::CALLS_KEY
+        )
+    })?;
+    Ok(calls
         .into_iter()
         .filter_map(|entry| {
             entry

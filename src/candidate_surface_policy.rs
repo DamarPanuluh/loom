@@ -237,19 +237,7 @@ pub fn inspect_surface(
         let static_argv = static_argv(operation)?;
         if operation.argv.first().map(String::as_str) != Some("loom") {
             requires_isolation = true;
-            inspections.push(OperationInspection {
-                operation_id: operation.id.clone(),
-                capability: DerivedCapability::ConfinedMutation,
-                outcome: "runtime_external_process_confined".into(),
-                nested: Vec::new(),
-            });
-            planned.insert(
-                operation.id.clone(),
-                PlannedOperation {
-                    declared: operation.clone(),
-                    capability: DerivedCapability::ConfinedMutation,
-                },
-            );
+            plan_external_process(operation, &mut inspections, &mut planned);
             continue;
         }
         let parsed = parse_cli(&static_argv)
@@ -265,43 +253,16 @@ pub fn inspect_surface(
             &mut nested,
         )?;
 
-        if let Some((name, command)) = validation_registration(&parsed) {
-            if registrations
-                .insert(name.clone(), command.clone())
-                .is_some()
-            {
-                bail!("surface registers Validation '{name}' more than once");
-            }
-            if run_names.contains(&name) {
-                let nested_capability = classify_validation_payload(&command, 1)?;
-                nested.push(NestedInspection {
-                    source: format!("validation:{name}:command"),
-                    capability: nested_capability,
-                    outcome: "approved_for_exact_manifest_run".into(),
-                });
-                if nested_capability.requires_isolation() {
-                    capability = DerivedCapability::ConfinedMutation;
-                }
-            } else {
-                nested.push(NestedInspection {
-                    source: format!("validation:{name}:command"),
-                    capability: DerivedCapability::ConfinedMutation,
-                    outcome: "stored_only_never_run".into(),
-                });
-            }
-        }
-        if let Some(name) = validation_run(&parsed) {
-            let command = registrations.get(&name).ok_or_else(|| {
-                anyhow!("Validation run '{name}' has no earlier exact manifest registration")
-            })?;
-            let nested_capability = classify_validation_payload(command, 1)?;
-            nested.push(NestedInspection {
-                source: format!("validation:{name}:run"),
-                capability: nested_capability,
-                outcome: "linked_to_exact_registration".into(),
-            });
-            capability = DerivedCapability::ConfinedMutation;
-        }
+        inspect_validation_flow(
+            &parsed,
+            "surface",
+            "exact manifest",
+            true,
+            &mut registrations,
+            &run_names,
+            &mut nested,
+            &mut capability,
+        )?;
 
         if exact_outer {
             capability = DerivedCapability::SuppressedOuter;
@@ -365,19 +326,7 @@ pub fn inspect_compiled_operations(
         let static_argv = static_argv(operation)?;
         if operation.argv.first().map(String::as_str) != Some("loom") {
             requires_isolation = true;
-            inspections.push(OperationInspection {
-                operation_id: operation.id.clone(),
-                capability: DerivedCapability::ConfinedMutation,
-                outcome: "runtime_external_process_confined".into(),
-                nested: Vec::new(),
-            });
-            planned.insert(
-                operation.id.clone(),
-                PlannedOperation {
-                    declared: operation.clone(),
-                    capability: DerivedCapability::ConfinedMutation,
-                },
-            );
+            plan_external_process(operation, &mut inspections, &mut planned);
             continue;
         }
         let parsed = parse_cli(&static_argv)
@@ -390,37 +339,16 @@ pub fn inspect_compiled_operations(
             0,
             &mut nested,
         )?;
-        if let Some((name, command)) = validation_registration(&parsed) {
-            if registrations
-                .insert(name.clone(), command.clone())
-                .is_some()
-            {
-                bail!("compiled surface registers Validation '{name}' more than once");
-            }
-            if run_names.contains(&name) {
-                let nested_capability = classify_validation_payload(&command, 1)?;
-                nested.push(NestedInspection {
-                    source: format!("validation:{name}:command"),
-                    capability: nested_capability,
-                    outcome: "approved_for_exact_manifest_run".into(),
-                });
-                if nested_capability.requires_isolation() {
-                    capability = DerivedCapability::ConfinedMutation;
-                }
-            }
-        }
-        if let Some(name) = validation_run(&parsed) {
-            let command = registrations.get(&name).ok_or_else(|| {
-                anyhow!("Validation run '{name}' has no earlier compiled registration")
-            })?;
-            let nested_capability = classify_validation_payload(command, 1)?;
-            nested.push(NestedInspection {
-                source: format!("validation:{name}:run"),
-                capability: nested_capability,
-                outcome: "linked_to_exact_registration".into(),
-            });
-            capability = DerivedCapability::ConfinedMutation;
-        }
+        inspect_validation_flow(
+            &parsed,
+            "compiled surface",
+            "compiled",
+            false,
+            &mut registrations,
+            &run_names,
+            &mut nested,
+            &mut capability,
+        )?;
         if operation.read_only && capability == DerivedCapability::ConfinedMutation {
             bail!(
                 "compiled operation '{}' is marked read_only but derives a mutation",
@@ -451,6 +379,87 @@ pub fn inspect_compiled_operations(
     })
 }
 
+/// The branch both inspection doors share for a non-loom executable: it never
+/// parses as CLI, derives a confined mutation, and forces isolation.
+fn plan_external_process(
+    operation: &CliOperation,
+    inspections: &mut Vec<OperationInspection>,
+    planned: &mut BTreeMap<String, PlannedOperation>,
+) {
+    inspections.push(OperationInspection {
+        operation_id: operation.id.clone(),
+        capability: DerivedCapability::ConfinedMutation,
+        outcome: "runtime_external_process_confined".into(),
+        nested: Vec::new(),
+    });
+    planned.insert(
+        operation.id.clone(),
+        PlannedOperation {
+            declared: operation.clone(),
+            capability: DerivedCapability::ConfinedMutation,
+        },
+    );
+}
+
+/// Validation registration/run linkage shared by both inspection doors.
+///
+/// The doors stay separate functions on purpose — authored surfaces get
+/// exact-outer suppression and detached-environment checks the compiled
+/// re-inspection must not inherit — so everything that DIFFERS arrives here
+/// as an explicit parameter: `context` labels the errors for the door that
+/// raised them, and `store_unrun` says whether an unrun registration is
+/// recorded as stored-only (authored door) or skipped (compiled door, which
+/// re-checks only payloads that actually run).
+#[allow(clippy::too_many_arguments)]
+fn inspect_validation_flow(
+    parsed: &Cli,
+    context: &str,
+    run_link_qualifier: &str,
+    store_unrun: bool,
+    registrations: &mut BTreeMap<String, String>,
+    run_names: &BTreeSet<String>,
+    nested: &mut Vec<NestedInspection>,
+    capability: &mut DerivedCapability,
+) -> Result<()> {
+    if let Some((name, command)) = validation_registration(parsed) {
+        if registrations
+            .insert(name.clone(), command.clone())
+            .is_some()
+        {
+            bail!("{context} registers Validation '{name}' more than once");
+        }
+        if run_names.contains(&name) {
+            let nested_capability = classify_validation_payload(&command, 1)?;
+            nested.push(NestedInspection {
+                source: format!("validation:{name}:command"),
+                capability: nested_capability,
+                outcome: "approved_for_exact_manifest_run".into(),
+            });
+            if nested_capability.requires_isolation() {
+                *capability = DerivedCapability::ConfinedMutation;
+            }
+        } else if store_unrun {
+            nested.push(NestedInspection {
+                source: format!("validation:{name}:command"),
+                capability: DerivedCapability::ConfinedMutation,
+                outcome: "stored_only_never_run".into(),
+            });
+        }
+    }
+    if let Some(name) = validation_run(parsed) {
+        let command = registrations.get(&name).ok_or_else(|| {
+            anyhow!("Validation run '{name}' has no earlier {run_link_qualifier} registration")
+        })?;
+        let nested_capability = classify_validation_payload(command, 1)?;
+        nested.push(NestedInspection {
+            source: format!("validation:{name}:run"),
+            capability: nested_capability,
+            outcome: "linked_to_exact_registration".into(),
+        });
+        *capability = DerivedCapability::ConfinedMutation;
+    }
+    Ok(())
+}
 fn validate_membership(
     spec: &crate::journey::JourneySpec,
     operations: &[CliOperation],

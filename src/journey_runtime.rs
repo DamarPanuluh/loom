@@ -2363,7 +2363,15 @@ fn suspend_human_decision(
         write_new_continuation(&issued.paths.runtime_state, &state)
     })();
     if let Err(error) = installed {
-        let _ = std::fs::remove_dir_all(&issued.paths.directory);
+        // Best-effort rollback of the half-installed continuation: the install
+        // error is the caller's failure, but a directory the rollback could
+        // not remove must leave a trace or the leak is invisible.
+        if let Err(cleanup) = std::fs::remove_dir_all(&issued.paths.directory) {
+            eprintln!(
+                "warning: failed to remove half-installed continuation {}: {cleanup}",
+                issued.paths.directory.display()
+            );
+        }
         return Err(error);
     }
     Ok(ExecutionOutcome::Pending(issued.pending))

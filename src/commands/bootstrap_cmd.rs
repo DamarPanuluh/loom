@@ -183,7 +183,19 @@ fn collect_candidates(root: &Path, codefiles: &[crate::model::Node]) -> Vec<Cand
     let tests_dir = root.join("tests");
     if tests_dir.is_dir() {
         if let Ok(entries) = fs::read_dir(&tests_dir) {
-            for entry in entries.flatten().take(6) {
+            for entry in entries.take(6) {
+                // Clue recovery is best-effort, but a dropped entry should
+                // leave a trace rather than silently shrinking the candidates.
+                let entry = match entry {
+                    Ok(entry) => entry,
+                    Err(error) => {
+                        eprintln!(
+                            "warning: skipping unreadable entry in {}: {error}",
+                            tests_dir.display()
+                        );
+                        continue;
+                    }
+                };
                 let path = entry.path();
                 if path.extension().and_then(|s| s.to_str()) != Some("rs") {
                     continue;

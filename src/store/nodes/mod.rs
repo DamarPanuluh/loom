@@ -9,3 +9,5 @@
 mod lookup;
 mod mutate;
 mod ratify;
+
+pub(crate) use lookup::NodeFilter;

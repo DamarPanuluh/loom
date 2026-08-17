@@ -399,10 +399,14 @@ pub fn push_policy() -> PushPolicy {
 fn common_journeys(store: &Store, selected: &BTreeSet<String>) -> Result<Vec<Node>> {
     let mut intersection: Option<BTreeSet<String>> = None;
     for intent_id in selected {
-        let ids: BTreeSet<String> = store
+        let nodes = store
             .edges_with(Some(EdgeKind::Derives), None, Some(intent_id))?
             .into_iter()
-            .filter_map(|edge| store.get_node(&edge.from_id).ok().flatten())
+            .map(|edge| store.get_node(&edge.from_id))
+            .collect::<Result<Vec<_>>>()?;
+        let ids: BTreeSet<String> = nodes
+            .into_iter()
+            .flatten()
             .filter(|node| node.node_type == NodeType::Journey && node.status == "authored")
             .map(|node| node.id)
             .collect();
@@ -821,6 +825,18 @@ fn isolated_git_bytes(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
     git_bytes_with_environment(root, args, true)
 }
 
+fn isolated_git_tracked_paths(root: &Path) -> Result<BTreeSet<String>> {
+    isolated_git_bytes(root, &["ls-files", "-z"])?
+        .split(|byte| *byte == 0)
+        .filter(|field| !field.is_empty())
+        .map(|field| {
+            std::str::from_utf8(field)
+                .context("isolated Git tracked path is not UTF-8")
+                .map(str::to_owned)
+        })
+        .collect()
+}
+
 fn git_bytes_with_environment(root: &Path, args: &[&str], isolated: bool) -> Result<Vec<u8>> {
     let mut command = Command::new("git");
     command
@@ -988,16 +1004,7 @@ pub(crate) fn materialize_isolated_git_snapshot(
     let mut add_args = vec!["add", "--force", "--"];
     add_args.extend(dirty_paths.iter().map(String::as_str));
     isolated_git_bytes(&snapshot_root, &add_args)?;
-    let tracked_raw = isolated_git_bytes(&snapshot_root, &["ls-files", "-z"])?;
-    let tracked: BTreeSet<String> = tracked_raw
-        .split(|byte| *byte == 0)
-        .filter(|field| !field.is_empty())
-        .map(|field| {
-            std::str::from_utf8(field)
-                .context("isolated Git tracked path is not UTF-8")
-                .map(str::to_owned)
-        })
-        .collect::<Result<_>>()?;
+    let tracked = isolated_git_tracked_paths(&snapshot_root)?;
     if tracked != expected {
         bail!("isolated Git fixture index contains paths outside the declared scope");
     }
@@ -1041,16 +1048,7 @@ pub(crate) fn verify_isolated_git_snapshot(
             bail!("isolated Git fixture repeats dirty path '{path}'");
         }
     }
-    let tracked_raw = isolated_git_bytes(snapshot_root, &["ls-files", "-z"])?;
-    let tracked: BTreeSet<String> = tracked_raw
-        .split(|byte| *byte == 0)
-        .filter(|field| !field.is_empty())
-        .map(|field| {
-            std::str::from_utf8(field)
-                .context("isolated Git tracked path is not UTF-8")
-                .map(str::to_owned)
-        })
-        .collect::<Result<_>>()?;
+    let tracked = isolated_git_tracked_paths(snapshot_root)?;
     if tracked != expected {
         bail!("isolated Git fixture index contains paths outside the declared scope");
     }

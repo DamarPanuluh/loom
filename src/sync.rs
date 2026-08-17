@@ -586,43 +586,7 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
         if store.grounding_role(&edge.id)? != crate::model::GroundingRole::Realizes {
             continue;
         }
-        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
-            continue;
-        };
-        let locator = locator.trim();
-        if locator.is_empty()
-            || crate::locator::is_module_scope(locator)
-            || crate::locator::is_anchor_locator(locator)
-        {
-            continue;
-        }
-        let Some(file) = store.get_node(&edge.to_id)? else {
-            continue;
-        };
-        // A missing FILE is already someone else's ripple; only judge the
-        // symbol when the file is there to look in.
-        if !root.join(&file.name).exists() {
-            continue;
-        }
-        // `resolve_locator` returns Some whenever the FILE is readable — the
-        // cardinality is carried separately, which is why `unique_locator_probe`
-        // reads match_count rather than the Option. A locator that matched
-        // nothing is the broken case; matching several is ambiguous but still
-        // points at real code, and the ripple already spares those.
-        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))
-            .map(|r| r.match_count)
-            .unwrap_or(0);
-        if matched > 0 {
-            continue;
-        }
-        // Name the anchor that fell: a cause that says only "a locator broke"
-        // leaves the reader to work out which one, and ring13 requires the
-        // symbol or the file by name.
-        let cause = format!("locator '{locator}' names no symbol in {}", file.name);
-        if store.stale_edge(&edge.id, &cause)? {
-            report.edges_staled += 1;
-            report.staled_edges.insert(edge.id.clone());
-        }
+        stale_unresolved_locator(store, root, &edge, false, report)?;
     }
     // `exercises` provenance makes the same symbol promise a realizing
     // grounding does, and nothing else re-checks it: the anchor machinery
@@ -633,36 +597,59 @@ fn ripple_locator_drift(store: &Store, root: &Path, report: &mut SyncReport) -> 
     // accepted surface's canonical projection, and its door is journey
     // compile/run.
     for edge in store.edges_with(Some(EdgeKind::Exercises), None, None)? {
-        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
-            continue;
-        };
-        let locator = locator.trim();
-        if locator.is_empty()
-            || crate::locator::is_module_scope(locator)
-            || crate::locator::is_anchor_locator(locator)
-        {
-            continue;
-        }
         if crate::completeness::compiler_owned_proof_edge(store, &edge)?.is_some() {
             continue;
         }
-        let Some(file) = store.get_node(&edge.to_id)? else {
-            continue;
-        };
-        if !root.join(&file.name).exists() {
-            continue;
-        }
-        let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))
-            .map(|r| r.match_count)
-            .unwrap_or(0);
-        if matched > 0 {
-            continue;
-        }
-        let cause = format!("locator '{locator}' names no symbol in {}", file.name);
-        if store.stale_edge(&edge.id, &cause)? || store.stale_uninspected_edge(&edge.id, &cause)? {
-            report.edges_staled += 1;
-            report.staled_edges.insert(edge.id.clone());
-        }
+        stale_unresolved_locator(store, root, &edge, true, report)?;
+    }
+    Ok(())
+}
+
+fn stale_unresolved_locator(
+    store: &Store,
+    root: &Path,
+    edge: &crate::model::Edge,
+    include_uninspected: bool,
+    report: &mut SyncReport,
+) -> Result<()> {
+    let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
+        return Ok(());
+    };
+    let locator = locator.trim();
+    if locator.is_empty()
+        || crate::locator::is_module_scope(locator)
+        || crate::locator::is_anchor_locator(locator)
+    {
+        return Ok(());
+    }
+    let Some(file) = store.get_node(&edge.to_id)? else {
+        return Ok(());
+    };
+    // A missing FILE is already someone else's ripple; only judge the
+    // symbol when the file is there to look in.
+    if !root.join(&file.name).exists() {
+        return Ok(());
+    }
+    // `resolve_locator` returns Some whenever the FILE is readable — the
+    // cardinality is carried separately, which is why `unique_locator_probe`
+    // reads match_count rather than the Option. A locator that matched
+    // nothing is the broken case; matching several is ambiguous but still
+    // points at real code, and the ripple already spares those.
+    let matched = crate::runner::resolve_locator(root, &file.name, Some(locator))
+        .map(|r| r.match_count)
+        .unwrap_or(0);
+    if matched > 0 {
+        return Ok(());
+    }
+    // Name the anchor that fell: a cause that says only "a locator broke"
+    // leaves the reader to work out which one, and ring13 requires the
+    // symbol or the file by name.
+    let cause = format!("locator '{locator}' names no symbol in {}", file.name);
+    if store.stale_edge(&edge.id, &cause)?
+        || (include_uninspected && store.stale_uninspected_edge(&edge.id, &cause)?)
+    {
+        report.edges_staled += 1;
+        report.staled_edges.insert(edge.id.clone());
     }
     Ok(())
 }

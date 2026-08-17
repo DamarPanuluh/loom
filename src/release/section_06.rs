@@ -102,6 +102,29 @@ impl ProcessSandbox {
 
 struct ExternalProcessTemp(PathBuf);
 
+/// Allocate a fresh, collision-safe directory under `parent`, named
+/// `<prefix>-<pid>-<nanos>-<sequence>`. Both detached owners (the process
+/// temp and the release candidate) share this one allocator so their retry
+/// bounds, naming, and exhaustion behavior cannot drift apart.
+fn allocate_detached_dir(parent: &Path, prefix: &str, exhausted: &str) -> Result<PathBuf> {
+    for sequence in 0..1000_u32 {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let path = parent.join(format!(
+            "{prefix}-{}-{nanos}-{sequence}",
+            std::process::id()
+        ));
+        match fs::create_dir(&path) {
+            Ok(()) => return Ok(path),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
+    bail!("{exhausted}")
+}
+
 impl ExternalProcessTemp {
     fn allocate(candidate: &Path) -> Result<Self> {
         let candidate = candidate.canonicalize()?;
@@ -112,32 +135,15 @@ impl ExternalProcessTemp {
         if parent.starts_with(&candidate) {
             bail!("release process temp parent must be outside the candidate");
         }
-        for sequence in 0..1000_u32 {
-            let nanos = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map(|duration| duration.as_nanos())
-                .unwrap_or_default();
-            let path = parent.join(format!(
-                "loom-release-process-temp-{}-{nanos}-{sequence}",
-                std::process::id()
-            ));
-            match fs::create_dir(&path) {
-                Ok(()) => return Ok(Self(path)),
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(error) => return Err(error.into()),
-            }
-        }
-        bail!("could not allocate detached release process temp root")
+        Ok(Self(allocate_detached_dir(
+            &parent,
+            "loom-release-process-temp",
+            "could not allocate detached release process temp root",
+        )?))
     }
 
     fn path(&self) -> &Path {
         &self.0
-    }
-}
-
-impl Drop for ExternalProcessTemp {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.0);
     }
 }
 
@@ -296,22 +302,11 @@ impl DetachedCandidate {
         if parent == live_root || parent.starts_with(&live_root) {
             bail!("release rehearsal temp root must be outside the caller repository");
         }
-        for sequence in 0..1000_u32 {
-            let nanos = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map(|duration| duration.as_nanos())
-                .unwrap_or_default();
-            let path = parent.join(format!(
-                "loom-release-{label}-{}-{nanos}-{sequence}",
-                std::process::id()
-            ));
-            match fs::create_dir(&path) {
-                Ok(()) => return Ok(Self(path)),
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(error) => return Err(error.into()),
-            }
-        }
-        bail!("could not allocate detached release candidate")
+        Ok(Self(allocate_detached_dir(
+            &parent,
+            &format!("loom-release-{label}"),
+            "could not allocate detached release candidate",
+        )?))
     }
 
     fn copy(

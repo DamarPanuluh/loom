@@ -1,5 +1,24 @@
 use super::super::*;
 
+/// The fixed node filters [`Store::find_nodes_by`] can compose. An enum, not
+/// a raw SQL fragment: every clause renders as a constant template that binds
+/// exactly one value, so no caller text can widen or reshape the query.
+pub(crate) enum NodeFilter {
+    ExactName,
+    IdPrefix,
+    NameFragment,
+}
+
+impl NodeFilter {
+    fn sql(self) -> &'static str {
+        match self {
+            Self::ExactName => "name = ?1",
+            Self::IdPrefix => "id LIKE ?1",
+            Self::NameFragment => "name LIKE ?1",
+        }
+    }
+}
+
 impl Store {
     // ---- nodes -----------------------------------------------------------
 
@@ -93,7 +112,7 @@ impl Store {
         }
         let type_filter = node_type.map(|t| t.as_str());
         // exact name first
-        let mut exact = self.find_nodes_by("name = ?1", params![key], type_filter)?;
+        let mut exact = self.find_nodes_by(NodeFilter::ExactName, params![key], type_filter)?;
         if exact.len() == 1 {
             return exact
                 .pop()
@@ -119,15 +138,18 @@ impl Store {
         // and on an ambiguous/empty prefix falls through to the name logic below
         // rather than bailing, so it can never break a currently-working lookup.
         if key.len() >= 4 && key.chars().all(|c| c.is_ascii_hexdigit()) {
-            let by_id =
-                self.find_nodes_by("id LIKE ?1", params![format!("{key}%")], type_filter)?;
+            let by_id = self.find_nodes_by(
+                NodeFilter::IdPrefix,
+                params![format!("{key}%")],
+                type_filter,
+            )?;
             if by_id.len() == 1 {
                 return Ok(by_id.into_iter().next().expect("len == 1 checked above"));
             }
         }
         // unique fragment
         let frag = format!("%{key}%");
-        let matches = self.find_nodes_by("name LIKE ?1", params![frag], type_filter)?;
+        let matches = self.find_nodes_by(NodeFilter::NameFragment, params![frag], type_filter)?;
         match matches.len() {
             0 => bail!("no node matches '{key}'"),
             1 => Ok(matches.into_iter().next().expect("len == 1 by match arm")),
@@ -162,19 +184,20 @@ impl Store {
 
     pub(crate) fn find_nodes_by(
         &self,
-        where_clause: &str,
+        filter: NodeFilter,
         params: &[&dyn rusqlite::ToSql],
         type_filter: Option<&str>,
     ) -> Result<Vec<Node>> {
+        let clause = filter.sql();
         let sql = if let Some(t) = type_filter {
             format!(
                 "SELECT {NODE_COLS}
-                 FROM node WHERE {where_clause} AND node_type='{t}' ORDER BY id"
+                 FROM node WHERE {clause} AND node_type='{t}' ORDER BY id"
             )
         } else {
             format!(
                 "SELECT {NODE_COLS}
-                 FROM node WHERE {where_clause} ORDER BY id"
+                 FROM node WHERE {clause} ORDER BY id"
             )
         };
         let mut stmt = self.conn.prepare(&sql)?;

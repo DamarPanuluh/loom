@@ -9,7 +9,7 @@
 use crate::extract::{extract, Role};
 use crate::store::Store;
 use crate::Result;
-use anyhow::{anyhow, bail};
+use anyhow::{anyhow, bail, Context};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -184,9 +184,13 @@ pub fn calibrate(store: &Store, root: &Path) -> Result<Calibration> {
     let mut nesting = Vec::new();
     let mut args = Vec::new();
     for cf in store.codefiles()? {
-        let Ok(content) = std::fs::read_to_string(root.join(&cf.name)) else {
-            continue;
-        };
+        let path = root.join(&cf.name);
+        let content = std::fs::read_to_string(&path).with_context(|| {
+            format!(
+                "failed to read registered codefile '{}' during threshold calibration",
+                path.display()
+            )
+        })?;
         let ex = extract(&cf.name, &content);
         file_locs.push(ex.loc as f64);
         if ex.role != Role::Source {

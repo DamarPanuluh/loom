@@ -145,9 +145,16 @@ fn validation_show(store: &Store, json: bool, key: String) -> Result<()> {
     let validates = validation_targets(store, &val.id)?;
     // The grade, with every conjunct that produced it. A number nobody
     // can argue with is a number nobody can act on.
-    let witness: Option<crate::proofstrength::StrengthWitness> = store
-        .get_facet(&val.id, crate::model::TargetKind::Node, "proof_strength")?
-        .and_then(|j| serde_json::from_str(&j).ok());
+    let witness: Option<crate::proofstrength::StrengthWitness> =
+        match store.get_facet(&val.id, crate::model::TargetKind::Node, "proof_strength")? {
+            Some(j) => Some(serde_json::from_str(&j).with_context(|| {
+                format!(
+                    "proof_strength facet on '{}' is malformed — run `loom sync` to regrade",
+                    val.name
+                )
+            })?),
+            None => None,
+        };
     if json {
         println!(
             "{}",

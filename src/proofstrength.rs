@@ -1454,11 +1454,7 @@ fn dedup_entries(entries: &mut Vec<EntryEvidence>) {
 
 /// Journey-specific S2 guidance. Never recommends `loom edge exercises` for
 /// compiler-owned proofs.
-fn journey_s2_next(
-    entries: &[EntryEvidence],
-    call_evidence: &Option<CallEvidenceWitness>,
-    provenance_problems: Option<&str>,
-) -> String {
+fn journey_s2_next(entries: &[EntryEvidence], provenance_problems: Option<&str>) -> String {
     let suffix = " Update the authored surface manifest, then run `loom journey surface-accept`, `loom journey compile`, and `loom journey run`.";
     if let Some(problems) = provenance_problems {
         return format!(
@@ -1490,8 +1486,6 @@ fn journey_s2_next(
             "compiled Journey is S2: an operation exercise's observed_by assertion was missing or did not pass on the compiled run.{suffix}"
         );
     }
-    // Eligible declared entries existed but no call witness was earned.
-    let _ = call_evidence;
     format!(
         "compiled Journey is S2: the declared operation exercise entry does not reach a realizing grounding for the Intent.{suffix}"
     )
@@ -1641,7 +1635,7 @@ pub fn grade(
     if w.call_witness.is_none() {
         w.grade = Strength::S2.as_str().into();
         w.next = if compiled_proves.is_some() {
-            journey_s2_next(&entries, &w.call_evidence, provenance_problems.as_deref())
+            journey_s2_next(&entries, provenance_problems.as_deref())
         } else {
             match &w.call_evidence {
                 Some(evidence) if evidence.source == "intent_wide_fallback" => format!(
@@ -1808,7 +1802,7 @@ mod tests {
         )
         .unwrap();
 
-        let store = Store::init(&root, Some("multi-symbol witness"), false).unwrap();
+        let store = Store::init_with_identity(&root, Some("multi-symbol witness"), false, crate::identity::ExecutionIdentity::solo()).unwrap();
         let intent = node(&store, NodeType::Intent, "release recovery path works");
         let implementation = node(&store, NodeType::CodeFile, "src/subjects.rs");
         let realizing = store

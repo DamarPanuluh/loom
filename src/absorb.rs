@@ -20,6 +20,7 @@
 use crate::model::{NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
@@ -144,9 +145,8 @@ pub fn observe(store: &Store, root: &Path) -> Result<Vec<Item>> {
     }
 
     for cf in store.list_nodes(Some(NodeType::CodeFile), usize::MAX)? {
-        let Ok(content) = std::fs::read_to_string(root.join(&cf.name)) else {
-            continue;
-        };
+        let content = std::fs::read_to_string(root.join(&cf.name))
+            .with_context(|| format!("reading registered CodeFile '{}'", cf.name))?;
         let extraction = crate::extract::extract(&cf.name, &content);
         let live: BTreeSet<String> = extraction.symbols.iter().map(|s| s.name.clone()).collect();
 

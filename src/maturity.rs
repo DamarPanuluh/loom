@@ -91,11 +91,18 @@ pub fn validation_summary(store: &Store) -> Result<ValidationSummary> {
         // edge counts already exclude it; counting the node keeps reporting
         // "1 failed" after the behavior was deliberately removed, which sends
         // an operator looking for a repair that does not exist.
-        let retired = store
-            .edges_with(Some(EdgeKind::Validates), Some(&v.id), None)?
-            .into_iter()
-            .filter_map(|e| store.get_node(&e.to_id).ok().flatten())
-            .any(|n| n.status == "deprecated");
+        let mut retired = false;
+        for e in store.edges_with(Some(EdgeKind::Validates), Some(&v.id), None)? {
+            // A store failure must propagate: silently treating a retired
+            // proof as active would misroute the compass to phantom repair.
+            if store
+                .get_node(&e.to_id)?
+                .is_some_and(|n| n.status == "deprecated")
+            {
+                retired = true;
+                break;
+            }
+        }
         if retired {
             continue;
         }

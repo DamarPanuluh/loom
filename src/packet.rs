@@ -33,13 +33,14 @@ pub struct Served {
 }
 
 fn mint(kind: &str, target: &str) -> Served {
-    let millis = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
+    let timestamp = match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(duration) => duration.as_millis().to_string(),
+        // Batch minting is infallible, so retain the clock state in the id instead of inventing an epoch.
+        Err(error) => format!("pre-epoch-{}", error.duration().as_millis()),
+    };
     let seq = SEQUENCE.fetch_add(1, Ordering::Relaxed);
     Served {
-        id: format!("pkt-{millis}-{seq}"),
+        id: format!("pkt-{timestamp}-{seq}"),
         kind: kind.to_string(),
         target: target.to_string(),
     }

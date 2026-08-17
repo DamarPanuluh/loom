@@ -209,7 +209,7 @@ impl JudgmentBurstBucket {
         minute: &str,
         claim: crate::batch_auth::BatchClaim,
     ) -> Result<Option<Self>> {
-        let Some(minute) = normalized_minute(minute) else {
+        let Some(minute) = crate::journal::normalized_minute(minute) else {
             return Ok(None);
         };
         Ok(Self::group(store)?.into_iter().find(|bucket| {
@@ -287,11 +287,6 @@ where
             },
         )
         .collect())
-}
-
-fn normalized_minute(stamp_or_minute: &str) -> Option<String> {
-    crate::journal::minute_key(stamp_or_minute)
-        .or_else(|| crate::journal::minute_key(&format!("{stamp_or_minute}:00.000Z")))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -715,20 +710,22 @@ pub fn backlog(store: &Store) -> Result<Vec<AuditFinding>> {
         }
     }
     for issue in crate::signal::doctor(store)? {
-        let subject = issue
+        // Resolve the message's 32-hex token to its live subject; a store
+        // failure propagates (an audit that silently reclassifies on a read
+        // error would undercount its own subjects), while genuine absence
+        // still falls back to the graph — never dropped.
+        let mut subject = AuditSubject::Graph(issue.kind.clone());
+        if let Some(id) = issue
             .message
             .split_whitespace()
             .find(|token| token.len() == 32 && token.chars().all(|c| c.is_ascii_hexdigit()))
-            .map(|id| {
-                if store.get_node(id).ok().flatten().is_some() {
-                    AuditSubject::Node(id.to_string())
-                } else if store.get_edge(id).ok().flatten().is_some() {
-                    AuditSubject::Edge(id.to_string())
-                } else {
-                    AuditSubject::Graph(issue.kind.clone())
-                }
-            })
-            .unwrap_or_else(|| AuditSubject::Graph(issue.kind.clone()));
+        {
+            if store.get_node(id)?.is_some() {
+                subject = AuditSubject::Node(id.to_string());
+            } else if store.get_edge(id)?.is_some() {
+                subject = AuditSubject::Edge(id.to_string());
+            }
+        }
         out.push(AuditFinding {
             kind: "doctor_issue",
             subject,
@@ -964,7 +961,7 @@ pub fn efficacy(store: &Store) -> Result<Efficacy> {
     // intent counts when that intent's grounding was established.
     let mut node_settled: BTreeMap<String, String> = settled_at.clone();
     for (subject, at) in &settled_at {
-        if let Ok(Some(edge)) = store.get_edge(subject) {
+        if let Some(edge) = store.get_edge(subject)? {
             for endpoint in [edge.from_id, edge.to_id] {
                 node_settled
                     .entry(endpoint)

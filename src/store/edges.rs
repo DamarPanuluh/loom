@@ -479,13 +479,17 @@ impl Store {
         }
         self.check_lane(registry::spec(e.kind).owner)?;
         self.validate_edge_endpoints(e.kind, &e.from_id, new_to, TruthClass::Asserted)?;
-        // A live edge of the same kind already bridging these endpoints would
-        // make the retarget a silent duplicate: refuse and name it.
-        if let Some(dup) = self
-            .edges_with(Some(e.kind), Some(&e.from_id), Some(new_to))?
-            .into_iter()
-            .find(|x| x.id != e.id && !self.edge_superseded(&x.id).unwrap_or(false))
-        {
+        // make the retarget a silent duplicate: refuse and name it. Resolve
+        // supersession before selecting so a failed store lookup cannot turn a
+        // duplicate into an apparently available target.
+        let mut duplicate = None;
+        for candidate in self.edges_with(Some(e.kind), Some(&e.from_id), Some(new_to))? {
+            if candidate.id != e.id && !self.edge_superseded(&candidate.id)? {
+                duplicate = Some(candidate);
+                break;
+            }
+        }
+        if let Some(dup) = duplicate {
             bail!(
                 "a live {} edge from this {} already targets '{new_to}' [{}] — \
                  retarget would duplicate it; remove one (loom edge remove {}) first",

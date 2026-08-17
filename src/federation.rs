@@ -220,20 +220,7 @@ fn reconcile_shadows(
                 )?;
             }
             None => {
-                // New upstream intent — create shadow.
-                let shadow_name = format!("upstream/{}/{}", alias, node.name);
-                let body = serde_json::json!({
-                    "graph_id": export.graph_id,
-                    "node_id": node.id,
-                    "alias": alias,
-                });
-                let created = store.add_node(
-                    NodeType::UpstreamIntent,
-                    &shadow_name,
-                    &node.description,
-                    &node.status,
-                    body,
-                )?;
+                let created = add_shadow_node(store, &export.graph_id, alias, node)?;
                 write_upstream_facets(store, &created.id, node, &upstream_hash)?;
                 report.shadows_created += 1;
             }
@@ -270,6 +257,31 @@ fn reconcile_shadows(
     }
 
     Ok(())
+}
+
+/// Mint one UpstreamIntent shadow carrying its upstream provenance. The link
+/// command and the sync refresher must build byte-identical shadows — name,
+/// body, and status alike — or a relink would read its own earlier work as
+/// upstream drift.
+pub(crate) fn add_shadow_node(
+    store: &Store,
+    graph_id: &str,
+    alias: &str,
+    node: &crate::model::Node,
+) -> Result<crate::model::Node> {
+    let shadow_name = format!("upstream/{}/{}", alias, node.name);
+    let body = serde_json::json!({
+        "graph_id": graph_id,
+        "node_id": node.id,
+        "alias": alias,
+    });
+    store.add_node(
+        NodeType::UpstreamIntent,
+        &shadow_name,
+        &node.description,
+        &node.status,
+        body,
+    )
 }
 
 fn stale_dependents(

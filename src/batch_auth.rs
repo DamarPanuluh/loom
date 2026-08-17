@@ -479,7 +479,7 @@ fn is_contemporaneous(
     burst_minute: &str,
     latest_assertion_millis: i64,
 ) -> bool {
-    let Some(burst_minute) = normalized_minute(burst_minute) else {
+    let Some(burst_minute) = crate::journal::normalized_minute(burst_minute) else {
         return false;
     };
     let Some(envelope_minute) = journal::minute_key(envelope_ts) else {
@@ -553,11 +553,6 @@ fn evidence_is_human_authorization(entry: &journal::Entry, subject_digest: &str)
         .map(|e| !e.trim().is_empty())
         .unwrap_or(false);
     operation == Some("ratify") && has_human && has_evidence
-}
-
-fn normalized_minute(stamp_or_minute: &str) -> Option<String> {
-    journal::minute_key(stamp_or_minute)
-        .or_else(|| journal::minute_key(&format!("{stamp_or_minute}:00.000Z")))
 }
 
 /// Find a valid covering envelope for a burst bucket.
@@ -646,7 +641,7 @@ pub fn covering_envelopes(
     if burst_subjects.is_empty() {
         return Ok(None);
     }
-    let Some(burst_minute) = normalized_minute(minute) else {
+    let Some(burst_minute) = crate::journal::normalized_minute(minute) else {
         return Ok(None);
     };
 

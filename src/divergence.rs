@@ -627,7 +627,7 @@ mod tests {
         use crate::model::{EdgeKind, GroundingRole, TargetKind, TruthClass};
 
         let tmp = Tmp::new("dup-verifies");
-        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let store = Store::init_with_identity(tmp.path(), Some("t"), false, crate::identity::ExecutionIdentity::solo()).unwrap();
         let a = store
             .add_node(
                 NodeType::Intent,
@@ -693,7 +693,7 @@ mod tests {
         use crate::model::{EdgeKind, TargetKind, TruthClass};
 
         let tmp = Tmp::new("dup-reorder");
-        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let store = Store::init_with_identity(tmp.path(), Some("t"), false, crate::identity::ExecutionIdentity::solo()).unwrap();
         let a = store
             .add_node(
                 NodeType::Intent,
@@ -808,7 +808,7 @@ mod tests {
     #[test]
     fn imported_ratification_is_authority_voided_not_meaning_drift() {
         let tmp = Tmp::new("authority-voided");
-        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        let store = Store::init_with_identity(tmp.path(), Some("t"), false, crate::identity::ExecutionIdentity::solo()).unwrap();
         let intent = store
             .add_node(
                 NodeType::Intent,

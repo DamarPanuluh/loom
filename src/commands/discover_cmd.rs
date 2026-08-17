@@ -604,7 +604,19 @@ fn count_exts(
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
-    for e in entries.flatten() {
+    for e in entries {
+        // Advisory language census: an unreadable entry must not abort the
+        // scan, but a silent drop would undercount without a trace.
+        let e = match e {
+            Ok(e) => e,
+            Err(error) => {
+                eprintln!(
+                    "warning: skipping unreadable entry in {}: {error}",
+                    dir.display()
+                );
+                continue;
+            }
+        };
         let name = e.file_name().to_string_lossy().to_string();
         if name.starts_with('.') || name == "target" || name == "node_modules" {
             continue;

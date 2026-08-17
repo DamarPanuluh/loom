@@ -1923,7 +1923,21 @@ fn imports_by_file(snap: &Snapshot) -> BTreeMap<String, Vec<String>> {
     let mut out = BTreeMap::new();
     for f in &snap.facets {
         if f.key == "imports" {
-            let list: Vec<String> = serde_json::from_str(&f.value).unwrap_or_default();
+            // A malformed derived facet must not silently disable the
+            // coupling/layering checks that read it: name the corruption so
+            // the operator can rebuild (`loom sync`) instead of trusting a
+            // quietly emptied import map.
+            let list: Vec<String> = match serde_json::from_str(&f.value) {
+                Ok(list) => list,
+                Err(error) => {
+                    eprintln!(
+                        "warning: derived 'imports' facet on {} is malformed ({error}) — \
+                         coupling checks skip this file until the next sync rebuilds it",
+                        f.target_id
+                    );
+                    continue;
+                }
+            };
             if !list.is_empty() {
                 out.insert(f.target_id.clone(), list);
             }
