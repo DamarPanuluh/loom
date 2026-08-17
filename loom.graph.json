@@ -37936,6 +37936,20 @@
       "updated_at": "2026-08-17T07:36:02.531Z"
     },
     {
+      "id": "7219f3db7c51d7398c627c1d4b93bd03",
+      "from_id": "7d61e23f99627cee331dd38d055e99c2",
+      "to_id": "5345985b41a16ffdade0d603bced3643",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "Independent claim truth under a shared subprocess is a property of the dispatcher's execution-plan cache: one plan runs once while each validation still settles its own verdict.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm:builder",
+      "created_at": "2026-08-17T08:25:51.283Z",
+      "updated_at": "2026-08-17T08:25:51.286Z"
+    },
+    {
       "id": "7286d68efa91ffae00ba6195d78c0f1c",
       "from_id": "197dfd42886e121e6ca822065e390648",
       "to_id": "0d0cfe4a0497a60b7f286d64d8a7723b",
@@ -47150,6 +47164,20 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d7d052b842bfdeda3748762e1a193814",
+      "from_id": "68e80c57771ccb2dd8c543fffaa50dfe",
+      "to_id": "5345985b41a16ffdade0d603bced3643",
+      "kind": "requires",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "The one-verdict-each failure semantics exist inside the dispatcher's batch runner: the cached failed ProofOutcome is replayed per validation by the same loop that dispatches runners.",
+      "confidence": 0.9,
+      "depends_on": [],
+      "inspected_by": "llm:builder",
+      "created_at": "2026-08-17T08:25:51.269Z",
+      "updated_at": "2026-08-17T08:25:51.280Z"
     },
     {
       "id": "d7d57029a3dc63111",
@@ -56445,6 +56473,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f2d18a0b3f1809c9f",
+      "subject_kind": "edge",
+      "subject_id": "7219f3db7c51d7398c627c1d4b93bd03",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "Independent claim truth under a shared subprocess is a property of the dispatcher's execution-plan cache: one plan runs once while each validation still settles its own verdict.",
+      "verification": "cited",
+      "confidence": 0.9,
+      "asserted_by": "llm:builder",
+      "asserted_profile": "drain-2026-08-17",
+      "asserted_at": "2026-08-17T08:25:51.285Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f2d1c6b9fb1ecbe6c",
       "subject_kind": "node",
       "subject_id": "6e0cbb96748eb410df5f94b5c60c1709",
@@ -56725,6 +56767,20 @@
       "confidence": 0.9,
       "asserted_by": "llm:analyzer",
       "asserted_at": "2026-08-16T03:56:28.048Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f2f5675044e180165",
+      "subject_kind": "edge",
+      "subject_id": "d7d052b842bfdeda3748762e1a193814",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "The one-verdict-each failure semantics exist inside the dispatcher's batch runner: the cached failed ProofOutcome is replayed per validation by the same loop that dispatches runners.",
+      "verification": "cited",
+      "confidence": 0.9,
+      "asserted_by": "llm:builder",
+      "asserted_profile": "drain-2026-08-17",
+      "asserted_at": "2026-08-17T08:25:51.279Z",
       "decision_mode": "individual"
     },
     {
@@ -88048,6 +88104,30 @@
       "recorded_at": "2026-08-16T04:19:26.388Z"
     },
     {
+      "id": "e18f0fb2b6e1784b5",
+      "fact_id": "f2d18a0b3f1809c9f",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/proof_cmd/validate.rs:119-126 — observations HashMap keyed by CommandExecutionPlan inside run_validation_batch; :155-167 apply_validation_outcome per node"
+      },
+      "recorded_at": "2026-08-17T08:25:51.285Z"
+    },
+    {
+      "id": "ed2e2a837d8d2c2c9",
+      "fact_id": "f2d18a0b3f1809c9f",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/proof_cmd/validate.rs",
+        "start": 119,
+        "end": 126,
+        "hash": "ad9cd5910be217f1",
+        "symbol": "run_validation_batch",
+        "symbol_hash": "bcfb357f2f4318eb",
+        "symbol_offset": 12
+      },
+      "recorded_at": "2026-08-17T08:25:51.285Z"
+    },
+    {
       "id": "eb89990498ed08da3",
       "fact_id": "f2d1c6b9fb1ecbe6c",
       "payload": {
@@ -88915,6 +88995,30 @@
         "hash": "0923080f9be2768e"
       },
       "recorded_at": "2026-08-16T03:56:28.048Z"
+    },
+    {
+      "id": "e0c3bb3a78f9ad3a0",
+      "fact_id": "f2f5675044e180165",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/proof_cmd/validate.rs",
+        "start": 144,
+        "end": 167,
+        "hash": "1d9bd442ac423043",
+        "symbol": "run_validation_batch",
+        "symbol_hash": "bcfb357f2f4318eb",
+        "symbol_offset": 37
+      },
+      "recorded_at": "2026-08-17T08:25:51.279Z"
+    },
+    {
+      "id": "e6d252ecefa238ab1",
+      "fact_id": "f2f5675044e180165",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/proof_cmd/validate.rs:144-167 — observations cache replays the outcome per validation inside run_validation_batch, the dispatcher's loop (:140-142 runner_for dispatch)"
+      },
+      "recorded_at": "2026-08-17T08:25:51.279Z"
     },
     {
       "id": "e3ad4522339b4e853",
@@ -155336,6 +155440,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "7219f3db7c51d7398c627c1d4b93bd03",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/proof_cmd/validate.rs\",\"start\":119,\"end\":126,\"hash\":\"ad9cd5910be217f1\",\"symbol\":\"run_validation_batch\",\"symbol_hash\":\"bcfb357f2f4318eb\",\"symbol_offset\":12}]",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "7247c92c3c054f99e993d58aa8074959",
       "target_kind": "node",
       "key": "proof_strength",
@@ -166576,6 +166687,13 @@
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"6 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "d7d052b842bfdeda3748762e1a193814",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/proof_cmd/validate.rs\",\"start\":144,\"end\":167,\"hash\":\"1d9bd442ac423043\",\"symbol\":\"run_validation_batch\",\"symbol_hash\":\"bcfb357f2f4318eb\",\"symbol_offset\":37}]",
+      "truth_class": "asserted"
     },
     {
       "target_id": "d80ce4b1c200e00240a81222b27ab325",

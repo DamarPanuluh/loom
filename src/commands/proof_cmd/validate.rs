@@ -2,14 +2,35 @@ use super::*;
 
 pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: bool) -> Result<()> {
     let store = open(graph)?;
-    let vals = collect_validations(&store, key, all)?;
+    let mut vals = collect_validations(&store, key, all)?;
+    let mut skipped_journeys = Vec::new();
+    if all {
+        // `--all` means "every pending proof this door can run". Journey
+        // validations have their own door (`loom journey run`); skipping them
+        // keeps the batch running instead of aborting it on the first one.
+        let mut runnable = Vec::with_capacity(vals.len());
+        for validation in vals {
+            if compiler_owned_or_journey(&store, &validation)? {
+                skipped_journeys.push(validation);
+            } else {
+                runnable.push(validation);
+            }
+        }
+        vals = runnable;
+    }
+    for validation in &skipped_journeys {
+        eprintln!(
+            "skipping compiler-owned Journey validation '{}'; run it with `loom journey run <journey> --profile <profile>`",
+            validation.name
+        );
+    }
     if vals.is_empty() {
         return pulse::emit_line(
             &store,
             json,
             serde_json::json!({
                 "ran": [],
-                "summary": { "passed": 0, "failed": 0, "blocked": 0, "skipped": 0 },
+                "summary": { "passed": 0, "failed": 0, "blocked": 0, "skipped": skipped_journeys.len() },
             }),
             "loom status",
             "no validations to run",
@@ -19,7 +40,7 @@ pub(crate) fn validate_cmd(graph: Option<&Path>, key: &str, all: bool, json: boo
     let root = store.root().to_path_buf();
     let execution = store.execution_identity();
     drop(store);
-    run_validation_batch(&root, execution, &vals, json)
+    run_validation_batch(&root, execution, &vals, skipped_journeys.len(), json)
 }
 
 fn collect_validations(store: &Store, key: &str, all: bool) -> Result<Vec<crate::model::Node>> {
@@ -45,6 +66,19 @@ fn collect_validations(store: &Store, key: &str, all: bool) -> Result<Vec<crate:
             Err(_) => Err(intent_error),
         },
     }
+}
+
+/// Is this validation owned by the Journey compiler (or typed `journey`)?
+/// Such proofs run only through `loom journey run`.
+fn compiler_owned_or_journey(store: &Store, validation: &crate::model::Node) -> Result<bool> {
+    if crate::completeness::compiler_owned_journey_validation(store, validation)?.is_some() {
+        return Ok(true);
+    }
+    Ok(validation
+        .body
+        .get("type")
+        .and_then(serde_json::Value::as_str)
+        == Some("journey"))
 }
 
 fn refuse_compiler_owned(store: &Store, vals: &[crate::model::Node]) -> Result<()> {
@@ -74,6 +108,7 @@ fn run_validation_batch(
     root: &Path,
     execution: crate::identity::ExecutionIdentity,
     vals: &[crate::model::Node],
+    skipped_journeys: usize,
     json: bool,
 ) -> Result<()> {
     // Serialize proof EXECUTION (not graph writes): a second runner would
@@ -143,10 +178,11 @@ fn run_validation_batch(
         .iter()
         .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("blocked"))
         .count();
-    let skipped = results
-        .iter()
-        .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("skipped"))
-        .count();
+    let skipped = skipped_journeys
+        + results
+            .iter()
+            .filter(|r| r.get("status").and_then(|v| v.as_str()) == Some("skipped"))
+            .count();
     let store = open(Some(root))?;
     pulse::emit(
         &store,

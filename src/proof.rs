@@ -194,6 +194,24 @@ impl ProofRunner for CommandProofRunner {
                 ),
             });
         }
+        // A repo-native cargo test runs with cwd = repository root and an
+        // inherited environment. Cargo resolves a RELATIVE cache root against
+        // that cwd, so an inherited `CARGO_HOME=relative/path` (or `.`)
+        // materializes a full registry inside the tree the proof is about —
+        // the release plane refuses exactly this (DependencyCacheGuard), and
+        // the proof door must too. Blocked, not failed: the code under proof
+        // was never observed.
+        if is_repo_native_cargo_test(&command) {
+            if let Some(name) = relative_cache_root(&ambient_cache_roots()) {
+                return PreparedProof::Immediate(ProofOutcome::Blocked {
+                    reason: format!(
+                        "cache root environment '{name}' names a relative path; a test-spawned \
+                         cargo would resolve it inside the repository — export an absolute \
+                         {name} (or unset it for the toolchain default) and re-run"
+                    ),
+                });
+            }
+        }
         PreparedProof::Command(CommandExecutionPlan {
             root: root.to_path_buf(),
             timeout_secs: validation_timeout_secs(v),
@@ -301,6 +319,25 @@ fn validation_environment(command: &str) -> CommandEnvironment {
     }
 }
 
+/// The declared toolchain cache roots as the child would inherit them.
+fn ambient_cache_roots() -> Vec<(&'static str, String)> {
+    ["CARGO_HOME", "RUSTUP_HOME"]
+        .into_iter()
+        .filter_map(|name| std::env::var(name).ok().map(|value| (name, value)))
+        .collect()
+}
+
+/// The first cache-root variable whose value the toolchain would resolve
+/// against the child's cwd instead of using as-is. Present-but-relative
+/// (including empty and `.`) is the leak vector; absent falls back to the
+/// documented `$HOME`-anchored default and is fine.
+fn relative_cache_root<'a>(roots: &'a [(&'static str, String)]) -> Option<&'a str> {
+    roots
+        .iter()
+        .find(|(_, value)| !Path::new(value).is_absolute())
+        .map(|(name, _)| *name)
+}
+
 fn run_validation_command(plan: &CommandExecutionPlan) -> std::io::Result<Option<Captured>> {
     use crate::subprocess::ChildEnvironment;
 
@@ -397,6 +434,32 @@ mod tests {
             ProofOutcome::Manual { .. } => {}
             o => panic!("empty command has no runnable proof, got {o:?}"),
         }
+    }
+
+    #[test]
+    fn relative_cache_root_flags_only_values_cargo_would_resolve_against_cwd() {
+        // Relative (including `.` and empty) is the repo-leak vector.
+        for value in ["relative/path", ".", ""] {
+            let roots = vec![("CARGO_HOME", value.to_string())];
+            assert_eq!(
+                relative_cache_root(&roots),
+                Some("CARGO_HOME"),
+                "{value:?} must be refused"
+            );
+        }
+        // Absolute roots and an absent variable are fine.
+        let roots = vec![
+            ("CARGO_HOME", "/tmp/cargo-home".to_string()),
+            ("RUSTUP_HOME", "/tmp/rustup-home".to_string()),
+        ];
+        assert_eq!(relative_cache_root(&roots), None);
+        assert_eq!(relative_cache_root(&[]), None);
+        // The first offender is named, in declaration order.
+        let roots = vec![
+            ("CARGO_HOME", "/tmp/cargo-home".to_string()),
+            ("RUSTUP_HOME", "rustup-home".to_string()),
+        ];
+        assert_eq!(relative_cache_root(&roots), Some("RUSTUP_HOME"));
     }
 
     #[test]
