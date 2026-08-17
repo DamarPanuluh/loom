@@ -1,0 +1,158 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "debt-promotion",
+  "journey_hash": "4f747c6cadebc63e",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": ["seed-other-cluster"]
+  },
+  "bindings": [
+    {
+      "step_id": "promote-live-cluster",
+      "operation_id": "promote-live-cluster"
+    },
+    {
+      "step_id": "refuse-placeholder-evidence",
+      "operation_id": "refuse-placeholder-evidence"
+    }
+  ],
+  "surface": {
+    "id": "loom-debt-promote-cli",
+    "title": "Promote a live debt cluster",
+    "identity": "loom debt promote",
+    "codefile": "src/commands/diagnostics_cmd/advisory.rs",
+    "locator": "debt_promote",
+    "operations": [
+      {
+        "id": "seed-other-cluster",
+        "summary": "Promote a different live cluster so the snapshot is a writable fixture",
+        "read_only": false,
+        "argv": [
+          "loom",
+          "--json",
+          "debt",
+          "promote",
+          "c30df825",
+          "--evidence",
+          "src/journey_runtime.rs is one runtime module; split only if a second seam appears",
+          "--confidence",
+          "0.85"
+        ],
+        "arguments": [],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "seed-destination",
+              "pointer": "/destination",
+              "type": "string",
+              "equals": "finding"
+            }
+          ]
+        }
+      },
+      {
+        "id": "promote-live-cluster",
+        "summary": "Promote one live size-outlier cluster into an asserted finding",
+        "read_only": false,
+        "argv": [
+          "loom",
+          "--json",
+          "debt",
+          "promote",
+          "c6efc128",
+          "--evidence",
+          "src/journey.rs is one compiler module; split only if a second seam appears",
+          "--confidence",
+          "0.85"
+        ],
+        "arguments": [],
+        "exercises": [
+          {
+            "id": "promote-handler",
+            "codefile": "src/commands/diagnostics_cmd/advisory.rs",
+            "locator": "debt_promote",
+            "observed_by": "promoted-destination"
+          }
+        ],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "promoted-destination",
+              "pointer": "/destination",
+              "type": "string",
+              "equals": "finding"
+            },
+            {
+              "id": "promoted-cluster",
+              "pointer": "/cluster_id",
+              "type": "string"
+            },
+            {
+              "id": "promoted-finding-type",
+              "pointer": "/finding/type",
+              "type": "string",
+              "equals": "finding"
+            },
+            {
+              "id": "promoted-finding-truth",
+              "pointer": "/finding/truth_class",
+              "type": "string",
+              "equals": "asserted"
+            },
+            {
+              "id": "promoted-source",
+              "pointer": "/finding/body/source",
+              "type": "string",
+              "equals": "debt_promotion"
+            }
+          ]
+        }
+      },
+      {
+        "id": "refuse-placeholder-evidence",
+        "summary": "Refuse to promote a cluster when evidence is a placeholder",
+        "read_only": false,
+        "expected_exit": 1,
+        "argv": [
+          "loom",
+          "--json",
+          "debt",
+          "promote",
+          "unused-cluster",
+          "--evidence",
+          "…",
+          "--confidence",
+          "0.85"
+        ],
+        "arguments": [],
+        "exercises": [
+          {
+            "id": "promote-placeholder-gate",
+            "codefile": "src/commands/diagnostics_cmd/advisory.rs",
+            "locator": "debt_promote",
+            "observed_by": "refused-status"
+          }
+        ],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "refused-status",
+              "pointer": "/status",
+              "type": "string",
+              "equals": "error"
+            },
+            {
+              "id": "refused-placeholder",
+              "pointer": "/detail",
+              "type": "string",
+              "contains": "placeholder"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

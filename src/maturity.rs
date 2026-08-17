@@ -236,6 +236,18 @@ impl LadderInputs {
             .filter(|finding| finding.kind == "smell")
             .count();
         let audit_findings = audit_backlog.len() - doctor_issues - backlog_smells;
+        let rules_seeded = store
+            .list_nodes(Some(NodeType::QualityRule), usize::MAX)?
+            .into_iter()
+            .filter(|n| n.status != "deprecated")
+            .count();
+        let quality_seed_pack = if rules_seeded == 0 {
+            crate::packs::recommended_packs(store.root())
+                .first()
+                .map(|pack| pack.to_string())
+        } else {
+            None
+        };
 
         Ok(LadderInputs {
             observed: identity.observed,
@@ -263,6 +275,8 @@ impl LadderInputs {
             uninspected_validates,
             validation_work_units,
             unmeasured_quality_pairs: crate::workitem::unmeasured_quality_pairs(store)?.len(),
+            rules_seeded,
+            quality_seed_pack,
             validations,
             unproven_implemented,
             open_journey_proof_smells,
@@ -318,7 +332,17 @@ pub fn ladder_and_depths(store: &Store) -> Result<(Ladder, QueueDepths)> {
 /// caller holding `LadderInputs` need not gather a second time.
 fn ladder_from_inputs(store: &Store, inputs: &LadderInputs) -> Result<Ladder> {
     let rungs = build_rungs(inputs);
-    let (phase, rung, next_command, truth_axis) = compass(&rungs);
+    let (phase, rung, mut next_command, truth_axis) = compass(&rungs);
+    // The quality rung is also the seed gate: with zero rules seeded, the
+    // lane queue has no measurement packet yet, so the compass must route
+    // to the concrete seed command instead of an empty `loom next --mode
+    // quality`.
+    if phase == Lane::Quality.as_str() && inputs.rules_seeded == 0 {
+        next_command = match &inputs.quality_seed_pack {
+            Some(pack) => format!("loom rule seed {pack}"),
+            None => "loom rule seed <pack>".to_string(),
+        };
+    }
 
     let (derived_facts, asserted_facts) = store.truth_class_census()?;
     let total = derived_facts + asserted_facts;

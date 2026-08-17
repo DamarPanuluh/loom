@@ -198,7 +198,10 @@ fn phase_in_plain_english(phase: &str) -> (&'static str, &'static str) {
 }
 
 pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
-    let store = open(graph)?;
+    // Turn-zero orientation is a pure read; a shared open keeps a driver
+    // starting its session from blocking (or being blocked by) writers —
+    // the module contract above says read-only, and now the lock agrees.
+    let store = open_read(graph)?;
     // One source of truth for the counts: the same pulse every work item and
     // mutating command emits. Session only adds the offer framing on top.
     let pulse = crate::workitem::graph_state(&store)?;
@@ -212,7 +215,8 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         .filter(|c| c.visibility.as_deref() == Some("user_visible"))
         .map(|c| c.open)
         .sum();
-    let ladder = crate::maturity::ladder(&store)?;
+    let (ladder, queues) = crate::maturity::ladder_and_depths(&store)?;
+    let roles = crate::rolelease::roster_value(store.root(), &queues);
     if json {
         // Serialize the rungs directly so the derived `blocked`/`blocked_by`
         // fields stay in sync with `loom status` and can't drift.
@@ -226,6 +230,9 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
                 "open_completeness_axes": open_axes,
                 "phase": ladder.phase,
                 "recommended": ladder.next_command,
+                // Advisory driver-role leases: held roles, freshness, and the
+                // debt behind each — a joining driver picks a free role here.
+                "roles": roles,
                 "capture_entry": "loom door \"<utterance>\" — route a new topic/story/change toward a Journey root",
                 "bootstrap_suggest": if journeys == 0 && intents == 0 && codefiles > 0 {
                     Some("loom bootstrap suggest — recover behavior clues from codefiles/tests/README before authoring Journeys")
@@ -300,6 +307,15 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     println!(
         "  - got a topic/story/change in mind?  loom door \"<utterance>\"   (capture + landing menu)"
     );
+    // Only when a driver has claimed a role: solo sessions never see
+    // coordination noise, while a joining driver sees who holds what and
+    // which free role has the most debt behind it.
+    if crate::rolelease::holders_line(store.root()).is_some() {
+        println!("  roles (advisory leases — claim a free one to drive in parallel):");
+        for line in crate::rolelease::describe(store.root(), &queues) {
+            println!("    {line}");
+        }
+    }
     Ok(())
 }
 fn truth_axis_matrix() -> Vec<serde_json::Value> {

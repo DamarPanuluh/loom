@@ -549,6 +549,12 @@
               "type": "integer"
             },
             {
+              "equals": [],
+              "id": "fixture-staled-edge-ids",
+              "pointer": "/staled_edges",
+              "type": "json"
+            },
+            {
               "equals": 0,
               "id": "fixture-validations-unchanged",
               "pointer": "/validations_reset",

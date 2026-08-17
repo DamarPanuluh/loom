@@ -68,7 +68,45 @@ fn mature_graph_with_codefile(store: &Store, root: &std::path::Path) -> loom::mo
     // finding tests reach triage instead of an earlier seed/derive/surface
     // prerequisite.
     s3_journey_proof(store, root, &intent.id, "ring8-proof");
+    seed_and_measure_quality(store);
     codefile
+}
+
+/// Seed iso5055 and measure every rule against every implemented intent, so
+/// mature fixtures are non-vacuously past the `measured` rung.
+fn seed_and_measure_quality(store: &Store) {
+    loom::packs::seed(store, "iso5055").unwrap();
+    let rules = store
+        .list_nodes(Some(NodeType::QualityRule), usize::MAX)
+        .unwrap();
+    let implemented = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .filter(|n| n.status == "implemented")
+        .collect::<Vec<_>>();
+    for rule in &rules {
+        for subject in &implemented {
+            let ge = store
+                .add_edge(
+                    EdgeKind::Governs,
+                    &rule.id,
+                    &subject.id,
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+            store
+                .record_verdict(
+                    &ge.id,
+                    InspectionStatus::Passing,
+                    "fixture criterion",
+                    "fixture evidence",
+                    0.9,
+                    "llm",
+                )
+                .unwrap();
+        }
+    }
 }
 
 #[test]
@@ -628,6 +666,20 @@ fn loom_run_ok(tmp: &std::path::Path, args: &[&str]) -> String {
     String::from_utf8_lossy(&out.stdout).into_owned()
 }
 
+fn loom_err(tmp: &std::path::Path, args: &[&str]) -> String {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args);
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom {:?}: {e}", args));
+    assert!(!out.status.success(), "loom {:?} should have failed", args);
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout)
+    )
+}
+
 #[test]
 fn finding_add_creates_asserted_finding_without_inbox() {
     // Contract: `loom finding add` creates an asserted Finding node whose body
@@ -695,6 +747,44 @@ fn finding_add_creates_asserted_finding_without_inbox() {
         Some(0),
         "FINDING ADD: inbox must be empty after finding add, got: {}",
         inbox
+    );
+}
+
+#[test]
+fn finding_add_rejects_placeholder_evidence() {
+    let tmp = Tmp::new();
+    tmp.write("src/x.rs", "pub fn x() {}\n");
+    loom_init(tmp.path(), Some("t"));
+    loom_run_ok(tmp.path(), &["codefile", "add", "src/x.rs"]);
+    let err = loom_err(
+        tmp.path(),
+        &[
+            "finding",
+            "add",
+            "placeholder evidence must not mint",
+            "--source",
+            "llm",
+            "--kind",
+            "discovered_behavior",
+            "--file",
+            "src/x.rs",
+            "--evidence",
+            "…",
+            "--impact",
+            "would rewrite the observation if accepted",
+            "--confidence",
+            "0.8",
+        ],
+    );
+    assert!(
+        err.contains("substantive") || err.contains("placeholder"),
+        "placeholder evidence must be refused, got: {err}"
+    );
+    let inbox = loom_json(tmp.path(), &["inbox", "list"]);
+    assert_eq!(
+        inbox["items"].as_array().map(|a| a.len()),
+        Some(0),
+        "placeholder refusal must not create an inbox item: {inbox}"
     );
 }
 

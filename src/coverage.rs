@@ -3,6 +3,8 @@
 //! Plane: computed-on-read over registered CodeFiles and asserted grounding.
 //! This module owns the predicate shared by diagnostics, maturity, and work
 //! routing so those projections cannot disagree about whether a file is owned.
+//! One intent may realize in many files (sibling slices). Only `realizes`
+//! owns a file; `consumes` / `configures` / `verifies` never close coverage.
 
 use crate::extract::Role;
 use crate::model::{EdgeKind, GroundingRole, Node};

@@ -460,6 +460,18 @@ fn derive_findings(path: &str, ex: &Extraction, t: &Thresholds) -> Vec<FindingDe
 /// are expensive), so sync does not auto-run it — `loom scan run` does.
 pub struct ScanDeriver;
 
+impl ScanDeriver {
+    /// CLI on-demand path. Same derived facts as [`Deriver::derive`], without
+    /// holding the graph lock across adapter subprocesses.
+    pub fn run_on_demand(
+        &self,
+        root: &Path,
+        name: Option<&str>,
+    ) -> Result<crate::scan::ScanReport> {
+        crate::scan::run_unlocked(root, name)
+    }
+}
+
 impl Deriver for ScanDeriver {
     fn name(&self) -> &str {
         "scan"

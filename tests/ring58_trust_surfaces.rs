@@ -77,6 +77,24 @@ fn coverage_packet_surfaces_precedent_and_cannot_mint_an_intent() {
         precedents["neighboring_file_dispositions"][0]["disposition"],
         "excluded"
     );
+    assert_eq!(
+        precedents["decision_order"][0], "sibling_slice",
+        "coverage packets must teach sibling slices before ignore/unregister"
+    );
+    assert!(
+        precedents["grounding_pattern"]["sibling_slice"]
+            .as_str()
+            .unwrap_or("")
+            .contains("many files"),
+        "coverage packets must name the sibling-slice pattern: {precedents}"
+    );
+    assert!(
+        precedents["grounding_pattern"]["consumes"]
+            .as_str()
+            .unwrap_or("")
+            .contains("does not close coverage"),
+        "coverage packets must say consumes never owns: {precedents}"
+    );
     drop(store);
 
     let coverage = loom_json(tmp.path(), &["coverage"]);

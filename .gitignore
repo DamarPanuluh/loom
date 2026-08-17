@@ -11,3 +11,12 @@
 # release rehearsals leave detached-candidate scratch here; the sandbox is
 # runtime residue, never source.
 .release-sandbox/
+
+# cargo cache residue that test-spawned cargo resolves against the repo root
+# when a cache-root variable is relative or unset (finding captured in loom);
+# never source, safe to delete.
+/.global-cache
+/.package-cache
+/.package-cache-mutate
+/registry/
+/relative/

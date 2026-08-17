@@ -259,6 +259,9 @@ impl Store {
             );
         }
         let lock = acquire_lock(&loom_dir, true, &identity)?;
+        // Heartbeat for the advisory role lease: a lane driver touching the
+        // graph is proof its session is alive. Best-effort by contract.
+        crate::rolelease::refresh(root, &identity);
         let mut conn = Connection::open(&db_path)?;
         ensure_supported_persisted_schema(&conn)?;
         configure(&conn)?;
@@ -287,6 +290,8 @@ impl Store {
         }
         let identity = crate::identity::ExecutionIdentity::resolve_env()?;
         let lock = acquire_lock(&loom_dir, false, &identity)?;
+        // Heartbeat for the advisory role lease (see `open_with_identity`).
+        crate::rolelease::refresh(root, &identity);
         let conn = Connection::open(&db_path)?;
         ensure_supported_persisted_schema(&conn)?;
         configure_read(&conn)?;
@@ -1675,5 +1680,32 @@ mod tests {
             .tags_of(&decision.id, TargetKind::Node)
             .unwrap()
             .is_empty());
+    }
+
+    #[test]
+    fn finding_hash_treats_a_vanished_codefile_as_absence() {
+        let tmp = TmpRoot::new("loom-store-vanished-finding-file");
+        let store = Store::init(tmp.path(), Some("vanished-file"), false).unwrap();
+        let finding = store
+            .add_node(
+                NodeType::Finding,
+                "behavior that outlived its file",
+                "impact",
+                "code_audit",
+                serde_json::json!({
+                    "file": "src/gone.rs",
+                    "evidence": "src/gone.rs:1",
+                    "kind": "code_audit",
+                    "source": "llm",
+                    "confidence": 0.7,
+                }),
+            )
+            .unwrap();
+        assert_eq!(
+            store.finding_codefile_hash(&finding.id).unwrap(),
+            None,
+            "a finding that names an unregistered file is orphaned evidence, not a graph crash"
+        );
+        assert!(store.finding_owner_intents(&finding.id).unwrap().is_empty());
     }
 }

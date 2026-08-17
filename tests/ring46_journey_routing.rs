@@ -267,7 +267,18 @@ fn derive_queue_covers_unmapped_stale_and_unrooted_non_exempt_work() {
             TruthClass::Asserted,
         )
         .unwrap();
+    let current = intent(&store, "currently derived behavior", "planned");
+    derive(&store, &journey, &current, &["confirm"]);
     let unrooted = intent(&store, "unrooted behavior", "planned");
+    let orphan = intent(&store, "unrelated orphan behavior", "planned");
+    store
+        .add_edge(
+            EdgeKind::Relates,
+            &unrooted.id,
+            &current.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
     let exempt = intent(&store, "deliberately rootless utility", "implemented");
     store
         .set_facet(
@@ -285,6 +296,10 @@ fn derive_queue_covers_unmapped_stale_and_unrooted_non_exempt_work() {
     assert!(gaps
         .iter()
         .any(|gap| gap.kind == "unrooted_intent" && gap.subject_id == unrooted.id));
+    assert!(
+        !gaps.iter().any(|gap| gap.subject_id == orphan.id),
+        "an Intent with no derived relationship neighbor must not pin a false host"
+    );
     assert!(!gaps.iter().any(|gap| gap.subject_id == exempt.id));
 
     let roster = workitem::queue_items(&store, Lane::Derive).unwrap();

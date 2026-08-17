@@ -39,7 +39,7 @@ fn pre_push_content(script: &Path) -> Result<String> {
         .context("pre-push script path must be valid UTF-8")?;
     let quoted = script.replace('\'', "'\\''");
     Ok(format!(
-        "#!/bin/sh\n# Installed by loom; local CI gate. Blocks a push when the configured script fails.\nset -eu\nroot=\"$(git rev-parse --show-toplevel)\"\nexec \"$root\"/'{quoted}'\n"
+        "#!/bin/sh\n# Installed by loom; local CI gate. Blocks a push when the configured script fails.\nset -eu\nroot=\"$(git rev-parse --show-toplevel)\"\n# Drain git's pre-push ref list before exec so git does not see SIGPIPE.\ncat >/dev/null\nexec \"$root\"/'{quoted}'\n"
     ))
 }
 

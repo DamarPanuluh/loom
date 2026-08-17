@@ -1,5 +1,5 @@
 use clap::Parser;
-use loom::cli::Cli;
+use loom::cli::{Cli, Command, McpCmd};
 
 fn main() {
     // Consume any parent-issued contention capability before parsing arguments
@@ -15,7 +15,16 @@ fn main() {
         libc::signal(libc::SIGPIPE, libc::SIG_DFL);
     }
     let cli = Cli::parse();
+    let json = cli.json;
+    // MCP serve owns stdout as the JSON-RPC transport. A failure envelope
+    // there would corrupt the protocol; transcript and every other command
+    // may emit one.
+    let json_error_on_stdout =
+        json && !matches!(&cli.command, Some(Command::Mcp { cmd: McpCmd::Serve }));
     if let Err(e) = loom::commands::run(cli) {
+        if json_error_on_stdout {
+            loom::commands::write_json_error_envelope(&e);
+        }
         let rendered = format!("{e:#}");
         eprintln!("error: {rendered}");
         // A parent loom recognizes infrastructure contention only when this
@@ -24,6 +33,7 @@ fn main() {
         // remains useful diagnostics but is never trusted for classification.
         if rendered.contains(loom::store::LOCK_CONTENTION_MARKER)
             || rendered.contains(loom::harness::HARNESS_CONTENTION_MARKER)
+            || rendered.contains(loom::rolelease::ROLE_CONTENTION_MARKER)
         {
             loom::subprocess::attest_contention_from_env();
             std::process::exit(loom::LOCK_CONTENTION_EXIT_CODE);

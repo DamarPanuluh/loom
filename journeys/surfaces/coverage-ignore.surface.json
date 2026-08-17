@@ -1,0 +1,133 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "coverage-ignore",
+  "journey_hash": "571aa84e14eaac75",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": ["seed-other-ignore"]
+  },
+  "bindings": [
+    {
+      "step_id": "persist-ignore-glob",
+      "operation_id": "persist-ignore-glob"
+    },
+    {
+      "step_id": "refuse-absent-glob",
+      "operation_id": "refuse-absent-glob"
+    }
+  ],
+  "surface": {
+    "id": "loom-ignore-add-cli",
+    "title": "Persist a coverage ignore glob",
+    "identity": "loom ignore add",
+    "codefile": "src/commands/diagnostics_cmd/coverage.rs",
+    "locator": "ignore_cmd",
+    "operations": [
+      {
+        "id": "seed-other-ignore",
+        "summary": "Record a different ignore glob so the snapshot is a writable fixture",
+        "read_only": false,
+        "argv": [
+          "loom",
+          "--json",
+          "ignore",
+          "add",
+          "target/journey-proof-setup-ignore/**",
+          "--reason",
+          "journey proof setup: isolate the snapshot"
+        ],
+        "arguments": [],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "seed-glob",
+              "pointer": "/ignore/glob",
+              "type": "string",
+              "equals": "target/journey-proof-setup-ignore/**"
+            }
+          ]
+        }
+      },
+      {
+        "id": "persist-ignore-glob",
+        "summary": "Add a named ignore glob with a recorded reason",
+        "read_only": false,
+        "argv": [
+          "loom",
+          "--json",
+          "ignore",
+          "add",
+          "target/journey-proof-ignore-marker/**",
+          "--reason",
+          "journey proof: recorded ignore glob with a reason"
+        ],
+        "arguments": [],
+        "exercises": [
+          {
+            "id": "ignore-handler",
+            "codefile": "src/commands/diagnostics_cmd/coverage.rs",
+            "locator": "ignore_cmd",
+            "observed_by": "ignored-glob"
+          }
+        ],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "ignored-glob",
+              "pointer": "/ignore/glob",
+              "type": "string",
+              "equals": "target/journey-proof-ignore-marker/**"
+            },
+            {
+              "id": "ignored-reason",
+              "pointer": "/ignore/reason",
+              "type": "string",
+              "equals": "journey proof: recorded ignore glob with a reason"
+            }
+          ]
+        }
+      },
+      {
+        "id": "refuse-absent-glob",
+        "summary": "Refuse to remove an ignore glob that was never recorded",
+        "read_only": false,
+        "expected_exit": 1,
+        "argv": [
+          "loom",
+          "--json",
+          "ignore",
+          "remove",
+          "no-such-glob-zzz"
+        ],
+        "arguments": [],
+        "exercises": [
+          {
+            "id": "ignore-remove-gate",
+            "codefile": "src/commands/diagnostics_cmd/coverage.rs",
+            "locator": "ignore_cmd",
+            "observed_by": "refused-status"
+          }
+        ],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "refused-status",
+              "pointer": "/status",
+              "type": "string",
+              "equals": "error"
+            },
+            {
+              "id": "refused-absent",
+              "pointer": "/detail",
+              "type": "string",
+              "contains": "no ignore rule"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

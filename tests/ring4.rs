@@ -81,6 +81,44 @@ fn ratify_all(store: &Store) {
     }
 }
 
+/// Seed iso5055 and record a passing governs verdict for every rule ×
+/// implemented intent pair, so tests can reach the post-quality rungs without
+/// hand-rolling the measurement loop each time.
+fn measure_all_quality_pairs(store: &Store) {
+    loom::packs::seed(store, "iso5055").unwrap();
+    let rules = store
+        .list_nodes(Some(NodeType::QualityRule), usize::MAX)
+        .unwrap();
+    let implemented = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .filter(|n| n.status == "implemented")
+        .collect::<Vec<_>>();
+    for rule in &rules {
+        for subject in &implemented {
+            let ge = store
+                .add_edge(
+                    EdgeKind::Governs,
+                    &rule.id,
+                    &subject.id,
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+            store
+                .record_verdict(
+                    &ge.id,
+                    InspectionStatus::Passing,
+                    "fixture criterion",
+                    "fixture evidence",
+                    0.9,
+                    "llm",
+                )
+                .unwrap();
+        }
+    }
+}
+
 #[test]
 fn empty_graph_compass_routes_to_seed() {
     let tmp = Tmp::new();
@@ -519,6 +557,7 @@ fn fully_grounded_no_residue_routes_complete() {
     // shortcut that made this graph report proofs nobody ran.
     prove_s2(&store, tmp.path(), &a.id, "proof-a");
     ratify_all(&store);
+    measure_all_quality_pairs(&store);
     let before_export = ladder(&store).unwrap();
     assert_eq!(
         before_export.phase,
@@ -952,7 +991,7 @@ fn derived_rung_honors_canonical_journey_exemption() {
         serde_norway::to_string(&spec).unwrap(),
     )
     .unwrap();
-    store
+    let journey = store
         .add_node(
             NodeType::Journey,
             "cli-flow",
@@ -972,6 +1011,41 @@ fn derived_rung_honors_canonical_journey_exemption() {
             }),
         )
         .unwrap();
+    let rooted = store
+        .add_node(
+            NodeType::Intent,
+            "operator invokes the CLI",
+            "the CLI is invokable end to end",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let derives = store
+        .add_edge(
+            EdgeKind::Derives,
+            &journey.id,
+            &rooted.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &derives.id,
+            TargetKind::Edge,
+            "journey_hash",
+            &spec.semantic_hash().unwrap(),
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .set_facet(
+            &derives.id,
+            TargetKind::Edge,
+            "step_ids",
+            r#"["invoke"]"#,
+            TruthClass::Asserted,
+        )
+        .unwrap();
     let intent = store
         .add_node(
             NodeType::Intent,
@@ -979,6 +1053,14 @@ fn derived_rung_honors_canonical_journey_exemption() {
             "internal CLI plumbing remains coherent",
             "implemented",
             serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Relates,
+            &intent.id,
+            &rooted.id,
+            TruthClass::Asserted,
         )
         .unwrap();
     assert!(
@@ -1047,6 +1129,7 @@ fn findings_route_to_triage_until_judged() {
     prove_s2(&store, tmp.path(), &i.id, "proof-i");
     // baseline: graph is clean but not complete until the travel export is fresh.
     ratify_all(&store);
+    measure_all_quality_pairs(&store);
     assert_eq!(ladder(&store).unwrap().phase, "export");
     travel::export_to_file(&store).unwrap();
     assert_eq!(ladder(&store).unwrap().phase, "deepen");
@@ -1148,14 +1231,29 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
         .unwrap();
     prove_s2(&store, tmp.path(), &intent.id, "pay-test");
 
-    // Before seeding: hardened should be Met (no stale, no uninspected, no doctor, no pairs).
+    // Before seeding: measured must be Unmet — zero rules is vacuous, not met.
+    // The honest reading is unseeded; "0 never-measured pairs" only means
+    // something once pairs can exist.
     ratify_all(&store);
     let l = ladder(&store).unwrap();
     let hardened = l.rungs.iter().find(|r| r.name == "measured").unwrap();
     assert_eq!(
         hardened.state,
-        RungState::Met,
-        "hardened is Met before any rules are seeded"
+        RungState::Unmet,
+        "hardened is Unmet before any rules are seeded"
+    );
+    assert!(
+        hardened.detail.contains("unseeded"),
+        "hardened detail says unseeded, not 0 pairs: {}",
+        hardened.detail
+    );
+    assert_eq!(
+        l.phase, "quality",
+        "the unseeded quality rung is the lowest unmet rung"
+    );
+    assert_eq!(
+        l.next_command, "loom rule seed iso5055",
+        "with zero rules the compass routes to the concrete seed command"
     );
 
     // Seed a pack — creates quality rules but no governs edges yet.
@@ -1177,8 +1275,10 @@ fn hardened_rung_blocks_on_unmeasured_quality_pairs() {
         hardened.detail
     );
 
-    // Compass should route to quality (assuming earlier rungs are met).
+    // Compass should route to quality (assuming earlier rungs are met), and
+    // now the queue really has measurement packets — not the seed fallback.
     assert_eq!(l.phase, "quality", "compass routes to quality lane");
+    assert_eq!(l.next_command, "loom next --mode quality");
 
     // Measure every rule against the intent → all pairs satisfied.
     let rules = store

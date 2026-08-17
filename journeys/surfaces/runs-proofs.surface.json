@@ -6,7 +6,7 @@
     "id": "loom-runs-proofs",
     "title": "Loom observed proof execution",
     "identity": "loom validation run",
-    "codefile": "src/commands/proof_cmd.rs",
+    "codefile": "src/commands/proof_cmd/validate.rs",
     "locator": "validate_cmd",
     "operations": [
       {

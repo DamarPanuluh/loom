@@ -1,0 +1,28 @@
+schema: loom.journey/v1
+id: debt-promotion
+name: Promote a live debt cluster into one asserted finding
+actor: operator
+goal: An operator turns one live debt cluster into a single asserted finding by
+  explicit promotion, without converting the advisory feed itself.
+inputs: {}
+preconditions:
+- A live size-outlier debt cluster is present in the graph.
+steps:
+- id: promote-live-cluster
+  name: Promote Live Cluster
+  action: Promote one live debt cluster with substantive evidence and a confidence.
+  expects:
+  - Loom mints one asserted finding from that cluster and leaves the advisory feed
+    unconverted.
+  produces: {}
+- id: refuse-placeholder-evidence
+  name: Refuse Placeholder Evidence
+  action: Attempt to promote a cluster with placeholder evidence.
+  expects:
+  - Loom refuses the promotion, writes a JSON error envelope, and does not convert
+    the advisory feed.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

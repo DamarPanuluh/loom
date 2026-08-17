@@ -15,7 +15,7 @@
     ]
   },
   "surface": {
-    "codefile": "src/commands/proof_cmd.rs",
+    "codefile": "src/commands/proof_cmd/validation.rs",
     "id": "validation-command-collision",
     "identity": "loom validation add",
     "locator": "validation",

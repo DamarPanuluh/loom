@@ -1,0 +1,26 @@
+schema: loom.journey/v1
+id: coverage-ignore
+name: Persist a named coverage ignore glob with a recorded reason
+actor: operator
+goal: An operator records a named ignore glob and the reason it is excluded from
+  coverage, so later registration can skip matching paths.
+inputs: {}
+preconditions:
+- The graph accepts coverage ignore rules as named metadata.
+steps:
+- id: persist-ignore-glob
+  name: Persist Ignore Glob
+  action: Add a named ignore glob with a recorded reason.
+  expects:
+  - Loom persists that glob and reason as an ignore rule.
+  produces: {}
+- id: refuse-absent-glob
+  name: Refuse Absent Glob
+  action: Attempt to remove an ignore glob that was never recorded.
+  expects:
+  - Loom refuses the removal and writes a JSON error envelope.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

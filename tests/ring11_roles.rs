@@ -1331,6 +1331,20 @@ fn loom_ok(tmp: &std::path::Path, args: &[&str]) {
     );
 }
 
+fn loom_err(tmp: &std::path::Path, args: &[&str]) -> String {
+    let mut cmd = std::process::Command::new(loom_bin());
+    cmd.arg("--graph").arg(tmp).args(args);
+    let out = cmd
+        .output()
+        .unwrap_or_else(|e| panic!("spawn loom {:?}: {e}", args));
+    assert!(!out.status.success(), "loom {:?} should have failed", args);
+    format!(
+        "{}{}",
+        String::from_utf8_lossy(&out.stderr),
+        String::from_utf8_lossy(&out.stdout)
+    )
+}
+
 fn loom_json(tmp: &std::path::Path, args: &[&str]) -> serde_json::Value {
     let mut cmd = std::process::Command::new(loom_bin());
     cmd.arg("--graph").arg(tmp).args(args).arg("--json");
@@ -1452,6 +1466,17 @@ fn codefile_add_glob_skips_ignored_but_literal_overrides() {
     assert!(
         files.contains(&"gen/b.rs".to_string()),
         "literal add overrides ignore: {files:?}"
+    );
+}
+
+#[test]
+fn ignore_remove_absent_glob_fails_closed() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path(), Some("t"));
+    let err = loom_err(tmp.path(), &["ignore", "remove", "no-such-glob-zzz"]);
+    assert!(
+        err.contains("no ignore rule") || err.contains("no-such-glob-zzz"),
+        "absent glob must fail closed, got: {err}"
     );
 }
 

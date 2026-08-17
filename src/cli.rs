@@ -292,6 +292,13 @@ pub enum Command {
     },
     /// Report the acting agent identity and lane enforcement.
     Whoami,
+    /// Advisory role leases: several LLM drivers coordinate on one graph by
+    /// each claiming a free role (heartbeat lease; a lease grants no write
+    /// authority — the lane gate does).
+    Role {
+        #[command(subcommand)]
+        cmd: RoleCmd,
+    },
     /// Capture a structured proposal and decompose it into adopted work.
     Proposal {
         #[command(subcommand)]

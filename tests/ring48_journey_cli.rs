@@ -589,4 +589,57 @@ fn journey_run_failure_is_machine_readable_on_stdout_under_json() {
         !envelope["detail"].as_str().unwrap_or_default().is_empty(),
         "detail must carry the reason: {stdout}"
     );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error:"),
+        "human stderr must still carry the error line: {stderr}"
+    );
+}
+
+#[test]
+fn json_flag_failure_is_one_error_envelope_on_stdout() {
+    let tmp = Tmp::new();
+    let output = invoke(tmp.path(), &["--json", "intent", "list"]);
+    assert!(
+        !output.status.success(),
+        "a command that cannot open the graph must still exit non-zero"
+    );
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let envelope: Value = serde_json::from_str(&stdout)
+        .unwrap_or_else(|error| panic!("stdout must be one JSON value: {error}\n{stdout}"));
+    assert_eq!(envelope["status"], "error", "{stdout}");
+    let detail = envelope["detail"].as_str().unwrap_or_default();
+    assert!(
+        detail.contains("no loom graph") || detail.contains("loom init"),
+        "detail must name the closed failure: {stdout}"
+    );
+    assert!(
+        envelope.get("stage").is_none(),
+        "generic failures must not borrow the journey-run envelope: {stdout}"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error:"),
+        "human stderr must still carry the error line: {stderr}"
+    );
+}
+
+#[test]
+fn without_json_a_failure_does_not_write_an_envelope_to_stdout() {
+    let tmp = Tmp::new();
+    let output = invoke(tmp.path(), &["intent", "list"]);
+    assert!(
+        !output.status.success(),
+        "a command that cannot open the graph must still exit non-zero"
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.trim().is_empty(),
+        "human-mode failures keep stdout empty: {stdout}"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error:"),
+        "human stderr must still carry the error line: {stderr}"
+    );
 }

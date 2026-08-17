@@ -72,6 +72,15 @@ exiting 0 for the proof. Compiled proofs omit the field when it is `0`, so
 surfaces that never set it compile byte-identically and existing proofs keep
 deserializing unchanged.
 
+Loom itself is a structured-failure CLI when invoked with `--json`: a handler
+`bail!` still prints `error:` to stderr and exits 1, and stdout is one
+`{status: "error", detail}` object. Journey steps that prove a refusal pass
+`--json`, set `expected_exit: 1`, and assert on `/status` and `/detail`. Do
+not capture or assert on stderr. `journey run --json` keeps its richer
+envelope (`journey`, `profile`, `stage`) as that same stdout document.
+`loom mcp serve` never writes this envelope: stdout is the JSON-RPC
+transport. Clap parse/usage failures still exit before this path.
+
 ## Authoring workflow
 
 1. Author and register the `loom.journey/v1` artifact.

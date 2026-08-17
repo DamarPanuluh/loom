@@ -652,7 +652,11 @@ impl Store {
         let Some(file) = finding.body.get("file").and_then(|v| v.as_str()) else {
             return Ok(None);
         };
-        let codefile = self.resolve_node(file, Some(NodeType::CodeFile))?;
+        // A finding can outlive the codefile it named (split, delete, ignore).
+        // That is orphaned evidence, not a reason to crash status/show.
+        let Some(codefile) = self.resolve_node_optional(file, Some(NodeType::CodeFile))? else {
+            return Ok(None);
+        };
         self.get_facet(&codefile.id, TargetKind::Node, "content_hash")
     }
 
@@ -674,7 +678,8 @@ impl Store {
             {
                 None
             } else if let Some(file) = finding.body.get("file").and_then(|v| v.as_str()) {
-                Some(self.resolve_node(file, Some(NodeType::CodeFile))?.id)
+                self.resolve_node_optional(file, Some(NodeType::CodeFile))?
+                    .map(|n| n.id)
             } else {
                 None
             }

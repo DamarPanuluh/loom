@@ -302,6 +302,7 @@ impl Store {
     /// Live (non-superseded) `implements` edges into `codefile_id` whose role
     /// is `realizes` — the only role that confers ownership. A file grounded
     /// solely by `consumes`/`configures`/`verifies` edges is still unowned.
+    /// One intent may realize in many files; each realizing file is owned.
     /// Every ownership query (coverage, maturity, finding owners, layer/smell
     /// clustering) MUST route through this, never a raw `edges_with`.
     pub fn realizing_implementers(&self, codefile_id: &str) -> Result<Vec<Edge>> {

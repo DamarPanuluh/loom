@@ -217,9 +217,21 @@ fn find_exact_refuses_ambiguous_behavior_identity() {
         !output.status.success(),
         "ambiguous exact identity must be refused"
     );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let envelope: serde_json::Value = serde_json::from_str(&stdout).unwrap_or_else(|error| {
+        panic!("--json refusal must be one error envelope, not result rows: {error}\n{stdout}")
+    });
+    assert_eq!(envelope["status"], "error", "{stdout}");
     assert!(
-        String::from_utf8_lossy(&output.stdout).trim().is_empty(),
-        "ambiguity must not emit successful result rows"
+        envelope
+            .as_object()
+            .is_some_and(|object| !object.contains_key("exact")),
+        "ambiguity must not emit a successful exact-match row: {stdout}"
+    );
+    let detail = envelope["detail"].as_str().unwrap_or_default();
+    assert!(
+        detail.contains("ambiguous exact match for 'shared exact behavior'"),
+        "JSON detail must explain the ambiguity: {stdout}"
     );
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
@@ -233,4 +245,48 @@ fn find_exact_refuses_ambiguous_behavior_identity() {
             &candidate.id[..8]
         );
     }
+}
+
+#[test]
+fn find_exact_prefers_intent_over_same_named_codefile() {
+    let tmp = Tmp::new();
+    loom_init(tmp.path());
+
+    let store = loom::store::Store::open(tmp.path()).unwrap();
+    let intent = store
+        .add_node(
+            loom::model::NodeType::Intent,
+            "shared exact name",
+            "the behavior",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    store
+        .add_node(
+            loom::model::NodeType::CodeFile,
+            "shared exact name",
+            "a file that happens to share the behavior name",
+            "active",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    drop(store);
+
+    let output = Command::new(loom_bin())
+        .arg("--graph")
+        .arg(tmp.path())
+        .args(["find", "shared exact name", "--exact", "--json"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "Intent+CodeFile same name is not ambiguous behavior identity: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let rows: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let rows = rows.as_array().expect("find --json is an array");
+    assert_eq!(rows.len(), 1, "exact search should return the Intent only");
+    assert_eq!(rows[0]["id"], intent.id);
+    assert_eq!(rows[0]["kind"], "intent");
 }

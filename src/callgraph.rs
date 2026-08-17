@@ -47,8 +47,13 @@ pub struct CallEdge {
 pub struct CallGraph {
     pub edges: Vec<CallEdge>,
     /// Callee names matching no symbol in the repo — almost all of them are
-    /// std/third-party. Counted, never guessed at.
+    /// std/third-party. Counted, never guessed at. Graph-wide; impact
+    /// neighborhoods read [`Self::unresolved_from`] instead.
     pub unresolved: usize,
+    /// Unresolved callees grouped by the calling `(file, symbol)`, so an
+    /// impact walk can report only the neighborhood's unknown calls rather
+    /// than the whole repository's std/third-party remainder.
+    unresolved_from: BTreeMap<(String, String), usize>,
     /// file → symbols it defines.
     defines: BTreeMap<String, BTreeSet<String>>,
     /// file → harness-executed test functions it defines (`#[test]` / inside
@@ -95,10 +100,18 @@ pub fn build(store: &Store) -> Result<CallGraph> {
         let bare = callee.rsplit("::").next().unwrap_or(&callee).to_string();
         let Some(candidates) = owner.get(&bare) else {
             graph.unresolved += 1;
+            *graph
+                .unresolved_from
+                .entry((file.clone(), from_symbol.clone()))
+                .or_default() += 1;
             continue;
         };
         let Some((to_file, resolution)) = resolve_target(&file, &callee, candidates) else {
             graph.unresolved += 1;
+            *graph
+                .unresolved_from
+                .entry((file.clone(), from_symbol.clone()))
+                .or_default() += 1;
             continue;
         };
         graph.edges.push(CallEdge {
@@ -372,25 +385,7 @@ impl CallGraph {
     }
 
     fn impact_with(&self, symbol: &str, depth: usize, exact_only: bool) -> Impact {
-        let mut starts = Vec::new();
-        let defining_files = self.definers(symbol);
-        if defining_files.is_empty() {
-            // Symbol not indexed under any file: still seed a bare lookup via
-            // every edge that targets that name, but only when not exact_only
-            // (exact proof requires a known definition site).
-            if !exact_only {
-                for (to_file, to_symbol) in self.incoming.keys() {
-                    if to_symbol == symbol {
-                        starts.push((to_file.clone(), to_symbol.clone()));
-                    }
-                }
-            }
-        } else {
-            for file in defining_files {
-                starts.push((file.to_string(), symbol.to_string()));
-            }
-        }
-        self.impact_from(starts, depth, exact_only)
+        self.impact_from(self.starts_for(symbol, exact_only), depth, exact_only)
     }
 
     fn impact_from(&self, starts: Vec<(String, String)>, depth: usize, exact_only: bool) -> Impact {
@@ -455,9 +450,42 @@ impl CallGraph {
                 .iter()
                 .filter(|c| c.resolution == Resolution::Heuristic)
                 .count(),
-            unresolved_calls: self.unresolved,
+            unresolved_calls: visited
+                .iter()
+                .map(|key| self.unresolved_from.get(key).copied().unwrap_or(0))
+                .sum(),
             callers,
         }
+    }
+
+    /// Combined blast radius of several symbols (a file target, or every
+    /// symbol an impact report already resolved). Unresolved calls are the
+    /// union of those neighborhoods, not the graph-wide remainder.
+    pub fn impact_of(&self, symbols: &[String], depth: usize) -> Impact {
+        let mut starts = Vec::new();
+        for symbol in symbols {
+            starts.extend(self.starts_for(symbol, false));
+        }
+        self.impact_from(starts, depth, false)
+    }
+
+    fn starts_for(&self, symbol: &str, exact_only: bool) -> Vec<(String, String)> {
+        let mut starts = Vec::new();
+        let defining_files = self.definers(symbol);
+        if defining_files.is_empty() {
+            if !exact_only {
+                for (to_file, to_symbol) in self.incoming.keys() {
+                    if to_symbol == symbol {
+                        starts.push((to_file.clone(), to_symbol.clone()));
+                    }
+                }
+            }
+        } else {
+            for file in defining_files {
+                starts.push((file.to_string(), symbol.to_string()));
+            }
+        }
+        starts
     }
 }
 
@@ -647,5 +675,31 @@ mod tests {
             .expect("CALL_WITNESS_DEPTH must see the 6-hop exact caller");
         assert_eq!(hit.hops, 6);
         assert_eq!(hit.resolution, Resolution::Exact);
+    }
+
+    #[test]
+    fn impact_unresolved_counts_the_neighborhood_not_the_whole_graph() {
+        let mut graph = CallGraph {
+            unresolved: 99,
+            ..CallGraph::default()
+        };
+        graph
+            .unresolved_from
+            .insert(("src/a.rs".into(), "foo".into()), 2);
+        graph
+            .unresolved_from
+            .insert(("src/b.rs".into(), "bar".into()), 50);
+        graph
+            .defines
+            .entry("src/a.rs".into())
+            .or_default()
+            .insert("foo".into());
+        graph
+            .defines
+            .entry("src/b.rs".into())
+            .or_default()
+            .insert("bar".into());
+        assert_eq!(graph.impact("foo", 8).unresolved_calls, 2);
+        assert_eq!(graph.unresolved, 99);
     }
 }

@@ -37,6 +37,14 @@
           "RUSTUP_HOME"
         ],
         "id": "verify-isolated-dogfood",
+        "exercises": [
+          {
+            "id": "phase-as-str",
+            "codefile": "src/release/mod.rs",
+            "locator": "as_str",
+            "observed_by": "isolated_dogfood-phase"
+          }
+        ],
         "output": {
           "assertions": [
             {
@@ -70,7 +78,7 @@
               "type": "string"
             },
             {
-              "equals": "d357d55e2ec28c02",
+              "equals": "6c82737ad1640457",
               "id": "isolated_dogfood-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string"
@@ -100,7 +108,7 @@
               "type": "integer"
             },
             {
-              "equals": 0,
+              "equals": 6,
               "id": "isolated_dogfood-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
               "type": "integer"
@@ -490,7 +498,7 @@
               "type": "string"
             },
             {
-              "equals": "d357d55e2ec28c02",
+              "equals": "6c82737ad1640457",
               "id": "fresh_fixpoint-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string"
@@ -520,7 +528,7 @@
               "type": "integer"
             },
             {
-              "equals": 0,
+              "equals": 6,
               "id": "fresh_fixpoint-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
               "type": "integer"
@@ -946,7 +954,7 @@
               "type": "string"
             },
             {
-              "equals": "d357d55e2ec28c02",
+              "equals": "6c82737ad1640457",
               "id": "gated_preparation-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string"
@@ -976,7 +984,7 @@
               "type": "integer"
             },
             {
-              "equals": 0,
+              "equals": 6,
               "id": "gated_preparation-inventory-tombstones",
               "pointer": "/source_inventory/tombstone_count",
               "type": "integer"

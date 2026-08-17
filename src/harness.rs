@@ -7,11 +7,13 @@
 //! `observe`) takes this advisory lock first; a second executor refuses
 //! immediately with the holder's identity instead of racing it.
 //!
-//! Re-entrancy: the holder exports [`HELD_ENV`] naming the lock path, so a
-//! loom spawned as a child (a journey CLI step that runs `loom validation
-//! run`, an observed `loom journey run`) proceeds without re-locking — the
-//! outer run owns serialization. A different repo keys a different path and
-//! still contends.
+//! Re-entrancy: the holding thread records the lock path in the thread-local
+//! [`HELD`] set, so a re-entering call on the same call stack (`journey run`
+//! settling through its own `journey resume`) proceeds without re-locking —
+//! the outer run owns serialization. A child *process* does not inherit the
+//! claim: it is refused by the file lock and attests contention over
+//! `LOOM_CONTENTION_FD` so the parent records Blocked, not a failing proof.
+//! A different repo keys a different path and still contends.
 
 use crate::Result;
 use anyhow::Context;

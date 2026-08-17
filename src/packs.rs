@@ -12,6 +12,7 @@
 use crate::model::NodeType;
 use crate::store::Store;
 use crate::Result;
+use std::path::Path;
 
 /// A worked verdict example: what a well-phrased criterion/evidence pair looks
 /// like for this rule, with an honestly calibrated confidence.
@@ -59,6 +60,77 @@ pub fn pack(name: &str) -> &'static [PackRule] {
         "concurrency" => CONCURRENCY,
         "docker" => DOCKER,
         _ => &[],
+    }
+}
+
+/// Recommend packs from honest repo  the same detection `loom detect`
+/// displays and the compass consumes when the quality rung is unseeded.
+/// Always returns at least `iso5055`; additional packs are added only when the
+/// repo carries their marker, so a recommendation the seeder rejects is never
+/// produced.
+pub fn recommended_packs(root: &Path) -> Vec<&'static str> {
+    let mut langs: std::collections::BTreeMap<&str, usize> = std::collections::BTreeMap::new();
+    let mut markers: Vec<&str> = Vec::new();
+    for (marker, label) in [
+        ("Cargo.toml", "rust"),
+        ("package.json", "node"),
+        ("go.mod", "go"),
+        ("pyproject.toml", "python"),
+        ("Dockerfile", "docker"),
+    ] {
+        if root.join(marker).exists() {
+            markers.push(label);
+        }
+    }
+    count_exts(root, &mut langs, 0);
+    let mut recommended: Vec<&str> = ["iso5055"].to_vec();
+    if markers.contains(&"docker") {
+        recommended.push("docker");
+    }
+    if markers.contains(&"node") {
+        recommended.push("web-ui");
+        recommended.push("service");
+    }
+    if markers.contains(&"rust") || markers.contains(&"go") {
+        recommended.push("concurrency");
+    }
+    if root.join("migrations").is_dir() || langs.contains_key("sql") {
+        recommended.push("data");
+    }
+    recommended
+}
+
+fn count_exts(
+    dir: &Path,
+    langs: &mut std::collections::BTreeMap<&'static str, usize>,
+    depth: usize,
+) {
+    if depth > 6 {
+        return;
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for e in entries.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        if name.starts_with('.') || name == "target" || name == "node_modules" {
+            continue;
+        }
+        let p = e.path();
+        if p.is_dir() {
+            count_exts(&p, langs, depth + 1);
+        } else if let Some(ext) = p.extension().and_then(|x| x.to_str()) {
+            let label = match ext {
+                "rs" => "rust",
+                "py" => "python",
+                "go" => "go",
+                "ts" | "tsx" => "typescript",
+                "js" | "jsx" => "javascript",
+                "sql" => "sql",
+                _ => continue,
+            };
+            *langs.entry(label).or_insert(0) += 1;
+        }
     }
 }
 

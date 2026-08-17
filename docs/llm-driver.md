@@ -185,6 +185,28 @@ evidence, confidence, or blocked prerequisites. Do not rediscover product shape
 or invent broad graph structure; if meaning is missing, raise a linked question
 or mark the proof blocked.
 
+**Parallel drivers** partition by role, one profile per role. `loom next` has
+no per-item reservation, so two drivers in one lane are served the same packet
+and their combined write rate pools into one audit bucket; distinct roles have
+disjoint write authority and largely disjoint queues. The coordination surface
+is the advisory role lease (`loom role claim <role>`, heartbeat-refreshed by
+every command run under the claimed identity): a joining driver reads the
+`roles` block in `loom session --json` / `loom status --json`, picks a free —
+or stale, via `--take-stale` — role with debt behind it, claims it, and drains
+that lane. A lease grants no authority (the lane gate does) and a crashed
+driver frees its role by heartbeat silence. Draining a lane whose role another
+profile holds fresh puts a `lease_conflict` warning on the served packet —
+honor it: take a free role instead of racing the holder to the write. See
+`commands.md` → Role leases.
+
+Contention discipline for parallel drivers: exit 75 is infrastructure, never a
+verdict. On a graph-lock refusal (`loom-lock-contention`), wait briefly and
+retry the same write — the error names the holder and its command. On a
+harness refusal (`loom-harness-contention`), do not wait: proof runs are long,
+so record nothing and take a different packet. On a role refusal
+(`loom-role-contention`), pick another role from `loom role list`. Never
+reinterpret any of these as a failing proof or a graph defect.
+
 Invariant: mode routes work; role controls writes; evidence determines truth.
 `loom guide --json` exposes this as `operator_loops` for LLM lookup.
 
@@ -730,9 +752,15 @@ Unnamed wantedness is offered, never presumed. Completeness surroundings of an a
 
 ### coverage / missing-file contract
 
-A coverage WorkItem points at a registered `CodeFile` with no live realizing owner. A file grounded only by `consumes`, `configures`, or `verifies` remains unowned because those roles describe support for behavior that lives elsewhere.
+A coverage WorkItem points at a registered `CodeFile` with no live realizing owner. `consumes`, `configures`, and `verifies` never own the file.
 
-Ask the disambiguating question before writing back: does the behavior live in this file (`realizes`), or does this file only call behavior across a route/topic/key/import seam (`consumes`)? For a consumer file, create the realizing intent for the behavior surface and add consumes edges for the callers; the consumer file stays unowned until its realizing intent exists.
+One behavior may live in many files. Before writing back, decide which of these is true:
+
+1. **Sibling slice.** An existing intent's criterion already lives here. Add `--role realizes` with a locator for that slice, even if another file already realizes the same intent. Do not mint a second intent for the same behavior.
+2. **Distinct behavior.** What lives here is a different observable criterion. Record `discovered_behavior` and stop. Mint outside the coverage lane, then realize. The file may also `consumes` the engine it calls.
+3. **Call/host only.** `consumes` or `configures` documents the seam. It does not close coverage. If nothing of either kind lives here, the file is outside the tracked surface (ignore with an established reason) or a mistaken registration (unregister).
+
+Never mark a mere caller as `realizes`, and never stretch an engine intent to cover a criterion it does not name. The `consumer_owned_file` smell asks the same question when one intent realizes files in different directory clusters: inspect whether this is a sibling slice or a mis-owned consumer.
 
 When that file is missing from disk, the packet is a dedicated missing-file contract:
 

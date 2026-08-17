@@ -1,0 +1,27 @@
+schema: loom.journey/v1
+id: asserted-findings
+name: Mint an asserted finding without rewriting the observation
+actor: operator
+goal: An operator records an asserted finding that keeps the original observation
+  intact and does not create an inbox item.
+inputs: {}
+preconditions:
+- A registered codefile exists to cite as evidence.
+steps:
+- id: mint-asserted-finding
+  name: Mint Asserted Finding
+  action: Add an asserted finding with source, kind, evidence, impact, and confidence.
+  expects:
+  - Loom stores an asserted finding whose body still carries the supplied observation
+    and creates no inbox item.
+  produces: {}
+- id: refuse-placeholder-evidence
+  name: Refuse Placeholder Evidence
+  action: Attempt to add an asserted finding whose evidence is a placeholder.
+  expects:
+  - Loom refuses the mint, writes a JSON error envelope, and creates no finding.
+  produces: {}
+profiles:
+  proof:
+    inputs: {}
+    workspace: {}

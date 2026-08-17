@@ -1295,23 +1295,29 @@ fn loom_cli_handler(words: &[String]) -> Option<LoomCliHandler> {
             cli_handler("src/commands/discover_cmd.rs", "explain_cmd")
         }
         crate::cli::Command::Coverage => {
-            cli_handler("src/commands/diagnostics_cmd.rs", "coverage_cmd")
+            cli_handler("src/commands/diagnostics_cmd/coverage.rs", "coverage_cmd")
         }
         crate::cli::Command::Impact { .. } => {
-            cli_handler("src/commands/diagnostics_cmd.rs", "impact_cmd")
+            cli_handler("src/commands/diagnostics_cmd/impact.rs", "impact_cmd")
         }
         crate::cli::Command::Audit { cmd: None, .. } => {
-            cli_handler("src/commands/diagnostics_cmd.rs", "audit_cmd")
+            cli_handler("src/commands/diagnostics_cmd/impact.rs", "audit_cmd")
         }
         crate::cli::Command::Deepen { .. } => {
-            cli_handler("src/commands/diagnostics_cmd.rs", "deepen_cmd")
+            cli_handler("src/commands/diagnostics_cmd/impact.rs", "deepen_cmd")
         }
-        crate::cli::Command::Smells => cli_handler("src/commands/diagnostics_cmd.rs", "smells_cmd"),
-        crate::cli::Command::Doctor => cli_handler("src/commands/diagnostics_cmd.rs", "doctor_cmd"),
-        crate::cli::Command::Whoami => cli_handler("src/commands/diagnostics_cmd.rs", "whoami_cmd"),
+        crate::cli::Command::Smells => {
+            cli_handler("src/commands/diagnostics_cmd/advisory.rs", "smells_cmd")
+        }
+        crate::cli::Command::Doctor => {
+            cli_handler("src/commands/diagnostics_cmd/findings.rs", "doctor_cmd")
+        }
+        crate::cli::Command::Whoami => {
+            cli_handler("src/commands/diagnostics_cmd/coverage.rs", "whoami_cmd")
+        }
         crate::cli::Command::Export { .. } => cli_handler("src/commands/status_cmd.rs", "export"),
         crate::cli::Command::Observe { .. } => {
-            cli_handler("src/commands/proof_cmd.rs", "observe_cmd")
+            cli_handler("src/commands/proof_cmd/validate.rs", "observe_cmd")
         }
         crate::cli::Command::Decide { .. } => {
             cli_handler("src/commands/capture_cmd.rs", "decide_cmd")

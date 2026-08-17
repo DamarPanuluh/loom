@@ -1,0 +1,183 @@
+{
+  "schema": "loom.journey.surface/v1",
+  "journey_id": "asserted-findings",
+  "journey_hash": "8f04a482897befd2",
+  "setup": {
+    "graph": "local_snapshot",
+    "operations": ["seed-other-finding"]
+  },
+  "bindings": [
+    {
+      "step_id": "mint-asserted-finding",
+      "operation_id": "mint-asserted-finding"
+    },
+    {
+      "step_id": "refuse-placeholder-evidence",
+      "operation_id": "refuse-placeholder-evidence"
+    }
+  ],
+  "surface": {
+    "id": "loom-finding-add-cli",
+    "title": "Mint an asserted finding",
+    "identity": "loom finding add",
+    "codefile": "src/commands/diagnostics_cmd/findings.rs",
+    "locator": "finding_add",
+    "operations": [
+      {
+        "id": "seed-other-finding",
+        "summary": "Mint a different asserted finding so the snapshot is a writable fixture",
+        "read_only": false,
+        "argv": [
+          "loom",
+          "--json",
+          "finding",
+          "add",
+          "journey proof setup: fixture finding for isolated snapshot",
+          "--source",
+          "llm",
+          "--kind",
+          "discovered_behavior",
+          "--file",
+          "src/commands/diagnostics_cmd/findings.rs",
+          "--evidence",
+          "src/commands/diagnostics_cmd/findings.rs:3 — finding dispatch is the CLI family under test",
+          "--impact",
+          "setup only: isolate the snapshot before the observed mint",
+          "--confidence",
+          "0.8"
+        ],
+        "arguments": [],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "seed-type",
+              "pointer": "/finding/type",
+              "type": "string",
+              "equals": "finding"
+            }
+          ]
+        }
+      },
+      {
+        "id": "mint-asserted-finding",
+        "summary": "Add an asserted finding without creating an inbox item",
+        "read_only": false,
+        "argv": [
+          "loom",
+          "--json",
+          "finding",
+          "add",
+          "journey proof: asserted finding keeps the original observation",
+          "--source",
+          "llm",
+          "--kind",
+          "discovered_behavior",
+          "--file",
+          "src/commands/diagnostics_cmd/findings.rs",
+          "--evidence",
+          "src/commands/diagnostics_cmd/findings.rs:49 — finding_add stores the supplied observation on the finding body",
+          "--impact",
+          "triage must judge the original observation, not a rewritten summary",
+          "--confidence",
+          "0.85"
+        ],
+        "arguments": [],
+        "exercises": [
+          {
+            "id": "add-handler",
+            "codefile": "src/commands/diagnostics_cmd/findings.rs",
+            "locator": "finding_add",
+            "observed_by": "minted-type"
+          }
+        ],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "minted-type",
+              "pointer": "/finding/type",
+              "type": "string",
+              "equals": "finding"
+            },
+            {
+              "id": "minted-truth",
+              "pointer": "/finding/truth_class",
+              "type": "string",
+              "equals": "asserted"
+            },
+            {
+              "id": "minted-source",
+              "pointer": "/finding/body/source",
+              "type": "string",
+              "equals": "llm"
+            },
+            {
+              "id": "minted-kind",
+              "pointer": "/finding/body/kind",
+              "type": "string",
+              "equals": "discovered_behavior"
+            },
+            {
+              "id": "minted-file",
+              "pointer": "/finding/body/file",
+              "type": "string",
+              "equals": "src/commands/diagnostics_cmd/findings.rs"
+            }
+          ]
+        }
+      },
+      {
+        "id": "refuse-placeholder-evidence",
+        "summary": "Refuse to mint an asserted finding when evidence is a placeholder",
+        "read_only": false,
+        "expected_exit": 1,
+        "argv": [
+          "loom",
+          "--json",
+          "finding",
+          "add",
+          "journey proof: placeholder evidence must not mint",
+          "--source",
+          "llm",
+          "--kind",
+          "discovered_behavior",
+          "--file",
+          "src/commands/diagnostics_cmd/findings.rs",
+          "--evidence",
+          "…",
+          "--impact",
+          "would rewrite the observation if accepted",
+          "--confidence",
+          "0.8"
+        ],
+        "arguments": [],
+        "exercises": [
+          {
+            "id": "add-placeholder-gate",
+            "codefile": "src/commands/diagnostics_cmd/findings.rs",
+            "locator": "finding_add",
+            "observed_by": "refused-status"
+          }
+        ],
+        "output": {
+          "format": "json",
+          "assertions": [
+            {
+              "id": "refused-status",
+              "pointer": "/status",
+              "type": "string",
+              "equals": "error"
+            },
+            {
+              "id": "refused-placeholder",
+              "pointer": "/detail",
+              "type": "string",
+              "contains": "placeholder"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

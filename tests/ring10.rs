@@ -201,6 +201,47 @@ fn scorecard_aspect_tagged_scenarioof_intents_close_the_scenarios_axis() {
 }
 
 #[test]
+fn scorecard_one_sad_scenario_closes_the_scenarios_axis() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "user can log in", Some("user_visible"));
+    scenario_of(&store, "login with wrong password", "sad", &intent);
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    assert_eq!(
+        axis_state(&card, "scenarios").state,
+        "met",
+        "contract 1: any one of sad/fallback/edge_case closes scenarios"
+    );
+}
+
+#[test]
+fn scorecard_journey_exemption_is_not_applicable() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = feature_intent(&store, "repository plumbing holds", Some("user_visible"));
+    store
+        .set_facet(
+            &intent.id,
+            TargetKind::Node,
+            "journey_exemption",
+            r#"{"human_decision_digest":"sha256:ring10-exemption","kind":"infrastructure","reason":"not independently user-reachable"}"#,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    let card = completeness::scorecard(&store, &intent).unwrap();
+    let journey = axis_state(&card, "journey");
+    assert_eq!(
+        journey.state, "not_applicable",
+        "contract 1: a canonical journey_exemption closes the journey axis"
+    );
+    assert!(
+        journey.detail.contains("infrastructure"),
+        "the axis should name the exemption kind: {}",
+        journey.detail
+    );
+}
+
+#[test]
 fn scorecard_internal_intent_gets_not_applicable_for_scenarios_and_journey() {
     // Contract 1: an internal intent (no user_visible facet) gets
     // not_applicable for scenarios and journey; questions still applies.
@@ -1008,6 +1049,42 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
     // and a sync would materialize structural smells this ordering fixture
     // never intended to create — putting triage in front of elaborate and
     // testing something other than the precedence this test is about.
+
+    // Seed and measure quality rules so the measured rung is non-vacuously met;
+    // otherwise the default walk serves the unseeded-quality seed packet before
+    // elaborate, which would test a different precedence than this contract.
+    loom::packs::seed(&store, "iso5055").unwrap();
+    let rules = store
+        .list_nodes(Some(NodeType::QualityRule), usize::MAX)
+        .unwrap();
+    let implemented = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .filter(|n| n.status == "implemented")
+        .collect::<Vec<_>>();
+    for rule in &rules {
+        for intent in &implemented {
+            let ge = store
+                .add_edge(
+                    EdgeKind::Governs,
+                    &rule.id,
+                    &intent.id,
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+            store
+                .record_verdict(
+                    &ge.id,
+                    loom::model::InspectionStatus::Passing,
+                    "quality fixture criterion",
+                    "quality fixture evidence",
+                    0.9,
+                    "llm",
+                )
+                .unwrap();
+        }
+    }
 
     // Now elaborate should surface (both intents still have open scenarios
     // axes, and no other queue has work).

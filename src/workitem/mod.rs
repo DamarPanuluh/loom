@@ -670,6 +670,11 @@ pub struct GraphState {
 pub struct NextOutput {
     pub work_item: Option<WorkItem>,
     pub graph_state: GraphState,
+    /// Advisory collision notice: the served packet's owning role is freshly
+    /// leased to a different profile (see `rolelease::conflict_warning`).
+    /// Absent when there is no conflict, so single-driver output is unchanged.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lease_conflict: Option<String>,
 }
 
 pub fn graph_state(store: &Store) -> Result<GraphState> {

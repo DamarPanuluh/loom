@@ -133,7 +133,11 @@ fn journey_lint(graph: Option<&Path>, journey_key: Option<&str>, json_output: bo
         );
     }
     if report.blocking > 0 {
-        bail!("Journey lint found {} blocking finding(s)", report.blocking);
+        let message = format!("Journey lint found {} blocking finding(s)", report.blocking);
+        if json_output {
+            return Err(super::JsonStdoutComplete::fail(message));
+        }
+        bail!("{message}");
     }
     Ok(())
 }
@@ -2153,9 +2157,10 @@ pub(crate) fn journey_run(
     }
 }
 
-/// `journey run` failures must stay machine-readable: with `--json`, print one
-/// structured envelope to stdout before exiting non-zero, so consumers parse
-/// the stage and reason instead of scraping stderr.
+/// `journey run` failures must stay machine-readable under `--json`: attach the
+/// staged envelope so `main` prints one stdout document (journey, profile,
+/// stage, detail) instead of scraping stderr. Human stderr still carries the
+/// same context line as before.
 fn run_failure(
     json_output: bool,
     journey_key: &str,
@@ -2163,21 +2168,22 @@ fn run_failure(
     stage: &str,
     error: anyhow::Error,
 ) -> anyhow::Error {
+    let detail = format!("{error:#}");
+    let context = format!("journey run '{journey_key}:{profile}' failed during {stage}");
     if json_output {
-        let envelope = json!({
-            "status": "error",
-            "journey": journey_key,
-            "profile": profile,
-            "stage": stage,
-            "detail": format!("{error:#}"),
-        });
-        if let Ok(rendered) = serde_json::to_string_pretty(&envelope) {
-            println!("{rendered}");
-        }
+        return super::JsonErrorEnvelope::new(
+            json!({
+                "status": "error",
+                "journey": journey_key,
+                "profile": profile,
+                "stage": stage,
+                "detail": detail,
+            }),
+            format!("{context}: {detail}"),
+        )
+        .into_error();
     }
-    error.context(format!(
-        "journey run '{journey_key}:{profile}' failed during {stage}"
-    ))
+    error.context(context)
 }
 
 pub(crate) fn journey_diagnose(

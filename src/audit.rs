@@ -42,6 +42,13 @@ pub const BURST_THRESHOLD: usize = 10;
 /// history does not authorize, ratify, or relabel the underlying judgments.
 pub const INCIDENT_EVENT: &str = "audit_incident_disposition";
 
+/// Journal events bracketing a compiled-Journey execution window. The parent
+/// appends `started` after taking the harness lock and `ended` right after
+/// re-taking the graph lock, so every write the parent itself makes
+/// (settlement) lands outside the window by construction.
+pub const PROOF_EXECUTION_STARTED_EVENT: &str = "proof_execution_started";
+pub const PROOF_EXECUTION_ENDED_EVENT: &str = "proof_execution_ended";
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AuditIncidentDisposition {
@@ -313,6 +320,7 @@ pub fn run(store: &Store) -> Result<Vec<AuditFinding>> {
     out.extend(malformed_judgment_timestamps(store)?);
     out.extend(bursts(store, &entries)?);
     out.extend(unanchored_settled_facts(store)?);
+    out.extend(writes_during_proof(store, &entries)?);
     if corrupt > 0 {
         out.push(AuditFinding {
             kind: "journal_corruption",
@@ -422,6 +430,136 @@ fn malformed_judgment_timestamp_findings(facts: Vec<crate::evidence::Fact>) -> V
     }
     out.sort_by(|a, b| a.subject.cmp(&b.subject).then(a.detail.cmp(&b.detail)));
     out
+}
+
+/// Solo-actor asserted writes inside a compiled-Journey execution window.
+///
+/// Journey operations run with a scrubbed environment (`journey_runtime`), so
+/// a child loom they spawn carries no `LOOM_AGENT` and reads as `solo` — full
+/// write authority over the very graph the proof is about, while the graph
+/// lock is deliberately released for the window. The settling parent writes
+/// nothing inside the window, and a parallel lane driver writes as
+/// `llm:<role>`; a solo write inside the window is therefore either a proof
+/// mutating its own graph or a human racing one. Both deserve triage.
+fn writes_during_proof(
+    store: &Store,
+    entries: &[crate::journal::Entry],
+) -> Result<Vec<AuditFinding>> {
+    // Pair started/ended per (validation, pid). An unclosed start never
+    // becomes a window — an open-ended one would indict every later write
+    // forever — but it is not silent either: if its process is gone, the run
+    // died mid-execution and the unauditable window is itself the finding.
+    let mut open: BTreeMap<(String, u64), i64> = BTreeMap::new();
+    let mut open_stamps: BTreeMap<(String, u64), String> = BTreeMap::new();
+    let mut windows: Vec<(String, i64, i64)> = Vec::new();
+    for entry in entries {
+        if entry.event != PROOF_EXECUTION_STARTED_EVENT
+            && entry.event != PROOF_EXECUTION_ENDED_EVENT
+        {
+            continue;
+        }
+        let Some(ms) = crate::journal::stamp_millis(&entry.ts) else {
+            continue;
+        };
+        let pid = entry
+            .payload
+            .get("pid")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0);
+        let key = (entry.target_id.clone(), pid);
+        if entry.event == PROOF_EXECUTION_STARTED_EVENT {
+            open.insert(key.clone(), ms);
+            open_stamps.insert(key, entry.ts.clone());
+        } else if let Some(start) = open.remove(&key) {
+            open_stamps.remove(&key);
+            windows.push((entry.target_id.clone(), start, ms));
+        }
+    }
+    let mut out = Vec::new();
+    for (vid, pid) in open.keys() {
+        // A live pid is a run in flight right now (a parallel reader auditing
+        // mid-proof) — expected, not a finding. A dead one died mid-execution.
+        if pid_probably_alive(*pid) {
+            continue;
+        }
+        let opened = open_stamps
+            .get(&(vid.clone(), *pid))
+            .cloned()
+            .unwrap_or_default();
+        out.push(AuditFinding {
+            kind: "unclosed_proof_window",
+            subject: AuditSubject::Node(vid.clone()),
+            detail: format!(
+                "proof '{vid}' opened an execution window at {opened} (pid {pid}) that was \
+                 never closed, and that process is gone — the run died mid-execution, so \
+                 whatever its children wrote could not be window-audited"
+            ),
+            remedy: "inspect the journal and facts around that start time, re-run the proof \
+                     to settle it honestly, and triage this finding with what you established"
+                .into(),
+        });
+    }
+    if windows.is_empty() {
+        return Ok(out);
+    }
+    for fact in store.all_facts()? {
+        if fact.asserted_by != "solo" {
+            continue;
+        }
+        let Some(ms) = crate::journal::stamp_millis(&fact.asserted_at) else {
+            continue;
+        };
+        // Inclusive start, exclusive end: settlement facts may share the
+        // ended entry's millisecond and are legitimate.
+        let Some((vid, start, end)) = windows.iter().find(|(_, s, e)| ms >= *s && ms < *e) else {
+            continue;
+        };
+        out.push(AuditFinding {
+            kind: "writes_during_proof",
+            subject: match fact.subject_kind {
+                TargetKind::Node => AuditSubject::Node(fact.subject_id.clone()),
+                TargetKind::Edge => AuditSubject::Edge(fact.subject_id.clone()),
+            },
+            detail: format!(
+                "asserted {}/{} fact '{}' was written by 'solo' inside the {}s execution \
+                 window of proof '{}' — journey children run env-scrubbed and read as solo, \
+                 so this looks like a proof writing the graph it is proving",
+                fact.claim.as_str(),
+                fact.state,
+                fact.id,
+                (end - start) / 1000,
+                vid
+            ),
+            remedy: "establish what wrote it: a journey operation that mutates the graph it \
+                     proves must lose that write (fix the surface); a human who raced a proof \
+                     re-records the judgment deliberately afterward; triage settles this finding"
+                .into(),
+        });
+    }
+    Ok(out)
+}
+
+/// Is this pid running right now? Best-effort: `kill(pid, 0)` succeeds or is
+/// refused (EPERM) for a live process. Pid reuse can mask a dead run — this is
+/// a statistical detector, not proof of absence. Non-unix reads as alive, so
+/// the unclosed-window finding never false-positives where we cannot probe.
+#[cfg(unix)]
+fn pid_probably_alive(pid: u64) -> bool {
+    let Ok(pid) = i32::try_from(pid) else {
+        return false;
+    };
+    if pid <= 0 {
+        return false;
+    }
+    if unsafe { libc::kill(pid, 0) } == 0 {
+        return true;
+    }
+    std::io::Error::last_os_error().raw_os_error() == Some(libc::EPERM)
+}
+
+#[cfg(not(unix))]
+fn pid_probably_alive(_pid: u64) -> bool {
+    true
 }
 
 /// Many asserted writes by one actor inside one minute.
@@ -602,6 +740,28 @@ pub fn backlog(store: &Store) -> Result<Vec<AuditFinding>> {
             subject,
             detail: smell.message,
             remedy: smell.remedy,
+        });
+    }
+    // Non-vacuity of the measured rung: with active intents but zero seeded
+    // quality rules, the quality axis is unseeded, not measured. This belongs
+    // in the audit backlog (sound rung) so a release/audit view can never read
+    // the absence of rules as an absence of quality risk.
+    let active_intents = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)?
+        .into_iter()
+        .filter(|n| n.status != "deprecated")
+        .count();
+    let seeded_rules = store
+        .list_nodes(Some(NodeType::QualityRule), usize::MAX)?
+        .into_iter()
+        .filter(|n| n.status != "deprecated")
+        .count();
+    if active_intents > 0 && seeded_rules == 0 {
+        out.push(AuditFinding {
+            kind: "unseeded_quality",
+            subject: AuditSubject::Graph("quality-rung".into()),
+            detail: "quality rung is unseeded: zero quality rules exist while active intents do, so no boundary expectation has ever been measured".into(),
+            remedy: "run `loom detect`, then `loom rule seed <pack>` and measure the seeded rules against implemented intents".into(),
         });
     }
     Ok(out)

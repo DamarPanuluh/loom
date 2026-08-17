@@ -763,20 +763,36 @@ pub fn handle(graph: Option<&Path>, request: &Value) -> Option<Value> {
     let params = request.get("params").cloned().unwrap_or(json!({}));
 
     match method {
-        "initialize" => Some(ok_response(
-            id,
-            json!({
-                "protocolVersion": PROTOCOL_VERSION,
-                "capabilities": { "tools": {} },
-                "serverInfo": { "name": "loom", "version": env!("CARGO_PKG_VERSION") },
-                "instructions":
-                    "loom roots product meaning in authored Journeys, derives technical Intents, \
-                     surfaces real target-repository CLIs, and proves compiled profiles through \
-                     those surfaces. Call loom_status to orient, loom_next for the next correct \
-                     work (including derive/surface), and loom_context before editing unfamiliar \
-                     code. loom records truth it can re-check and refuses unanchored claims.",
-            }),
-        )),
+        "initialize" => {
+            if let Some(requested) = params
+                .get("protocolVersion")
+                .and_then(|value| value.as_str())
+            {
+                if requested != PROTOCOL_VERSION {
+                    return Some(error_response(
+                        id,
+                        -32602,
+                        &format!(
+                            "unsupported protocol version '{requested}'; loom speaks {PROTOCOL_VERSION}"
+                        ),
+                    ));
+                }
+            }
+            Some(ok_response(
+                id,
+                json!({
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": { "tools": {} },
+                    "serverInfo": { "name": "loom", "version": env!("CARGO_PKG_VERSION") },
+                    "instructions":
+                        "loom roots product meaning in authored Journeys, derives technical Intents, \
+                         surfaces real target-repository CLIs, and proves compiled profiles through \
+                         those surfaces. Call loom_status to orient, loom_next for the next correct \
+                         work (including derive/surface), and loom_context before editing unfamiliar \
+                         code. loom records truth it can re-check and refuses unanchored claims.",
+                }),
+            ))
+        }
         "ping" => Some(ok_response(id, json!({}))),
         "tools/list" => {
             let list: Vec<Value> = tools()

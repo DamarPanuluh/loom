@@ -42,6 +42,7 @@ mod proof_cmd;
 mod proposal_cmd;
 mod pulse;
 mod release_cmd;
+mod role_cmd;
 mod status_cmd;
 mod wiki;
 pub(crate) use crate::coverage::codefile_observed;
@@ -205,6 +206,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Coverage => diagnostics_cmd::coverage_cmd(cli.graph.as_deref(), cli.json),
         Command::Ignore { cmd } => diagnostics_cmd::ignore_cmd(cli.graph.as_deref(), cmd, cli.json),
         Command::Whoami => diagnostics_cmd::whoami_cmd(cli.graph.as_deref(), cli.json),
+        Command::Role { cmd } => role_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Proposal { cmd } => proposal_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Judgment { cmd } => judgment_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Journey { cmd } => journey::dispatch(cli.graph.as_deref(), cmd, cli.json),
@@ -274,6 +276,97 @@ pub fn run(cli: Cli) -> Result<()> {
         }
         Command::Graph { cmd } => graph_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Bootstrap { cmd } => bootstrap_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
+    }
+}
+
+/// A `--json` failure that already knows its stdout document (for example
+/// `journey run` naming compile/open/settle). `main` prints this object
+/// instead of the generic `{status, detail}` envelope so stdout stays one
+/// JSON value.
+#[derive(Debug)]
+pub(crate) struct JsonErrorEnvelope {
+    value: serde_json::Value,
+    context: String,
+}
+
+impl JsonErrorEnvelope {
+    pub(crate) fn new(value: serde_json::Value, context: impl Into<String>) -> Self {
+        Self {
+            value,
+            context: context.into(),
+        }
+    }
+
+    /// Attach this envelope as the process error so `main` can downcast it.
+    /// `anyhow::Error::context` keeps only the Display text and is not
+    /// downcastable to this type.
+    pub(crate) fn into_error(self) -> anyhow::Error {
+        anyhow::Error::new(self)
+    }
+}
+
+impl std::fmt::Display for JsonErrorEnvelope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.context)
+    }
+}
+
+impl std::error::Error for JsonErrorEnvelope {}
+
+/// A `--json` command already wrote its stdout document and is exiting
+/// non-zero as a status signal (doctor issues, journey lint blocking).
+/// `main` must not append a second JSON value.
+#[derive(Debug)]
+pub(crate) struct JsonStdoutComplete {
+    context: String,
+}
+
+impl JsonStdoutComplete {
+    pub(crate) fn fail(context: impl Into<String>) -> anyhow::Error {
+        anyhow::Error::new(Self {
+            context: context.into(),
+        })
+    }
+}
+
+impl std::fmt::Display for JsonStdoutComplete {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.context)
+    }
+}
+
+impl std::error::Error for JsonStdoutComplete {}
+
+pub(crate) fn json_stdout_already_complete(error: &anyhow::Error) -> bool {
+    error
+        .chain()
+        .any(|cause| cause.downcast_ref::<JsonStdoutComplete>().is_some())
+}
+
+/// Stdout document for a `--json` process failure: a command-specific envelope
+/// when one was attached, otherwise `{status: "error", detail}`.
+pub fn json_error_envelope(error: &anyhow::Error) -> serde_json::Value {
+    for cause in error.chain() {
+        if let Some(envelope) = cause.downcast_ref::<JsonErrorEnvelope>() {
+            return envelope.value.clone();
+        }
+    }
+    serde_json::json!({
+        "status": "error",
+        "detail": format!("{error:#}"),
+    })
+}
+
+/// Write exactly one JSON error envelope to stdout. `main` still prints the
+/// human `error:` line to stderr and chooses the exit code. Commands that
+/// already printed their `--json` document skip this so stdout stays one value.
+pub fn write_json_error_envelope(error: &anyhow::Error) {
+    if json_stdout_already_complete(error) {
+        return;
+    }
+    match serde_json::to_string_pretty(&json_error_envelope(error)) {
+        Ok(rendered) => println!("{rendered}"),
+        Err(_) => println!(r#"{{"status":"error","detail":"failed to render error envelope"}}"#),
     }
 }
 
@@ -556,7 +649,11 @@ fn layer(graph: Option<&Path>, cmd: LayerCmd, json: bool) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{page_footer, pagination_envelope, query_terms};
+    use super::{
+        json_error_envelope, json_stdout_already_complete, page_footer, pagination_envelope,
+        query_terms, JsonErrorEnvelope, JsonStdoutComplete,
+    };
+    use anyhow::anyhow;
 
     #[test]
     fn pagination_envelope_reports_first_and_final_pages() {
@@ -597,5 +694,45 @@ mod tests {
         assert_eq!(query_terms("file, file; FILE!"), vec!["file".to_string()]);
         // an all-filler query falls back to >= 2-char tokens, not nothing
         assert!(!query_terms("is it on").is_empty());
+    }
+
+    #[test]
+    fn json_error_envelope_keeps_a_command_specific_document() {
+        let error = JsonErrorEnvelope::new(
+            serde_json::json!({
+                "status": "error",
+                "stage": "compile",
+                "detail": "missing journey",
+            }),
+            "journey run failed during compile: missing journey",
+        )
+        .into_error();
+        let envelope = json_error_envelope(&error);
+        assert_eq!(envelope["status"], "error");
+        assert_eq!(envelope["stage"], "compile");
+        assert_eq!(envelope["detail"], "missing journey");
+        assert_eq!(
+            format!("{error:#}"),
+            "journey run failed during compile: missing journey"
+        );
+    }
+
+    #[test]
+    fn json_error_envelope_defaults_to_status_and_detail() {
+        let error = anyhow!("no loom graph found — run `loom init`");
+        let envelope = json_error_envelope(&error);
+        assert_eq!(envelope["status"], "error");
+        assert_eq!(
+            envelope["detail"].as_str(),
+            Some("no loom graph found — run `loom init`")
+        );
+        assert!(envelope.get("stage").is_none());
+    }
+
+    #[test]
+    fn json_stdout_complete_skips_a_second_envelope() {
+        let error = JsonStdoutComplete::fail("doctor found 1 integrity issue(s)");
+        assert!(json_stdout_already_complete(&error));
+        assert_eq!(format!("{error:#}"), "doctor found 1 integrity issue(s)");
     }
 }

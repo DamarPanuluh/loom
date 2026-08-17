@@ -205,6 +205,10 @@ impl Lane {
 
     /// This lane's queue depth. `Unmet ⟺ depth > 0`, so this is also the rung
     /// predicate: there is no second definition anywhere.
+    ///
+    /// Deepen is the exception that stays Open without a draining queue:
+    /// `depth` is always 0, `not_applicable` holds when there are no
+    /// codefiles, and strengthening work is opt-in (`loom next --mode deepen`).
     pub fn depth(self, c: &LadderInputs) -> usize {
         if c.observed && self.observed_disabled() {
             return 0;
@@ -221,7 +225,12 @@ impl Lane {
             // before the unification the compass pointed here and the lane
             // returned nothing.
             Lane::Validate => c.validation_work_units,
-            Lane::Quality => c.stale_governs + c.uninspected_governs + c.unmeasured_quality_pairs,
+            Lane::Quality => {
+                c.stale_governs
+                    + c.uninspected_governs
+                    + c.unmeasured_quality_pairs
+                    + usize::from(c.rules_seeded == 0 && c.active > 0)
+            }
             Lane::Analyze => {
                 c.failing_exemplars
                     + c.open_research
@@ -275,10 +284,23 @@ impl Lane {
                     String::new()
                 }
             ),
-            Lane::Quality => format!(
-                "{} stale, {} uninspected, {} never-measured rule pair(s)",
-                c.stale_governs, c.uninspected_governs, c.unmeasured_quality_pairs
-            ),
+            Lane::Quality => {
+                if c.rules_seeded == 0 && c.active > 0 {
+                    match &c.quality_seed_pack {
+                        Some(pack) => {
+                            format!("unseeded — no quality rules seeded (loom rule seed {pack})")
+                        }
+                        None => {
+                            "unseeded — no quality rules seeded (loom rule seed <pack>)".to_string()
+                        }
+                    }
+                } else {
+                    format!(
+                        "{} stale, {} uninspected, {} never-measured rule pair(s)",
+                        c.stale_governs, c.uninspected_governs, c.unmeasured_quality_pairs
+                    )
+                }
+            }
             Lane::Analyze => format!(
                 "{} stale, {} uninspected relationship claim(s), \
                  {} failing exemplar(s), {} open research question(s)",
@@ -367,6 +389,12 @@ pub struct LadderInputs {
     /// Journey S3 gap, or unproven Intent).
     pub validation_work_units: usize,
     pub unmeasured_quality_pairs: usize,
+    /// Non-deprecated `QualityRule` nodes. The measured rung is met only when
+    /// this is non-zero AND every pair is measured.
+    pub rules_seeded: usize,
+    /// First pack `loom detect` would recommend for this root, computed only
+    /// when `rules_seeded == 0` so the compass can route to a concrete seed.
+    pub quality_seed_pack: Option<String>,
     pub validations: crate::maturity::ValidationSummary,
     pub unproven_implemented: usize,
     pub open_journey_proof_smells: usize,

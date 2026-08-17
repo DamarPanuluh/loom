@@ -129,7 +129,45 @@ fn build_clean_graph(tmp: &Tmp) -> Store {
             .unwrap();
     }
     loom::sync::run(&store, tmp.path()).unwrap();
+    seed_and_measure_quality(&store);
     store
+}
+
+/// Seed iso5055 and measure every rule against every implemented intent, so the
+/// dogfood graph's `measured` rung is met by real pairs rather than vacuity.
+fn seed_and_measure_quality(store: &Store) {
+    loom::packs::seed(store, "iso5055").unwrap();
+    let rules = store
+        .list_nodes(Some(NodeType::QualityRule), usize::MAX)
+        .unwrap();
+    let implemented = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .filter(|n| n.status == "implemented")
+        .collect::<Vec<_>>();
+    for rule in &rules {
+        for subject in &implemented {
+            let ge = store
+                .add_edge(
+                    EdgeKind::Governs,
+                    &rule.id,
+                    &subject.id,
+                    TruthClass::Asserted,
+                )
+                .unwrap();
+            store
+                .record_verdict(
+                    &ge.id,
+                    InspectionStatus::Passing,
+                    "dogfood fixture criterion",
+                    "dogfood fixture evidence",
+                    0.9,
+                    "llm",
+                )
+                .unwrap();
+        }
+    }
 }
 
 #[test]
@@ -254,8 +292,10 @@ fn dogfood_next_serves_work_until_clean() {
         Some("deepen"),
         "clean graph may offer only optional strengthening: {pending:#?}"
     );
-    // Introducing an unrooted planned intent creates required derivation work
-    // before implementation can begin. The packet must name that exact intent.
+    // Introducing an unrooted planned intent creates required implementation
+    // work. Derive only hosts an unrooted intent when a relationship neighbor
+    // is already derived on a Journey; this fixture has no Journey, so the
+    // packet must not invent a false derive host.
     let planned = store
         .add_node(
             NodeType::Intent,
@@ -265,15 +305,11 @@ fn dogfood_next_serves_work_until_clean() {
             serde_json::json!({}),
         )
         .unwrap();
-    let derive = workitem::next(&store, None).unwrap().unwrap();
-    assert_eq!(derive.mode, "derive");
-    assert!(
-        derive
-            .context
-            .linked_entities
-            .iter()
-            .any(|entity| entity.id == planned.id && entity.role == "unrooted_intent"),
-        "derive packet must carry the exact unrooted intent: {derive:#?}"
+    let build = workitem::next(&store, None).unwrap().unwrap();
+    assert_eq!(build.mode, "build");
+    assert_eq!(
+        build.target.id, planned.id,
+        "build packet must name the exact unrooted planned intent: {build:#?}"
     );
 }
 

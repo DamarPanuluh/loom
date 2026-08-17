@@ -244,18 +244,26 @@ fn parse_canonical_json(raw: &str) -> Option<serde_json::Value> {
 /// from ancestry. A malformed, whitespace-padded, or semantically empty JSON
 /// value is treated as no exemption at all.
 pub fn intent_journey_exempt(store: &Store, intent_id: &str) -> Result<bool> {
+    Ok(parse_journey_exemption(store, intent_id)?.is_some())
+}
+
+fn parse_journey_exemption(store: &Store, intent_id: &str) -> Result<Option<JourneyExemption>> {
     let Some(raw) = store.get_facet(intent_id, TargetKind::Node, "journey_exemption")? else {
-        return Ok(false);
+        return Ok(None);
     };
     let Some(value) = parse_canonical_json(&raw) else {
-        return Ok(false);
+        return Ok(None);
     };
     let Ok(exemption) = serde_json::from_value::<JourneyExemption>(value) else {
-        return Ok(false);
+        return Ok(None);
     };
-    Ok(!exemption.kind.trim().is_empty()
-        && !exemption.reason.trim().is_empty()
-        && !exemption.human_decision_digest.trim().is_empty())
+    if exemption.kind.trim().is_empty()
+        || exemption.reason.trim().is_empty()
+        || exemption.human_decision_digest.trim().is_empty()
+    {
+        return Ok(None);
+    }
+    Ok(Some(exemption))
 }
 
 fn exact_string_array(value: Option<&serde_json::Value>) -> Option<Vec<String>> {
@@ -634,13 +642,9 @@ pub fn journey_derive_gaps(store: &Store) -> Result<Vec<JourneyDeriveGap>> {
         }
     }
 
-    // An unrooted Intent is assigned to the first authored Journey only as the
-    // packet subject that can accept a manifest. The worker still has to decide
-    // whether that Journey honestly derives it; otherwise it authors a better
-    // root or records the dedicated human exemption.
-    let Some(host) = readiness.iter().find(|journey| journey.authored) else {
-        return Ok(out);
-    };
+    // An unrooted Intent is assigned to a Journey only when a relationship
+    // neighbor is already derived there. Pinning every orphan to the first
+    // authored Journey made Derive serve a false host.
     let currently_rooted: std::collections::BTreeSet<&str> = readiness
         .iter()
         .flat_map(|journey| journey.derived_intent_ids.iter().map(String::as_str))
@@ -652,8 +656,11 @@ pub fn journey_derive_gaps(store: &Store) -> Result<Vec<JourneyDeriveGap>> {
         {
             continue;
         }
+        let Some(host_id) = host_journey_for_unrooted(store, &intent.id, &readiness)? else {
+            continue;
+        };
         out.push(JourneyDeriveGap {
-            journey_id: host.journey_id.clone(),
+            journey_id: host_id,
             kind: "unrooted_intent".into(),
             subject_id: intent.id.clone(),
             subject_name: intent.name.clone(),
@@ -675,6 +682,48 @@ pub fn journey_derive_gaps(store: &Store) -> Result<Vec<JourneyDeriveGap>> {
             .then(a.subject_name.cmp(&b.subject_name))
     });
     Ok(out)
+}
+
+const RELATIONSHIP_KINDS: &[EdgeKind] = &[
+    EdgeKind::Relates,
+    EdgeKind::Requires,
+    EdgeKind::Hierarchy,
+    EdgeKind::ScenarioOf,
+    EdgeKind::VariantOf,
+    EdgeKind::Triggers,
+    EdgeKind::Sequence,
+];
+
+fn host_journey_for_unrooted(
+    store: &Store,
+    intent_id: &str,
+    readiness: &[JourneyReadiness],
+) -> Result<Option<String>> {
+    let mut neighbors = std::collections::BTreeSet::new();
+    for kind in RELATIONSHIP_KINDS {
+        for edge in store.edges_with(Some(*kind), Some(intent_id), None)? {
+            neighbors.insert(edge.to_id);
+        }
+        for edge in store.edges_with(Some(*kind), None, Some(intent_id))? {
+            neighbors.insert(edge.from_id);
+        }
+    }
+    neighbors.remove(intent_id);
+    if neighbors.is_empty() {
+        return Ok(None);
+    }
+    let mut hosts: Vec<&JourneyReadiness> = readiness
+        .iter()
+        .filter(|journey| {
+            journey.authored
+                && journey
+                    .derived_intent_ids
+                    .iter()
+                    .any(|id| neighbors.contains(id))
+        })
+        .collect();
+    hosts.sort_by(|a, b| a.journey_id.cmp(&b.journey_id));
+    Ok(hosts.first().map(|journey| journey.journey_id.clone()))
 }
 
 /// The single enumerated predicate behind Surface depth, roster, and serving.
@@ -821,24 +870,24 @@ fn scenarios_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<Ax
             }
         }
     }
-    let missing: Vec<&str> = SCENARIO_ASPECTS
+    let present_kinds: Vec<&str> = SCENARIO_ASPECTS
         .iter()
-        .filter(|a| !present.contains(**a))
         .copied()
+        .filter(|aspect| present.contains(*aspect))
         .collect();
-    if missing.is_empty() {
+    if present_kinds.is_empty() {
         Ok(axis(
             "scenarios",
-            "met",
-            "sad, fallback, and edge_case scenarios all present".into(),
+            "open",
+            "no sad, fallback, or edge_case scenario beside the happy path".into(),
         ))
     } else {
         Ok(axis(
             "scenarios",
-            "open",
+            "met",
             format!(
-                "no {} scenario beside the happy path",
-                missing.join(", no ")
+                "{} scenario(s) beside the happy path",
+                present_kinds.join(", ")
             ),
         ))
     }
@@ -1025,6 +1074,16 @@ fn journey_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<Axis
             "journey",
             "not_applicable",
             "internal intent — journeys prove user-reachable flows".into(),
+        ));
+    }
+    if let Some(exemption) = parse_journey_exemption(store, &intent.id)? {
+        return Ok(axis(
+            "journey",
+            "not_applicable",
+            format!(
+                "journey_exemption kind '{}' — {}",
+                exemption.kind, exemption.reason
+            ),
         ));
     }
     let readiness = all_journey_readiness(store)?;

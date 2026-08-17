@@ -342,13 +342,17 @@ pub(super) fn coverage_contract(store: &Store, codefile: &Node) -> Result<Prompt
     Ok(PromptContract {
         role: "builder".into(),
         mindset: "Coverage triages a registered file; it does not authorize inventing graph truth. \
-                  BEFORE grounding anything, inspect the existing ignore taxonomy, neighboring-file \
-                  dispositions, and existing intents. Decide in this order: (1) reuse a real existing \
-                  owner when its behavior LIVES in this file; (2) follow an established exclusion \
-                  precedent when the file is outside the tracked surface; (3) unregister a mistaken \
-                  registration; (4) if the file proves a distinct behavior absent from the graph, \
-                  record that discovery for triage and STOP — do not mint the intent in the coverage \
-                  lane. Never ground a mere caller as realizes just to satisfy the gate."
+                  A tracked implementation file needs a realizing owner. One intent may realize in \
+                  many files (sibling slices). BEFORE grounding, read the file, the ignore list, \
+                  neighbors, and existing intents. Decide in this order: (1) sibling slice — an \
+                  existing intent's criterion already LIVES here; add --role realizes with a locator \
+                  for that slice, even if another file already realizes it; (2) distinct behavior — \
+                  what lives here is a different observable criterion; record discovered_behavior \
+                  and STOP (do not mint in coverage); (3) established exclusion when the file is \
+                  outside the tracked surface; (4) unregister a mistaken registration. consumes \
+                  records a call/host seam and NEVER owns the file or closes coverage. Never mark a \
+                  mere caller as realizes, and never stretch an engine intent to cover a criterion \
+                  it does not name."
             .into(),
         why_now: format!("codefile '{}' is registered but unowned", codefile.name),
         allowed_actions: vec![
@@ -356,7 +360,7 @@ pub(super) fn coverage_contract(store: &Store, codefile: &Node) -> Result<Prompt
             "loom intent list".into(),
             "loom ignore list".into(),
             "loom codefile list".into(),
-            "read the file to see whether a behavior LIVES here or is merely called".into(),
+            "read the file to see whether an existing criterion LIVES here (sibling slice), a distinct criterion lives here, or this is only a call/host seam".into(),
             format!("loom edge implement <intent> {file} --role realizes --locator <symbol>"),
             format!("loom edge implement <consumed-intent> {file} --role consumes --locator <seam>"),
             format!("loom codefile remove {file} (if it should not be tracked)"),
@@ -371,10 +375,20 @@ pub(super) fn coverage_contract(store: &Store, codefile: &Node) -> Result<Prompt
             "loom rule verdict passing (quality lane)".into(),
         ],
         evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
-        required_evidence: "file read; ignore list and neighboring dispositions reviewed; then an existing realizing owner with locator, an established exclusion precedent, a reason to unregister, or an evidence-backed discovered_behavior finding for triage".into(),
+        required_evidence: "file read; ignore list and neighboring dispositions reviewed; then a sibling-slice realizes on an existing intent whose criterion lives here, an evidence-backed discovered_behavior finding for a distinct absent criterion, an established exclusion, or a reason to unregister".into(),
         evidence_template: None,
         examples: Some(serde_json::json!({
-            "decision_order": ["reuse_existing_owner", "follow_exclusion_precedent", "unregister", "record_discovery_and_stop"],
+            "decision_order": [
+                "sibling_slice",
+                "record_discovery_and_stop",
+                "follow_exclusion_precedent",
+                "unregister"
+            ],
+            "grounding_pattern": {
+                "sibling_slice": "One behavior may live in many files. If this file implements a slice of an existing intent's criterion, add realizes here with a locator. Do not mint a second intent for the same behavior.",
+                "distinct_behavior": "If the observable criterion that lives here is not named by any intent, record discovered_behavior and stop. Mint the new intent outside coverage, then realize it here. The file may also consume the engine it calls.",
+                "consumes": "Records a call or host seam. It does not own the file and does not close coverage."
+            },
             "existing_ignore_precedents": ignore_precedents,
             "neighboring_file_dispositions": neighboring_files,
         })),
@@ -383,7 +397,7 @@ pub(super) fn coverage_contract(store: &Store, codefile: &Node) -> Result<Prompt
         write_back: format!(
             "loom edge implement <existing-intent> {file} --role realizes --locator <symbol>   (or)   loom ignore add '<established-glob>' --reason '<existing category verbatim>'   (or)   loom codefile remove {file}   (or)   loom finding add '<distinct behavior absent from graph>' --source coverage --kind discovered_behavior --evidence '<file:line>' --impact '<why it matters>' --file {file}"
         ),
-        stop_condition: "after grounding an existing owner, applying an established exclusion, or unregistering + sync, return to loom status; after recording distinct absent behavior, stop for triage without creating an intent".into(),
+        stop_condition: "after a sibling-slice realizes, applying an established exclusion, or unregistering + sync, return to loom status; after recording distinct absent behavior, stop for triage without creating an intent".into(),
         human_gate: None,
     })
 }

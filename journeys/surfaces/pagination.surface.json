@@ -13,7 +13,7 @@
   "journey_id": "pagination",
   "schema": "loom.journey.surface/v1",
   "surface": {
-    "codefile": "src/commands/intent.rs",
+    "codefile": "src/commands/intent/commands.rs",
     "id": "loom-pagination-intents",
     "identity": "loom intent list",
     "locator": "intent_list",

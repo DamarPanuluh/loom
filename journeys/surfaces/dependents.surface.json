@@ -6,7 +6,7 @@
     "id": "loom-intent-dependents-cli",
     "title": "Loom intent dependents CLI",
     "identity": "loom intent dependents",
-    "codefile": "src/commands/intent.rs",
+    "codefile": "src/commands/intent/lifecycle.rs",
     "locator": "intent_dependents",
     "operations": [
       {
@@ -48,7 +48,7 @@
               "type": "integer"
             },
             {
-              "equals": false,
+              "equals": true,
               "id": "middle-unproven",
               "pointer": "/dependents/0/proven",
               "type": "boolean"
@@ -66,13 +66,13 @@
               "type": "integer"
             },
             {
-              "equals": false,
+              "equals": true,
               "id": "far-unproven",
               "pointer": "/dependents/1/proven",
               "type": "boolean"
             },
             {
-              "equals": 2,
+              "equals": 0,
               "id": "unproven-count",
               "pointer": "/unproven",
               "type": "integer"

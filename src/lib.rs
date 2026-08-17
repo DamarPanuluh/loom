@@ -56,6 +56,7 @@ pub mod registry;
 pub mod release;
 pub mod research;
 pub mod risk;
+pub mod rolelease;
 pub mod runner;
 pub mod scan;
 pub mod seed;

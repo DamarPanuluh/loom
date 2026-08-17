@@ -1857,7 +1857,7 @@ fn consumer_owned_file_smells<'a>(
                     node_name(snap, owner)
                 ),
                 remedy: format!(
-                    "if this file only exercises that behavior across a seam: `loom edge set-role {edge_ref} consumes --reason '…'`, then create a realizing intent for this surface and ground it --role realizes"
+                    "inspect before changing role: a sibling slice of the same criterion may realize in another directory; if this file only calls that behavior, `loom edge set-role {edge_ref} consumes --reason '…'` and ground whatever criterion actually lives here as realizes (existing intent if it names this slice, or a distinct surface intent minted outside coverage)"
                 ),
                 identity: format!("consumer_owned_file:{file_id}:{owner}"),
             });

@@ -838,3 +838,44 @@ fn transcript_cli_emits_one_json_document() {
     assert_eq!(report["responses"][1]["id"], "ping");
     assert_eq!(report["responses"][1]["result"], json!({}));
 }
+
+#[test]
+fn initialize_refuses_an_unsupported_client_protocol_version() {
+    let accepted = loom::mcp::handle(
+        None,
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": { "protocolVersion": "2024-11-05" }
+        }),
+    )
+    .unwrap();
+    assert_eq!(accepted["result"]["protocolVersion"], "2024-11-05");
+    assert!(accepted.get("error").is_none());
+
+    let omitted = loom::mcp::handle(
+        None,
+        &json!({"jsonrpc": "2.0", "id": 2, "method": "initialize", "params": {}}),
+    )
+    .unwrap();
+    assert_eq!(omitted["result"]["protocolVersion"], "2024-11-05");
+
+    let rejected = loom::mcp::handle(
+        None,
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 3,
+            "method": "initialize",
+            "params": { "protocolVersion": "1999-01-01" }
+        }),
+    )
+    .unwrap();
+    assert_eq!(rejected["error"]["code"], -32602);
+    let message = rejected["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("1999-01-01") && message.contains("2024-11-05"),
+        "mismatch must name both versions: {message}"
+    );
+    assert!(rejected.get("result").is_none());
+}

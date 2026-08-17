@@ -6,8 +6,8 @@
 //! [`AuthorizedInvocation`] for the direct Journey executor.
 
 use crate::cli::{
-    Cli, CodefileCmd, Command, EdgeCmd, FindingCmd, InboxCmd, IntentCmd, JourneyCmd, McpCmd,
-    ReleaseCmd, ValidationCmd,
+    Cli, CodefileCmd, Command, DebtCmd, EdgeCmd, FindingCmd, IgnoreCmd, InboxCmd, IntentCmd,
+    JourneyCmd, McpCmd, ReleaseCmd, ValidationCmd,
 };
 use crate::journey::{
     argv_token_source, CliOperation, OperationArgument, SetupGraph, SurfaceBinding,
@@ -751,6 +751,12 @@ fn classify_cli(
         | Command::Door { .. }
         | Command::Finding {
             cmd: FindingCmd::Add { .. },
+        }
+        | Command::Ignore {
+            cmd: IgnoreCmd::Add { .. } | IgnoreCmd::Remove { .. },
+        }
+        | Command::Debt {
+            cmd: Some(DebtCmd::Promote { .. }),
         }
         | Command::Codefile {
             cmd: CodefileCmd::Add { .. } | CodefileCmd::Remove { .. },

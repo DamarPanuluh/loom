@@ -1,13 +1,27 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Once;
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+/// Strip a parent `loom observe` lane from this process once.
+///
+/// Observing `cargo test` inherits `LOOM_AGENT` into the subject suite. These
+/// fixtures default to solo; tests that need a lane set `LOOM_AGENT` themselves.
+fn isolate_from_observer_agent() {
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        std::env::remove_var("LOOM_AGENT");
+        std::env::remove_var("LOOM_AGENT_PROFILE");
+    });
+}
 
 /// A unique temp dir that removes itself on drop.
 pub struct Tmp(PathBuf);
 
 impl Tmp {
     pub fn new() -> Tmp {
+        isolate_from_observer_agent();
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -41,6 +55,8 @@ impl Drop for Tmp {
 pub fn loom_command() -> std::process::Command {
     let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_loom"));
     command.env("LOOM_NON_INTERACTIVE", "1");
+    command.env_remove("LOOM_AGENT");
+    command.env_remove("LOOM_AGENT_PROFILE");
     command
 }
 

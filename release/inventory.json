@@ -127,7 +127,19 @@
       "mode": "regular"
     },
     {
+      "path": "journeys/asserted-findings.yaml",
+      "mode": "regular"
+    },
+    {
       "path": "journeys/compass-projection.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/coverage-ignore.yaml",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/debt-promotion.yaml",
       "mode": "regular"
     },
     {
@@ -227,7 +239,19 @@
       "mode": "regular"
     },
     {
+      "path": "journeys/surfaces/asserted-findings.surface.json",
+      "mode": "regular"
+    },
+    {
       "path": "journeys/surfaces/compass-projection.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/coverage-ignore.surface.json",
+      "mode": "regular"
+    },
+    {
+      "path": "journeys/surfaces/debt-promotion.surface.json",
       "mode": "regular"
     },
     {
@@ -403,6 +427,14 @@
       "mode": "executable"
     },
     {
+      "path": "skills/grill-with-loom/SKILL.md",
+      "mode": "regular"
+    },
+    {
+      "path": "skills/loom-driver/SKILL.md",
+      "mode": "regular"
+    },
+    {
       "path": "src/absorb.rs",
       "mode": "regular"
     },
@@ -480,6 +512,30 @@
     },
     {
       "path": "src/commands/diagnostics_cmd.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/commands/diagnostics_cmd/advisory.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/diagnostics_cmd/coverage.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/diagnostics_cmd/findings.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/diagnostics_cmd/impact.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/diagnostics_cmd/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/diagnostics_cmd/scan_config.rs",
       "mode": "regular"
     },
     {
@@ -488,6 +544,26 @@
     },
     {
       "path": "src/commands/domain_cmd.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/commands/domain_cmd/hypothesis.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/domain_cmd/layers.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/domain_cmd/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/domain_cmd/surface.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/domain_cmd/vocab.rs",
       "mode": "regular"
     },
     {
@@ -508,6 +584,26 @@
     },
     {
       "path": "src/commands/intent.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/commands/intent/commands.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/intent/create.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/intent/lifecycle.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/intent/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/intent/update.rs",
       "mode": "regular"
     },
     {
@@ -536,6 +632,30 @@
     },
     {
       "path": "src/commands/proof_cmd.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/commands/proof_cmd/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/proof_cmd/observe.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/proof_cmd/rule.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/proof_cmd/support.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/proof_cmd/validate.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/proof_cmd/validation.rs",
       "mode": "regular"
     },
     {
@@ -708,6 +828,42 @@
     },
     {
       "path": "src/release.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/release/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_01.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_02.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_03.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_04.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_05.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_06.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_07.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/release/section_08.rs",
       "mode": "regular"
     },
     {
@@ -780,6 +936,22 @@
     },
     {
       "path": "src/store/nodes.rs",
+      "mode": "absent"
+    },
+    {
+      "path": "src/store/nodes/lookup.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/nodes/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/nodes/mutate.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/nodes/ratify.rs",
       "mode": "regular"
     },
     {
@@ -1083,7 +1255,19 @@
       "mode": "regular"
     },
     {
+      "path": "tests/ring59_driver_skill.rs",
+      "mode": "regular"
+    },
+    {
       "path": "tests/ring6.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring60_degraded_paths.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring61_signal_repairs.rs",
       "mode": "regular"
     },
     {

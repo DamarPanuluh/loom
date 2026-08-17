@@ -672,7 +672,7 @@ fn a_realizing_file_edit_does_not_wipe_a_sticky_flake_record() {
 fn every_proof_status_write_records_stability_first() {
     // Files that settle a PROOF's outcome. Each call here must be preceded by
     // Store::record_proof_stability.
-    let settles_a_proof: &[&str] = &["src/commands/proof_cmd.rs", "src/journey.rs"];
+    let settles_a_proof: &[&str] = &["src/commands/proof_cmd/support.rs", "src/journey.rs"];
 
     let mut offenders: Vec<String> = Vec::new();
     walk(std::path::Path::new("src"), settles_a_proof, &mut offenders);

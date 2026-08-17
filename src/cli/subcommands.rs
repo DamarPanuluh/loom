@@ -1213,6 +1213,11 @@ pub enum JourneyCmd {
         input: Vec<String>,
     },
     /// Run one proof in a detached, freshly imported release candidate.
+    ///
+    /// Not a cheap target-repository pre-flight: cold rehearsal currently
+    /// assumes loom's own layout (`journeys/surfaces/` manifests and reserved
+    /// inventory components). In a target repo use `loom journey lint` and
+    /// `loom journey diagnose` instead.
     RehearseCold { journey: String },
     /// Freeze the current observed result as the profile baseline.
     Freeze {
@@ -1525,4 +1530,47 @@ pub enum BootstrapCmd {
     /// codefiles, tests/, README H2s) to inform authored Journey roots.
     /// Never writes product meaning, Intents, edges, or verdicts.
     Suggest,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum RoleCmd {
+    /// Claim a role for the current LOOM_AGENT_PROFILE. Requires
+    /// LOOM_AGENT=llm:<role>; every later loom command run under that
+    /// identity refreshes the lease (heartbeat).
+    Claim {
+        role: ClaimRoleArg,
+        /// Deliberately take over a lease whose heartbeat has expired.
+        #[arg(long)]
+        take_stale: bool,
+    },
+    /// Release the current profile's lease on a role.
+    Release { role: ClaimRoleArg },
+    /// Every claimable role: holder, freshness, and the queue debt behind it.
+    List,
+}
+
+/// The six claimable driver roles — the legal `LOOM_AGENT=llm:<role>` lanes.
+/// `sync` (loom's derived writer) and `human` are never claimable.
+#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+pub enum ClaimRoleArg {
+    Builder,
+    Analyzer,
+    Fixer,
+    Validator,
+    Quality,
+    Rectify,
+}
+
+impl ClaimRoleArg {
+    pub fn owner_role(self) -> crate::registry::OwnerRole {
+        use crate::registry::OwnerRole;
+        match self {
+            ClaimRoleArg::Builder => OwnerRole::Builder,
+            ClaimRoleArg::Analyzer => OwnerRole::Analyzer,
+            ClaimRoleArg::Fixer => OwnerRole::Fixer,
+            ClaimRoleArg::Validator => OwnerRole::Validator,
+            ClaimRoleArg::Quality => OwnerRole::Quality,
+            ClaimRoleArg::Rectify => OwnerRole::Rectify,
+        }
+    }
 }

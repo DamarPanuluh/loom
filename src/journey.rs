@@ -3301,6 +3301,14 @@ pub fn run_interactive_and_settle_compiled_validation(
     store.release_graph_lock();
 
     let _guard = crate::harness::acquire(&root, "journey run", &identity)?;
+    // Bracket the execution window in the journal: the audit's
+    // `writes_during_proof` check pairs these to spot solo-actor graph writes
+    // landing while the lock was released for children.
+    store.append_journal(
+        crate::audit::PROOF_EXECUTION_STARTED_EVENT,
+        validation_id,
+        json!({ "purpose": "journey run", "pid": std::process::id() }),
+    )?;
     let outcome = crate::journey_runtime::execute_interactive_with_anchors(
         &root,
         &compiled.spec,
@@ -3309,6 +3317,11 @@ pub fn run_interactive_and_settle_compiled_validation(
         Some(&compiled.covered_files),
     );
     store.reacquire_graph_lock()?;
+    store.append_journal(
+        crate::audit::PROOF_EXECUTION_ENDED_EVENT,
+        validation_id,
+        json!({ "purpose": "journey run", "pid": std::process::id() }),
+    )?;
     match outcome {
         crate::journey_runtime::ExecutionOutcome::Pending(pending) => {
             Ok(InteractiveJourneyRun::Pending(pending))
@@ -3358,6 +3371,14 @@ pub fn resume_and_settle_compiled_validation(
     store.release_graph_lock();
 
     let _guard = crate::harness::acquire(&root, "journey resume", &identity)?;
+    // Same execution-window bracketing as `journey run` (see
+    // `audit::writes_during_proof`); the window closes even when the resumed
+    // execution itself errored, because the lock was released either way.
+    store.append_journal(
+        crate::audit::PROOF_EXECUTION_STARTED_EVENT,
+        &validation_id,
+        json!({ "purpose": "journey resume", "pid": std::process::id() }),
+    )?;
     let outcome = crate::journey_runtime::resume_interactive(
         &root,
         &compiled.spec,
@@ -3367,6 +3388,11 @@ pub fn resume_and_settle_compiled_validation(
         executor,
     );
     store.reacquire_graph_lock()?;
+    store.append_journal(
+        crate::audit::PROOF_EXECUTION_ENDED_EVENT,
+        &validation_id,
+        json!({ "purpose": "journey resume", "pid": std::process::id() }),
+    )?;
     let outcome = outcome?;
     match outcome {
         crate::journey_runtime::ExecutionOutcome::Pending(_) => {

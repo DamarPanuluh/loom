@@ -45,10 +45,10 @@ pub(crate) fn rehearse_cmd(root: &Path, phase: ReleasePhaseArg) -> Result<()> {
     let report = crate::release::rehearse(root, phase)?;
     println!("{}", serde_json::to_string_pretty(&report)?);
     if report.status == ReleaseStatus::Blocked {
-        bail!(
+        return Err(super::JsonStdoutComplete::fail(format!(
             "release rehearsal blocked: {}",
             report.detail.as_deref().unwrap_or("gate did not pass")
-        );
+        )));
     }
     Ok(())
 }

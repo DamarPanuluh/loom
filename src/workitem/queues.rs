@@ -504,7 +504,122 @@ fn research_work(store: &Store, task: &Node) -> Result<WorkItem> {
     })
 }
 
+fn unseeded_quality_pack(store: &Store) -> Result<Option<String>> {
+    let rules = store.list_nodes(Some(NodeType::QualityRule), usize::MAX)?;
+    if rules.iter().any(|r| r.status != "deprecated") {
+        return Ok(None);
+    }
+    // With no active intents the measured rung is NotApplicable, not unseeded —
+    // there are no boundary expectations yet, so the quality queue is empty.
+    let active = store
+        .list_nodes(Some(NodeType::Intent), usize::MAX)?
+        .into_iter()
+        .filter(|n| n.status != "deprecated")
+        .count();
+    if active == 0 {
+        return Ok(None);
+    }
+    Ok(Some(
+        crate::packs::recommended_packs(store.root())
+            .first()
+            .map(|p| p.to_string())
+            .unwrap_or_else(|| "<pack>".to_string()),
+    ))
+}
+
+/// With zero non-deprecated quality rules, the measured rung is vacuous. The
+/// lane's first packet is the seed step itself, so `loom next --mode quality`
+/// and the default walk never point at an empty queue while the rung is Unmet.
+fn unseeded_quality_item(store: &Store) -> Result<Option<WorkItem>> {
+    let Some(pack) = unseeded_quality_pack(store)? else {
+        return Ok(None);
+    };
+    Ok(Some(WorkItem {
+        packet_id: None,
+        pattern_guidance: None,
+        mode: "quality".into(),
+        owner_role: "quality".into(),
+        effort: "low".into(),
+        routing_hint: Some("seeding".into()),
+        reason: "quality rung is unseeded — no quality rules exist; seed a pack so boundary expectations can be measured"
+            .into(),
+        target: Target {
+            kind: "graph".into(),
+            id: "quality-seed".into(),
+            name: format!("unseeded — no quality rules seeded (loom rule seed {pack})"),
+            from: None,
+            to: None,
+        },
+        stale_causes: Vec::new(),
+        prompt_contract: super::PromptContract {
+            role: "quality".into(),
+            mindset: "Seeding authority. Seed a recommended quality pack so the measured rung has non-vacuous rules to measure against implemented intents.".into(),
+            why_now: "The measured rung is unseeded: zero non-deprecated quality rules exist, so every boundary axis reads not_applicable and the rung cannot honestly report met.".into(),
+            allowed_actions: vec![
+                "Run `loom detect` to review languages and project markers.".into(),
+                format!("Run `loom rule seed {pack}` (or another available pack)."),
+                "Run `loom rule list` and `loom rule show <rule>` to verify the seeded rules.".into(),
+            ],
+            forbidden_actions: vec![
+                "Do not record a quality verdict before a rule exists.".into(),
+                "Do not edit code as part of seeding.".into(),
+            ],
+            required_evidence: "The pack name and seeded-rule count from `loom rule seed` output; `loom status` then shows the measured rung with real pair counts instead of unseeded.".into(),
+            evidence_clauses: Vec::new(),
+            evidence_template: None,
+            examples: None,
+            pre_screened_hits: Vec::new(),
+            pre_screen: None,
+            write_back: format!("loom rule seed {pack}; loom status"),
+            stop_condition: "`loom status` shows the measured rung as met or counting unmeasured pairs, never unseeded.".into(),
+            human_gate: None,
+        },
+        context: TraversalContext {
+            purpose: "Choose and seed a quality pack; then re-run status so the measured rung has rules to measure.".into(),
+            linked_entities: Vec::new(),
+            suggested_reads: vec![
+                SuggestedRead {
+                    reason: "the recommended pack detection is the same signal the compass used".into(),
+                    command: "loom detect".into(),
+                },
+                SuggestedRead {
+                    reason: "seeded rules appear here after the write".into(),
+                    command: "loom rule list".into(),
+                },
+            ],
+            read_set: Vec::new(),
+        },
+        scorecard: None,
+        truth_gap: crate::truth::TruthAxis::Verdict.gap(),
+        next_step: format!("run `loom rule seed {pack}`, then `loom status`"),
+    }))
+}
+
+fn unseeded_quality_entry(store: &Store) -> Result<Option<QueueEntry>> {
+    let Some(pack) = unseeded_quality_pack(store)? else {
+        return Ok(None);
+    };
+    Ok(Some(QueueEntry {
+        mode: "quality".into(),
+        effort: "low".into(),
+        routing_hint: Some("seeding".into()),
+        cause_class: None,
+        owner_role: Some("quality".into()),
+        reason: "quality rung is unseeded — no quality rules exist; seed a pack so boundary expectations can be measured".into(),
+        target: Target {
+            kind: "graph".into(),
+            id: "quality-seed".into(),
+            name: format!("unseeded — no quality rules seeded (loom rule seed {pack})"),
+            from: None,
+            to: None,
+        },
+    }))
+}
+
 pub(super) fn quality_item(store: &Store) -> Result<Option<WorkItem>> {
+    if let Some(item) = unseeded_quality_item(store)? {
+        return Ok(Some(item));
+    }
     // Measurement lane only: uninspected rules are measured, stale verdicts are
     // re-measured. A FAILING quality verdict is repair work and is served by the
     // fix queue — measuring it again would not make the source better.
@@ -1517,10 +1632,8 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
     };
     // Node rows: the mode's serving lane (mirrors each *_item's owner_role).
     let owner_role = match mode {
-        "derive" | "build" | "surface" | "coverage" | "prove" | "elaborate" => {
-            Some("builder".into())
-        }
-        "triage" => Some("analyzer".into()),
+        "derive" | "build" | "surface" | "coverage" | "elaborate" => Some("builder".into()),
+        "triage" | "prove" => Some("analyzer".into()),
         "rectify" => Some("rectify".into()),
         "ratify" => Some("human".into()),
         _ => None,
@@ -1934,6 +2047,10 @@ fn roster_validate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_quality(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
     use crate::model::TruthClass;
+    if let Some(entry) = unseeded_quality_entry(store)? {
+        out.push(entry);
+        return Ok(());
+    }
     // `live_edges_by_status` is what the DEPTH counts: it drops
     // superseded groundings and claims about retired behaviors. Reading
     // raw edges here re-admitted exactly what the rung had excluded, so

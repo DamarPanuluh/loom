@@ -294,6 +294,7 @@ pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
     let (ladder, queues) = crate::maturity::ladder_and_depths(store)?;
     let scope = crate::coverage::coverage_scope_summary(store)?;
     let doctor_issues = crate::signal::doctor(store)?;
+    let roles = crate::rolelease::roster_value(store.root(), &queues);
     Ok(serde_json::json!({
         "graph": {
             "name": id.name,
@@ -315,6 +316,10 @@ pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
         "maturity": ladder,
         "graph_state": workitem::graph_state(store)?,
         "queues": queues,
+        // Advisory driver-role leases: which roles are held (and how fresh)
+        // and the queue debt behind each, so a joining driver picks a free
+        // role with work instead of colliding on a held one.
+        "roles": roles,
         "validation_summary": crate::maturity::validation_summary(store)?,
         "code_ownership": {
             "registered": scope.total_registered,
@@ -465,11 +470,25 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
             }
         }
     );
+    if let Some(holders) = crate::rolelease::holders_line(store.root()) {
+        println!("  roles: {holders}   (advisory leases — loom role list)");
+    }
     Ok(())
 }
 pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<()> {
     let store = open_read(graph)?;
     let (ladder, counts) = crate::maturity::ladder_and_depths(&store)?;
+    let quality_rung = ladder
+        .rungs
+        .iter()
+        .find(|r| r.lane == crate::lane::Lane::Quality);
+    let quality_unseeded = quality_rung
+        .map(|r| {
+            r.state == crate::maturity::RungState::Unmet
+                && r.depth == 1
+                && r.detail.contains("unseeded")
+        })
+        .unwrap_or(false);
     let pulse = workitem::graph_state(&store)?;
     // Queue depths: `--all` serves the TOP item of each queue, not every item.
     // Surface the depth alongside so "one line per queue" never reads as "this
@@ -519,6 +538,12 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<(
             // every lane blew past 20k tokens on a dogfood graph. Opt into the
             // full packet with `--full` when a driver will actually work a lane.
             let value = match item {
+                None if *name == "quality" && quality_unseeded => {
+                    let detail = quality_rung
+                        .map(|r| r.detail.clone())
+                        .unwrap_or_else(|| "unseeded".to_string());
+                    serde_json::json!({ "depth": depth, "detail": detail })
+                }
                 None => serde_json::json!({ "depth": depth }),
                 Some(w) if full => {
                     let mut v = serde_json::to_value(w)?;
@@ -552,6 +577,12 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<(
         for (name, depth, item) in &rows {
             match item {
                 Some(w) => println!("  {name:<8} [{depth}] → {}", w.target.name),
+                None if *name == "quality" && quality_unseeded => {
+                    let detail = quality_rung
+                        .map(|r| r.detail.as_str())
+                        .unwrap_or("unseeded");
+                    println!("  {name:<8} [{depth}] → {detail}")
+                }
                 None => println!("  {name:<8} [{depth}] → (empty)"),
             }
         }
@@ -682,46 +713,48 @@ pub(crate) fn next_output(store: &Store, mode: Option<&str>) -> Result<workitem:
     if let Some(w) = item.as_mut() {
         w.packet_id = Some(crate::packet::serve_one(store, &w.mode, &w.target.id)?);
     }
+    let lease_conflict = item.as_ref().and_then(|w| {
+        crate::rolelease::conflict_warning(store.root(), &store.execution_identity(), &w.owner_role)
+    });
     Ok(workitem::NextOutput {
         work_item: item,
         graph_state: workitem::graph_state(store)?,
+        lease_conflict,
     })
 }
 
 pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> Result<()> {
     let store = open_read(graph)?;
     let out = next_output(&store, mode)?;
-    let item = out.work_item;
-    let pulse = out.graph_state;
     if json {
-        let out = workitem::NextOutput {
-            work_item: item,
-            graph_state: pulse,
-        };
         println!("{}", serde_json::to_string_pretty(&out)?);
-    } else {
-        match &item {
-            Some(w) => print_work_item(w),
-            None => println!(
-                "no work in this queue — see `loom status` for the next move, or `loom guide` to pick a lane"
-            ),
-        }
-        println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} open_questions={}",
-            pulse.planned,
-            pulse.stale,
-            pulse.uninspected,
-            pulse.findings,
-            pulse.open_findings,
-            pulse.resolved_findings,
-            pulse.untriaged,
-            pulse.stale_findings,
-            pulse.needed,
-            pulse.inbox,
-            pulse.low_confidence,
-            pulse.open_questions
-        );
+        return Ok(());
     }
+    match &out.work_item {
+        Some(w) => print_work_item(w),
+        None => println!(
+            "no work in this queue — see `loom status` for the next move, or `loom guide` to pick a lane"
+        ),
+    }
+    if let Some(warning) = &out.lease_conflict {
+        println!("  ⚠ {warning}");
+    }
+    let pulse = out.graph_state;
+    println!(
+        "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} open_questions={}",
+        pulse.planned,
+        pulse.stale,
+        pulse.uninspected,
+        pulse.findings,
+        pulse.open_findings,
+        pulse.resolved_findings,
+        pulse.untriaged,
+        pulse.stale_findings,
+        pulse.needed,
+        pulse.inbox,
+        pulse.low_confidence,
+        pulse.open_questions
+    );
     Ok(())
 }
 /// Flatten a contract's `examples` into readable lines, whatever its shape.

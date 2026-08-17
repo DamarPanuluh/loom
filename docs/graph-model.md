@@ -662,7 +662,7 @@ The graph shape exposes gaps without cognitive judgment. The LLM confirms whethe
 | `requires` target is `planned` | Prerequisite unimplemented |
 | Scenario/variant with no `validates` edge | Proof gap |
 | Leaf intent with no realizing `implements` edge | Grounding gap |
-| CodeFile with no live realizing owner | Ownership gap |
+| CodeFile with no live realizing owner | Ownership gap. One intent may realize in many files (sibling slices). `consumes` does not close this gap. |
 | `triggers` with no response intent | Reaction gap |
 | Journey step with no current `derives` mapping | Technical derivation gap |
 | Journey whose current derivations are not implemented and realizing-grounded | Realization gap |
@@ -673,7 +673,7 @@ The graph shape exposes gaps without cognitive judgment. The LLM confirms whethe
 | Realizing `implements` locator stale, or non-realizing seam locator drifted | Grounding mismatch after code change |
 | Many unrelated intents implementing one CodeFile | Tangle |
 | Two intents sharing tags in disjoint code with no edge | Duplicated responsibility; often appears after removing shared groundings that previously masked an undocumented relationship gap |
-| File whose only realizing owner is an intent whose other realizing files live in a different top-level directory cluster | `consumer_owned_file` smell |
+| File whose only realizing owner is an intent whose other realizing files live in a different top-level directory cluster | `consumer_owned_file` smell — inspect sibling slice vs mis-owned consumer |
 | Settled `consumes` grounding without a seam in criterion and without a locator | `consumes_without_seam` doctor issue |
 
 ---

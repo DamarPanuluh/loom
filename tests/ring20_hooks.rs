@@ -98,7 +98,10 @@ fn opt_in_pre_push_runs_only_a_confined_executable_script() {
     let hook = tmp.path().join(".git/hooks/pre-push");
     let content = std::fs::read_to_string(&hook).unwrap();
     assert!(content.contains("local CI gate"));
-    assert!(content.contains("exec \"$root\"/'scripts/local-ci.sh'"));
+    assert!(
+        content.contains("cat >/dev/null\nexec \"$root\"/'scripts/local-ci.sh'"),
+        "pre-push must drain git stdin before exec so git does not see SIGPIPE: {content}"
+    );
     assert!(std::fs::read_to_string(hooks.join("post-commit"))
         .unwrap()
         .contains("Foreign hook remains untouched"));

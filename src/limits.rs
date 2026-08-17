@@ -107,6 +107,13 @@ pub fn all() -> Vec<Limit> {
             remedy: "fixed",
         },
         Limit {
+            name: "role_lease_ttl_ms",
+            value: crate::rolelease::ROLE_LEASE_TTL_MS,
+            unit: "milliseconds",
+            scope: "advisory role-lease freshness — a lease not refreshed within this window reads as stale in `loom role list` / session / status",
+            remedy: "any loom command run under the claimed role+profile refreshes it; take over an expired lease with `loom role claim <role> --take-stale`",
+        },
+        Limit {
             name: "git_timeout_secs",
             value: crate::signal::GIT_TIMEOUT_SECS,
             unit: "seconds",

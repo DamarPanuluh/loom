@@ -3,14 +3,14 @@
   "status": "passed",
   "candidate_hash_relation": "source_inventory.inventory_hash",
   "source_inventory": {
-    "entry_count": 267,
-    "file_count": 267,
+    "entry_count": 313,
+    "file_count": 307,
     "git_influenced_plan": false,
     "git_verification": "verified",
-    "manifest_hash": "d357d55e2ec28c02",
+    "manifest_hash": "6c82737ad1640457",
     "materialized_matches": true,
     "provenance": "source_controlled_manifest_git_verified",
     "schema": "loom.release-source-inventory-attestation/v1",
-    "tombstone_count": 0
+    "tombstone_count": 6
   }
 }

@@ -34,3 +34,4 @@ profiles:
   proof:
     inputs: {}
     workspace: {}
+    timeout_seconds: 10800

@@ -185,16 +185,13 @@ fn find_exact(
     filter: Option<&std::collections::BTreeSet<String>>,
     json: bool,
 ) -> Result<()> {
-    let mut limited = Vec::new();
-    for kind in kinds {
-        for n in store.list_nodes(Some(*kind), usize::MAX)? {
-            if n.status != "deprecated"
-                && n.name.eq_ignore_ascii_case(query)
-                && filter.is_none_or(|ids| ids.contains(&n.id))
-            {
-                limited.push((100usize, kind.as_str().to_string(), n.name, n.id));
-            }
-        }
+    // Behavior identity is Intent. A CodeFile, Journey, or QualityRule may
+    // share a name without making two behaviors; only a second Intent is
+    // ambiguous. Search Intent first, and only if none match fall back to
+    // the other exact-addressable kinds.
+    let mut limited = collect_exact_matches(store, query, &[NodeType::Intent], filter)?;
+    if limited.is_empty() {
+        limited = collect_exact_matches(store, query, kinds, filter)?;
     }
     if limited.len() > 1 {
         let candidates = limited
@@ -209,6 +206,26 @@ fn find_exact(
         );
     }
     print_find_hits(store, query, &limited, true, "", json)
+}
+
+fn collect_exact_matches(
+    store: &Store,
+    query: &str,
+    kinds: &[NodeType],
+    filter: Option<&std::collections::BTreeSet<String>>,
+) -> Result<Vec<(usize, String, String, String)>> {
+    let mut limited = Vec::new();
+    for kind in kinds {
+        for n in store.list_nodes(Some(*kind), usize::MAX)? {
+            if n.status != "deprecated"
+                && n.name.eq_ignore_ascii_case(query)
+                && filter.is_none_or(|ids| ids.contains(&n.id))
+            {
+                limited.push((100usize, kind.as_str().to_string(), n.name, n.id));
+            }
+        }
+    }
+    Ok(limited)
 }
 
 fn print_find_hits(
@@ -538,21 +555,9 @@ pub(crate) fn detect_cmd(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     count_exts(&root, &mut langs, 0);
     // Recommend only packs that actually exist (crate::packs::PACKS), from
-    // honest signals: a recommendation the seeder rejects is a dead end.
-    let mut recommended: Vec<&str> = vec!["iso5055"];
-    if markers.contains(&"docker") {
-        recommended.push("docker");
-    }
-    if markers.contains(&"node") {
-        recommended.push("web-ui");
-        recommended.push("service");
-    }
-    if markers.contains(&"rust") || markers.contains(&"go") {
-        recommended.push("concurrency");
-    }
-    if root.join("migrations").is_dir() || langs.contains_key("sql") {
-        recommended.push("data");
-    }
+    // honest signals: a recommendation the seeder rejects is a dead end. The
+    // same function feeds the compass when the quality rung is unseeded.
+    let recommended = crate::packs::recommended_packs(&root);
     debug_assert!(
         recommended.iter().all(|p| crate::packs::PACKS.contains(p)),
         "detect recommended a pack that cannot be seeded"

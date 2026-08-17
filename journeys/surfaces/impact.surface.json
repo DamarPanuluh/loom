@@ -9,7 +9,7 @@
   "journey_id": "impact",
   "schema": "loom.journey.surface/v1",
   "surface": {
-    "codefile": "src/commands/diagnostics_cmd.rs",
+    "codefile": "src/commands/diagnostics_cmd/impact.rs",
     "id": "loom-impact",
     "identity": "loom impact",
     "locator": "impact_cmd",

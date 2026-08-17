@@ -968,12 +968,12 @@ fn every_loom_subcommand_handler_maps_to_a_real_unique_cli_symbol() {
         ("./loom guide", "src/commands/orient_cmd.rs", "guide"),
         (
             "./loom coverage",
-            "src/commands/diagnostics_cmd.rs",
+            "src/commands/diagnostics_cmd/coverage.rs",
             "coverage_cmd",
         ),
         (
             "./loom impact door --depth 2 --json",
-            "src/commands/diagnostics_cmd.rs",
+            "src/commands/diagnostics_cmd/impact.rs",
             "impact_cmd",
         ),
         (
@@ -988,33 +988,33 @@ fn every_loom_subcommand_handler_maps_to_a_real_unique_cli_symbol() {
         ),
         (
             "./loom audit",
-            "src/commands/diagnostics_cmd.rs",
+            "src/commands/diagnostics_cmd/impact.rs",
             "audit_cmd",
         ),
         (
             "./loom deepen --limit 3",
-            "src/commands/diagnostics_cmd.rs",
+            "src/commands/diagnostics_cmd/impact.rs",
             "deepen_cmd",
         ),
         ("./loom export", "src/commands/status_cmd.rs", "export"),
         (
             "./loom whoami",
-            "src/commands/diagnostics_cmd.rs",
+            "src/commands/diagnostics_cmd/coverage.rs",
             "whoami_cmd",
         ),
         (
             "./loom smells",
-            "src/commands/diagnostics_cmd.rs",
+            "src/commands/diagnostics_cmd/advisory.rs",
             "smells_cmd",
         ),
         (
             "./loom doctor",
-            "src/commands/diagnostics_cmd.rs",
+            "src/commands/diagnostics_cmd/findings.rs",
             "doctor_cmd",
         ),
         (
             "./loom observe -- true",
-            "src/commands/proof_cmd.rs",
+            "src/commands/proof_cmd/validate.rs",
             "observe_cmd",
         ),
         (
