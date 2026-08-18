@@ -21204,6 +21204,24 @@
       "updated_at": "2026-08-09T14:45:49.821Z"
     },
     {
+      "id": "cf67f61d201999c5f389c71c2efb7065",
+      "type": "finding",
+      "name": "the installed pre-push hook's multi-minute CI gate outlives the SSH transport git opened before it, so every hooked SSH push dies SIGPIPE at transfer",
+      "description": "every push through the sanctioned hook fails on default ssh config after passing its own gate — operators will reach for --no-verify, bypassing the CI the hook exists to enforce",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.9,
+        "evidence": "reproduced 2026-08-18: git push exit 141 after 'dogfood: OK' (hook passed, transfer dead); git fetches remote refs for the hook's stdin before running it, local-ci.sh runs ~15min (cargo build + dogfood --check), GitHub drops the idle SSH connection meanwhile; retry with -c core.sshCommand='ssh -o ServerAliveInterval=30 -o ServerAliveCountMax=120' pushed clean (1e52d53..a736d7b). Same signature previously hit at the 0.33.0 release",
+        "file": "src/commands/hook_cmd.rs",
+        "impact": "every push through the sanctioned hook fails on default ssh config after passing its own gate — operators will reach for --no-verify, bypassing the CI the hook exists to enforce",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-18T16:05:06.683Z",
+      "updated_at": "2026-08-18T16:05:06.683Z"
+    },
+    {
       "id": "cfd54e43223b0c4e3a9b414f86f8c938",
       "type": "note",
       "name": "note:ratify",
