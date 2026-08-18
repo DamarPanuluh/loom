@@ -8,6 +8,9 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.34.0] - 2026-08-18
+- advisory role leases for parallel drivers, proof-window audit, and a 65x faster driver loop (journal read once, readiness snapshot shared)
+
 ## [0.33.0] - 2026-08-15
 - assertion pointers may select an array element by identity instead of position; schema v12 graphs require no rebuild
   - A pointer segment may be `[key=value]`, selecting the one element whose field matches — the assertion-plane counterpart of `codefile anchor --at-symbol`. An index records where something sat when the fixture was written; add or reorder an element and the assertion checks a different one, silently. It fails closed: no match fails, **two** matches fail rather than taking the first, a selector on a non-array fails, and a key or value containing `[`, `]`, `=`, `/` or `~` is refused at authoring time. A pointer without a selector is resolved verbatim, `OutputAssertion` is unchanged, and the Journey compiler version stays **6** — no recompilation.
