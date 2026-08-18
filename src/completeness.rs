@@ -619,8 +619,18 @@ pub fn all_journey_readiness(store: &Store) -> Result<Vec<JourneyReadiness>> {
 /// The single enumerated predicate behind Derive depth, roster, and serving.
 pub fn journey_derive_gaps(store: &Store) -> Result<Vec<JourneyDeriveGap>> {
     let readiness = all_journey_readiness(store)?;
+    journey_derive_gaps_with(store, &readiness)
+}
+
+/// The same predicate over an already-computed readiness snapshot, so one
+/// gather never pays the whole-graph readiness walk twice (finding 6825299d:
+/// per-call recomputes stacked up to CPU-minutes on a 1586-edge graph).
+pub fn journey_derive_gaps_with(
+    store: &Store,
+    readiness: &[JourneyReadiness],
+) -> Result<Vec<JourneyDeriveGap>> {
     let mut out = Vec::new();
-    for journey in &readiness {
+    for journey in readiness {
         for detail in &journey.derive_gaps {
             let (kind, subject_id, subject_name) = match detail
                 .strip_prefix("step '")
@@ -657,7 +667,7 @@ pub fn journey_derive_gaps(store: &Store) -> Result<Vec<JourneyDeriveGap>> {
         {
             continue;
         }
-        let Some(host_id) = host_journey_for_unrooted(store, &intent.id, &readiness)? else {
+        let Some(host_id) = host_journey_for_unrooted(store, &intent.id, readiness)? else {
             continue;
         };
         out.push(JourneyDeriveGap {
@@ -729,8 +739,14 @@ fn host_journey_for_unrooted(
 
 /// The single enumerated predicate behind Surface depth, roster, and serving.
 pub fn journey_surface_gaps(store: &Store) -> Result<Vec<JourneySurfaceGap>> {
+    Ok(journey_surface_gaps_with(&all_journey_readiness(store)?))
+}
+
+/// The same predicate over an already-computed readiness snapshot (see
+/// `journey_derive_gaps_with`).
+pub fn journey_surface_gaps_with(readiness: &[JourneyReadiness]) -> Vec<JourneySurfaceGap> {
     let mut out = Vec::new();
-    for journey in all_journey_readiness(store)? {
+    for journey in readiness {
         if journey.authored
             && journey.derived
             && journey.derivations_ratified
@@ -738,12 +754,12 @@ pub fn journey_surface_gaps(store: &Store) -> Result<Vec<JourneySurfaceGap>> {
             && !journey.surfaced
         {
             out.push(JourneySurfaceGap {
-                journey_id: journey.journey_id,
+                journey_id: journey.journey_id.clone(),
                 detail: journey.surface_gaps.join("; "),
             });
         }
     }
-    Ok(out)
+    out
 }
 
 impl Scorecard {
@@ -755,13 +771,15 @@ impl Scorecard {
 /// Compute the scorecard for one intent.
 pub fn scorecard(store: &Store, intent: &Node) -> Result<Scorecard> {
     let boundaries = BoundaryIndex::load(store)?;
-    scorecard_with_boundaries(store, intent, &boundaries)
+    let readiness = all_journey_readiness(store)?;
+    scorecard_with_boundaries(store, intent, &boundaries, &readiness)
 }
 
 fn scorecard_with_boundaries(
     store: &Store,
     intent: &Node,
     boundaries: &BoundaryIndex,
+    readiness: &[JourneyReadiness],
 ) -> Result<Scorecard> {
     let visibility = store.get_facet(&intent.id, TargetKind::Node, "visibility")?;
     let user_visible = visibility.as_deref() == Some("user_visible");
@@ -785,7 +803,7 @@ fn scorecard_with_boundaries(
     axes.push(apply_waiver(
         store,
         intent,
-        journey_axis(store, intent, user_visible)?,
+        journey_axis(store, intent, user_visible, readiness)?,
     )?);
     // Questions are never waivable: an unanswered question is either answered
     // or withdrawn (inbox disposition), not waived away.
@@ -802,6 +820,18 @@ fn scorecard_with_boundaries(
 
 /// Scorecards for every active feature-level intent, most-incomplete first.
 pub fn all_scorecards(store: &Store) -> Result<Vec<Scorecard>> {
+    let readiness = all_journey_readiness(store)?;
+    all_scorecards_with(store, &readiness)
+}
+
+/// The same cards over an already-computed readiness snapshot. The journey
+/// axis reads readiness per intent; recomputing that whole-graph walk inside
+/// every card was finding 6825299d — ~43 user-visible intents × ~5.7s of
+/// readiness turned one status call into CPU-minutes.
+pub fn all_scorecards_with(
+    store: &Store,
+    readiness: &[JourneyReadiness],
+) -> Result<Vec<Scorecard>> {
     let boundaries = BoundaryIndex::load(store)?;
     let mut cards = Vec::new();
     for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
@@ -814,7 +844,12 @@ pub fn all_scorecards(store: &Store) -> Result<Vec<Scorecard>> {
         if level != "feature" {
             continue;
         }
-        cards.push(scorecard_with_boundaries(store, &intent, &boundaries)?);
+        cards.push(scorecard_with_boundaries(
+            store,
+            &intent,
+            &boundaries,
+            readiness,
+        )?);
     }
     cards.sort_by(|a, b| b.open.cmp(&a.open).then(a.intent_name.cmp(&b.intent_name)));
     Ok(cards)
@@ -1246,7 +1281,12 @@ fn proof_axis(store: &Store, intent: &Node) -> Result<AxisState> {
 /// root Journey derives it and that Journey is fully realized: authored,
 /// derived, implemented, surfaced into real target-repository code, compiled,
 /// and proven by a passing S3 proof through that surface.
-fn journey_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<AxisState> {
+fn journey_axis(
+    store: &Store,
+    intent: &Node,
+    user_visible: bool,
+    readiness: &[JourneyReadiness],
+) -> Result<AxisState> {
     if !user_visible {
         return Ok(axis(
             "journey",
@@ -1264,7 +1304,6 @@ fn journey_axis(store: &Store, intent: &Node, user_visible: bool) -> Result<Axis
             ),
         ));
     }
-    let readiness = all_journey_readiness(store)?;
     let mut roots: Vec<&JourneyReadiness> = readiness
         .iter()
         .filter(|journey| journey.derived_intent_ids.contains(&intent.id))

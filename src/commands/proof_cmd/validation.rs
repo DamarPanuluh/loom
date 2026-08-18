@@ -3,8 +3,20 @@ use super::*;
 pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -> Result<()> {
     // `validation run` executes stored proof commands; validate_cmd manages its
     // own store/lock lifecycle, so it must not run under this handler's store.
+    // `show`/`list` are pure reads and open SHARED, so a driver inspecting
+    // proofs never contends with concurrent readers or blocks writers —
+    // finding 73b43c85: the write open here refused `validation list` with
+    // exit 75 while another process merely held a read lock.
     let cmd = match cmd {
         ValidationCmd::Run { key, all } => return validate_cmd(graph, &key, all, json),
+        ValidationCmd::Show { key } => {
+            let store = open_read(graph)?;
+            return validation_show(&store, json, key);
+        }
+        ValidationCmd::List { limit, offset } => {
+            let store = open_read(graph)?;
+            return validation_list(&store, json, limit, offset);
+        }
         other => other,
     };
     let store = open(graph)?;
@@ -21,7 +33,6 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             evidence,
             reason,
         } => validation_verdict(&store, json, key, outcome, evidence, reason),
-        ValidationCmd::Show { key } => validation_show(&store, json, key),
         ValidationCmd::Update {
             key,
             r#type,
@@ -31,9 +42,11 @@ pub(crate) fn validation(graph: Option<&Path>, cmd: ValidationCmd, json: bool) -
             validation_unlink(&store, json, validation, intent)
         }
         ValidationCmd::Remove { key } => validation_remove(&store, json, key),
-        ValidationCmd::List { limit, offset } => validation_list(&store, json, limit, offset),
-        // Intercepted before the store is opened (validate_cmd owns its lock).
-        ValidationCmd::Run { .. } => unreachable!("`validation run` is handled above"),
+        // Intercepted before the exclusive store is opened (run owns its own
+        // lock lifecycle; show/list opened shared).
+        ValidationCmd::Run { .. } | ValidationCmd::Show { .. } | ValidationCmd::List { .. } => {
+            unreachable!("read and run subcommands are handled above")
+        }
     }
 }
 

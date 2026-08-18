@@ -55,3 +55,36 @@ fn doctor_and_coverage_run_under_a_held_shared_reader() {
 
     drop(reader);
 }
+
+/// `validation list` (finding 73b43c85) and `session` are pure reads and must
+/// share the lock: both previously opened exclusive and were refused exit 75
+/// whenever any other process merely held a read.
+#[test]
+fn validation_list_and_session_run_under_a_held_shared_reader() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    drop(store);
+    let reader = Store::open_read(tmp.path()).expect("shared reader opens");
+
+    let list = run(
+        tmp.path(),
+        Command::Validation {
+            cmd: loom::cli::ValidationCmd::List {
+                limit: 20,
+                offset: 0,
+            },
+        },
+    );
+    assert!(
+        list.is_ok(),
+        "validation list is read-only and must not take the write lock: {list:?}"
+    );
+
+    let session = run(tmp.path(), Command::Session);
+    assert!(
+        session.is_ok(),
+        "session is read-only orientation and must not take the write lock: {session:?}"
+    );
+
+    drop(reader);
+}

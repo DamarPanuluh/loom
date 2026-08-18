@@ -136,13 +136,19 @@ impl LadderInputs {
             .iter()
             .filter(|n| n.status == "implemented")
             .collect();
+        // ONE readiness walk feeds every consumer below (derive gaps, surface
+        // gaps, scorecards). Each used to recompute it internally — and the
+        // scorecards recomputed it once per user-visible intent — which is how
+        // one status call reached CPU-minutes (finding 6825299d).
         let journey_readiness = crate::completeness::all_journey_readiness(store)?;
         let authored_journeys = journey_readiness
             .iter()
             .filter(|journey| journey.authored)
             .count();
-        let derive_gaps = crate::completeness::journey_derive_gaps(store)?.len();
-        let surface_gaps = crate::completeness::journey_surface_gaps(store)?.len();
+        let derive_gaps =
+            crate::completeness::journey_derive_gaps_with(store, &journey_readiness)?.len();
+        let surface_gaps =
+            crate::completeness::journey_surface_gaps_with(&journey_readiness).len();
 
         // Edge residue, split exactly the way the lanes serve it.
         let failing_edges =
@@ -298,7 +304,7 @@ impl LadderInputs {
             proposed_hypotheses: store
                 .nodes_by_status(NodeType::Hypothesis, &["proposed"])?
                 .len(),
-            open_elaborations: crate::completeness::all_scorecards(store)?
+            open_elaborations: crate::completeness::all_scorecards_with(store, &journey_readiness)?
                 .iter()
                 .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
                 .count(),
