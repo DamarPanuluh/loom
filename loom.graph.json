@@ -1465,7 +1465,7 @@
         "type": "test"
       },
       "created_at": "2026-08-15T07:45:59.878Z",
-      "updated_at": "2026-08-15T07:46:04.274Z"
+      "updated_at": "2026-08-18T16:59:56.571Z"
     },
     {
       "id": "13e467227ea9ffdca295d03d887e0114",
@@ -6076,7 +6076,7 @@
         "type": "test"
       },
       "created_at": "2026-08-15T07:45:59.854Z",
-      "updated_at": "2026-08-15T07:46:03.831Z"
+      "updated_at": "2026-08-18T16:59:54.784Z"
     },
     {
       "id": "3d7b5c2abfc7700f8e8b4c9264459da3",
@@ -7987,6 +7987,24 @@
       "updated_at": "2026-08-09T15:44:55.797Z"
     },
     {
+      "id": "53cc3de964f8244d8348da7cd3d119ea",
+      "type": "note",
+      "name": "note:decision",
+      "description": "parallel drivers are sanctioned in the loom-driver skill: lane partition via role leases, or an in-lane fleet of disjoint per-profile workers — instead of the grilled single-threaded campaign rule (no parallel subagents for judgment work) — because the audit now buckets judgment per (actor, profile, minute) so each declared profile is an independently budgeted, attributed judging mind; a 12-worker fleet honestly recorded 480 verdicts with zero audit findings on 2026-08-17, and role leases plus lease_conflict make the partition self-announcing",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "because": "the audit now buckets judgment per (actor, profile, minute) so each declared profile is an independently budgeted, attributed judging mind; a 12-worker fleet honestly recorded 480 verdicts with zero audit findings on 2026-08-17, and role leases plus lease_conflict make the partition self-announcing",
+        "chose": "parallel drivers are sanctioned in the loom-driver skill: lane partition via role leases, or an in-lane fleet of disjoint per-profile workers",
+        "evidence": "skills/loom-driver/SKILL.md Parallel drivers section; tests/ring59_driver_skill.rs reversal note; src/audit.rs per-profile buckets",
+        "instead_of": "the grilled single-threaded campaign rule (no parallel subagents for judgment work)",
+        "kind": "decision",
+        "target_id": "10a8c9994a8bcfdc654d83a5d5b6ee7a"
+      },
+      "created_at": "2026-08-18T16:48:34.383Z",
+      "updated_at": "2026-08-18T16:48:34.383Z"
+    },
+    {
       "id": "53e2d1cf3d479f9d9f10cfdb31b64fbf",
       "type": "finding",
       "name": "loom ignore add/remove persists coverage exclusion globs in graph metadata; no existing intent names that write contract",
@@ -9091,7 +9109,7 @@
         "type": "test"
       },
       "created_at": "2026-08-15T12:56:48.156Z",
-      "updated_at": "2026-08-18T14:19:45.921Z"
+      "updated_at": "2026-08-18T16:59:56.143Z"
     },
     {
       "id": "5d2c84e4ee3155a849b899f69132a89b",
@@ -11987,7 +12005,7 @@
         "type": "manual_check"
       },
       "created_at": "2026-08-15T07:32:58.682Z",
-      "updated_at": "2026-08-15T07:33:12.628Z"
+      "updated_at": "2026-08-18T17:00:53.769Z"
     },
     {
       "id": "7be59c16129b15b909b388ee08369b07",
@@ -17312,7 +17330,7 @@
         "type": "test"
       },
       "created_at": "2026-08-15T07:45:59.867Z",
-      "updated_at": "2026-08-15T07:46:04.065Z"
+      "updated_at": "2026-08-18T16:59:55.685Z"
     },
     {
       "id": "a395e9a558317e62aef6aa82e2000827",
@@ -20071,7 +20089,7 @@
         "type": "test"
       },
       "created_at": "2026-08-18T14:19:00.000Z",
-      "updated_at": "2026-08-18T14:19:00.008Z"
+      "updated_at": "2026-08-18T17:01:08.438Z"
     },
     {
       "id": "c1fffdbdf7300bfcf1d597c567ae8b7e",
@@ -20182,7 +20200,7 @@
         "type": "test"
       },
       "created_at": "2026-08-15T12:56:48.171Z",
-      "updated_at": "2026-08-18T14:19:57.618Z"
+      "updated_at": "2026-08-18T16:59:57.004Z"
     },
     {
       "id": "c396233636e7827e497151e71108da91",
@@ -23546,12 +23564,12 @@
       "id": "d7639c52073c3b7a4",
       "type": "finding",
       "name": "src/signal.rs::journey_integrity_issues is long",
-      "description": "350 lines (> 120)",
+      "description": "349 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "large_symbol",
-        "metric": 350,
+        "metric": 349,
         "symbol": "journey_integrity_issues"
       },
       "created_at": "",
@@ -23561,12 +23579,12 @@
       "id": "d76631ff740131229",
       "type": "finding",
       "name": "src/signal.rs is oversized",
-      "description": "2010 lines (> 600)",
+      "description": "2009 lines (> 600)",
       "status": "oversized_file",
       "truth_class": "derived",
       "body": {
         "kind": "oversized_file",
-        "metric": 2010,
+        "metric": 2009,
         "symbol": ""
       },
       "created_at": "",
@@ -23802,12 +23820,12 @@
       "id": "d8643efd78ffb6451",
       "type": "finding",
       "name": "src/maturity.rs::gather is long",
-      "description": "196 lines (> 120)",
+      "description": "195 lines (> 120)",
       "status": "large_symbol",
       "truth_class": "derived",
       "body": {
         "kind": "large_symbol",
-        "metric": 196,
+        "metric": 195,
         "symbol": "gather"
       },
       "created_at": "",
@@ -28413,7 +28431,7 @@
         "type": "test"
       },
       "created_at": "2026-08-11T18:18:00.070Z",
-      "updated_at": "2026-08-16T04:17:13.794Z"
+      "updated_at": "2026-08-18T17:12:38.603Z"
     },
     {
       "id": "eadc784f5dc511ddfce49ab33eba4f46",
@@ -29184,7 +29202,7 @@
         "type": "test"
       },
       "created_at": "2026-08-15T07:41:00.017Z",
-      "updated_at": "2026-08-15T07:41:00.231Z"
+      "updated_at": "2026-08-18T16:59:55.244Z"
     },
     {
       "id": "f7bc3a56ddb704f1e70992ed5e898a44",
@@ -30390,12 +30408,12 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "independent",
-      "criterion": "unchecked Result handling is independent because the grounded skill contains instructions and shell examples rather than a program receiving fallible return values",
-      "confidence": 0.96,
+      "criterion": "the rule measures executable failure handling",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:35:18.341Z",
-      "updated_at": "2026-08-17T07:35:18.344Z"
+      "updated_at": "2026-08-18T17:02:40.944Z"
     },
     {
       "id": "05300c05a146f89752a473e42189bb46",
@@ -30614,12 +30632,12 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "Hook installation and removal use one live implementation per behavior without unreachable or copied branches.",
-      "confidence": 0.91,
+      "criterion": "no unreachable or duplicated logic; every branch live",
+      "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:26:47.410Z",
-      "updated_at": "2026-08-17T07:26:47.413Z"
+      "updated_at": "2026-08-18T17:14:00.393Z"
     },
     {
       "id": "07f57d5afdf11fa0f1c8a44b66050c47",
@@ -30861,7 +30879,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-11T18:18:00.071Z",
-      "updated_at": "2026-08-16T04:17:13.794Z"
+      "updated_at": "2026-08-18T17:12:38.602Z"
     },
     {
       "id": "0b99df89e69ca788aa41adaafedfe082",
@@ -31542,12 +31560,12 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "independent",
-      "criterion": "Repository-hook integration does not retain acquired handles or resources requiring explicit release.",
-      "confidence": 0.96,
+      "criterion": "the rule measures explicit resource acquisition/release",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:27:13.593Z",
-      "updated_at": "2026-08-17T07:27:13.597Z"
+      "updated_at": "2026-08-18T17:14:00.480Z"
     },
     {
       "id": "14693504b1b9f4eb1ba92994419cef5b",
@@ -32083,7 +32101,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-15T07:45:59.856Z",
-      "updated_at": "2026-08-15T07:46:03.829Z"
+      "updated_at": "2026-08-18T16:59:54.781Z"
     },
     {
       "id": "19f20238387a9306ccb9446e83ceae2e",
@@ -35077,7 +35095,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-15T07:41:00.018Z",
-      "updated_at": "2026-08-15T07:41:00.230Z"
+      "updated_at": "2026-08-18T16:59:55.243Z"
     },
     {
       "id": "481446bbf86e034e8ec61fd9958002a2",
@@ -35906,12 +35924,12 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the loom-driver skill behavior is realized by the normative rules written in skills/loom-driver/SKILL.md: orient, choose seeding or draining, drain the autonomous lanes packet by packet, batch the human-gated remainder into one sitting, checkpoint and export, and end with a before/after ladder report.",
-      "confidence": 0.85,
+      "criterion": "the skill file still is the campaign-layer protocol the intent names: orient, strategy choice, drain loop, pacing, checkpoints, end sitting, report",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-15T07:30:49.545Z",
-      "updated_at": "2026-08-15T11:52:11.896Z"
+      "updated_at": "2026-08-18T17:01:32.954Z"
     },
     {
       "id": "53190760c89127495976be287a8b21ab",
@@ -36207,7 +36225,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-15T07:45:59.868Z",
-      "updated_at": "2026-08-15T07:46:04.064Z"
+      "updated_at": "2026-08-18T16:59:55.684Z"
     },
     {
       "id": "56727d10adafd18345bc483e8abf6521",
@@ -37297,13 +37315,13 @@
       "to_id": "498edb3b2f99d3645b92b98ab2a7519c",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "independent",
-      "criterion": "Hook integration contains no credential-bearing configuration or authentication material.",
-      "confidence": 0.98,
+      "status": "passing",
+      "criterion": "no credential, key, or token literals",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:27:25.424Z",
-      "updated_at": "2026-08-17T07:27:25.429Z"
+      "updated_at": "2026-08-18T17:14:00.557Z"
     },
     {
       "id": "671c90f45afd29102cb2aff86c958e46",
@@ -38554,12 +38572,12 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "A configured hook script path cannot break out of its repository confinement or shell quoting.",
-      "confidence": 0.96,
+      "criterion": "shell content built from input is escaped and the input path is confined before use",
+      "confidence": 0.88,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:27:41.079Z",
-      "updated_at": "2026-08-17T07:27:41.083Z"
+      "updated_at": "2026-08-18T17:14:00.626Z"
     },
     {
       "id": "7b5e5170a7af6c5569776edbf9d12079",
@@ -38643,7 +38661,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-15T12:56:48.156Z",
-      "updated_at": "2026-08-18T14:19:45.920Z"
+      "updated_at": "2026-08-18T16:59:56.142Z"
     },
     {
       "id": "7c137704a9d86c64497f8744a9ecc403",
@@ -39109,7 +39127,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-15T07:45:59.878Z",
-      "updated_at": "2026-08-15T07:46:04.273Z"
+      "updated_at": "2026-08-18T16:59:56.570Z"
     },
     {
       "id": "81a9d176a4af5171ec289586e56cf7a9",
@@ -39633,7 +39651,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-15T12:56:48.171Z",
-      "updated_at": "2026-08-18T14:19:57.617Z"
+      "updated_at": "2026-08-18T16:59:57.003Z"
     },
     {
       "id": "8908ed81ace93353d05a3156eb3d77d5",
@@ -43686,12 +43704,12 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "the committed driver skill contains no literal credential, token, password, or private key",
-      "confidence": 0.96,
+      "criterion": "no credential, key, or token literals in the grounded artifact",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:35:34.369Z",
-      "updated_at": "2026-08-17T07:35:34.372Z"
+      "updated_at": "2026-08-18T17:02:41.034Z"
     },
     {
       "id": "c345b92d7f4ea7c373fb312d599cd51f",
@@ -44215,7 +44233,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-15T07:32:58.684Z",
-      "updated_at": "2026-08-15T07:33:12.626Z"
+      "updated_at": "2026-08-18T17:00:53.767Z"
     },
     {
       "id": "ca1685332a60e5b6efe2d8e5d923426e",
@@ -49568,12 +49586,12 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "'Isolated repository integrations' is implemented in src/commands/hook_cmd.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
-      "confidence": 0.85,
+      "criterion": "hook install/remove stays confined to loom-owned files inside this repository's .git/hooks",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-10T03:58:48.877Z",
-      "updated_at": "2026-08-15T11:28:17.374Z"
+      "updated_at": "2026-08-18T17:13:29.462Z"
     },
     {
       "id": "de50737bcbff8915e",
@@ -50967,7 +50985,7 @@
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-18T14:19:00.002Z",
-      "updated_at": "2026-08-18T14:19:00.007Z"
+      "updated_at": "2026-08-18T17:01:08.436Z"
     },
     {
       "id": "eb2b2e381786a716010c427c0ecbfa86",
@@ -52906,12 +52924,12 @@
       "subject_id": "7ab6d9dee5e0a1c13052988d52162cf0",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "A configured hook script path cannot break out of its repository confinement or shell quoting.",
+      "criterion": "shell content built from input is escaped and the input path is confined before use",
       "verification": "verified",
-      "confidence": 0.96,
+      "confidence": 0.88,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain-2026-08-17-w7",
-      "asserted_at": "2026-08-17T07:27:41.082Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:14:00.617Z",
       "decision_mode": "individual"
     },
     {
@@ -54741,7 +54759,8 @@
       "verification": "cited",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-15T07:33:12.626Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:00:53.764Z",
       "decision_mode": "individual"
     },
     {
@@ -54858,12 +54877,12 @@
       "subject_id": "13fd4ce441194f702c65bfb67484d0ac",
       "claim": "verdict",
       "state": "independent",
-      "criterion": "Repository-hook integration does not retain acquired handles or resources requiring explicit release.",
-      "verification": "cited",
-      "confidence": 0.96,
+      "criterion": "the rule measures explicit resource acquisition/release",
+      "verification": "claimed",
+      "confidence": 0.85,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain-2026-08-17-w7",
-      "asserted_at": "2026-08-17T07:27:13.596Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:14:00.472Z",
       "decision_mode": "individual"
     },
     {
@@ -55027,7 +55046,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "claude-fable-session",
-      "asserted_at": "2026-08-18T14:19:00.006Z",
+      "asserted_at": "2026-08-18T17:01:08.435Z",
       "decision_mode": "individual"
     },
     {
@@ -57510,6 +57529,20 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f3650c3789001a7d6",
+      "subject_kind": "node",
+      "subject_id": "cf67f61d201999c5f389c71c2efb7065",
+      "claim": "adjudication",
+      "state": "resolved",
+      "criterion": "durable remedies observed: src/commands/hook_cmd.rs:42 — the pre_push_content template header now teaches the failure mode and names ServerAliveInterval 30 / ServerAliveCountMax 120; src/commands/hook_cmd.rs:120-121 — the installer prints the same warning on every pre-push install; this repository's regenerated .git/hooks/pre-push carries the header (its line 6 names ServerAliveInterval 30); and a plain hooked git push transferred clean end-to-end after the operator ssh config change (journal: push a736d7b..01261ba, 2026-08-18)",
+      "verification": "cited",
+      "confidence": 1.0,
+      "asserted_by": "llm:analyzer",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:15:03.521Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f369bc3c4ec8814ea",
       "subject_kind": "edge",
       "subject_id": "e76a94e13393ea33a9e8c7343e00e3fc",
@@ -58302,7 +58335,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "claude-fable-session",
-      "asserted_at": "2026-08-18T14:19:57.616Z",
+      "asserted_at": "2026-08-18T16:59:57.003Z",
       "decision_mode": "individual"
     },
     {
@@ -60943,11 +60976,12 @@
       "subject_id": "de39b9de027164dfed7df67a1d3e0158",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "'Isolated repository integrations' is implemented in src/commands/hook_cmd.rs: the edge's locator names a definition that exists in that CodeFile, so the claim points at real code rather than a stale or invented site.",
+      "criterion": "hook install/remove stays confined to loom-owned files inside this repository's .git/hooks",
       "verification": "verified",
-      "confidence": 0.85,
+      "confidence": 0.9,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:28:17.369Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:13:29.441Z",
       "decision_mode": "individual"
     },
     {
@@ -62718,12 +62752,12 @@
       "subject_id": "07f07e1213f5fc36c0b89e9588ca90cd",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "Hook installation and removal use one live implementation per behavior without unreachable or copied branches.",
+      "criterion": "no unreachable or duplicated logic; every branch live",
       "verification": "cited",
-      "confidence": 0.91,
+      "confidence": 0.88,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain-2026-08-17-w7",
-      "asserted_at": "2026-08-17T07:26:47.412Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:14:00.377Z",
       "decision_mode": "individual"
     },
     {
@@ -63154,7 +63188,7 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_profile": "claude-fable-session",
-      "asserted_at": "2026-08-18T14:19:45.919Z",
+      "asserted_at": "2026-08-18T16:59:56.142Z",
       "decision_mode": "individual"
     },
     {
@@ -64556,7 +64590,8 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-15T07:46:04.272Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T16:59:56.570Z",
       "decision_mode": "individual"
     },
     {
@@ -64916,13 +64951,13 @@
       "subject_kind": "edge",
       "subject_id": "66fa7a333074e06da5470ae11084d765",
       "claim": "verdict",
-      "state": "independent",
-      "criterion": "Hook integration contains no credential-bearing configuration or authentication material.",
+      "state": "passing",
+      "criterion": "no credential, key, or token literals",
       "verification": "verified",
-      "confidence": 0.98,
+      "confidence": 0.9,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain-2026-08-17-w7",
-      "asserted_at": "2026-08-17T07:27:25.428Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:14:00.540Z",
       "decision_mode": "individual"
     },
     {
@@ -67119,12 +67154,12 @@
       "subject_id": "c33b151421b512cff95c261cd55503b7",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "the committed driver skill contains no literal credential, token, password, or private key",
+      "criterion": "no credential, key, or token literals in the grounded artifact",
       "verification": "verified",
-      "confidence": 0.96,
+      "confidence": 0.9,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain-2026-08-17-w2",
-      "asserted_at": "2026-08-17T07:35:34.371Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:02:41.031Z",
       "decision_mode": "individual"
     },
     {
@@ -69805,7 +69840,8 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-15T07:46:04.063Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T16:59:55.684Z",
       "decision_mode": "individual"
     },
     {
@@ -71008,7 +71044,8 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-15T07:41:00.228Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T16:59:55.243Z",
       "decision_mode": "individual"
     },
     {
@@ -71288,12 +71325,12 @@
       "subject_id": "04f28bc475ffa049bfb0afc7623da7ac",
       "claim": "verdict",
       "state": "independent",
-      "criterion": "unchecked Result handling is independent because the grounded skill contains instructions and shell examples rather than a program receiving fallible return values",
+      "criterion": "the rule measures executable failure handling",
       "verification": "verified",
-      "confidence": 0.96,
+      "confidence": 0.85,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain-2026-08-17-w2",
-      "asserted_at": "2026-08-17T07:35:18.343Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:02:40.814Z",
       "decision_mode": "individual"
     },
     {
@@ -72333,7 +72370,8 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-15T07:46:03.827Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T16:59:54.780Z",
       "decision_mode": "individual"
     },
     {
@@ -74017,11 +74055,12 @@
       "subject_id": "6eeb5dc4a7f4a151fbe2b02e65039ddc",
       "claim": "adjudication",
       "state": "resolved",
-      "criterion": "pre-push template now drains git stdin with cat >/dev/null before exec so git does not see SIGPIPE after a green gate",
+      "criterion": "both SIGPIPE mechanisms this finding covered are now closed in the template itself: src/commands/hook_cmd.rs:42 — pre_push_content drains git's ref list ('cat >/dev/null') so the hook never leaves git writing into a dead pipe, and the same template header documents the second mechanism (transport idling out during a long gate) with the ServerAlive keepalive remedy; the regenerated .git/hooks/pre-push in this repository carries both, and a full hooked push transferred clean (a736d7b..01261ba, 2026-08-18)",
       "verification": "cited",
       "confidence": 1.0,
       "asserted_by": "llm:analyzer",
-      "asserted_at": "2026-08-16T04:19:19.179Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:15:52.256Z",
       "decision_mode": "individual"
     },
     {
@@ -75874,11 +75913,12 @@
       "subject_id": "52d78fcec992d2678cdb8d0e3d46551f",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "the loom-driver skill behavior is realized by the normative rules written in skills/loom-driver/SKILL.md: orient, choose seeding or draining, drain the autonomous lanes packet by packet, batch the human-gated remainder into one sitting, checkpoint and export, and end with a before/after ladder report.",
+      "criterion": "the skill file still is the campaign-layer protocol the intent names: orient, strategy choice, drain loop, pacing, checkpoints, end sitting, report",
       "verification": "cited",
-      "confidence": 0.85,
+      "confidence": 0.9,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-15T11:52:11.893Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:01:32.944Z",
       "decision_mode": "individual"
     },
     {
@@ -75986,7 +76026,8 @@
       "verification": "verified",
       "confidence": 1.0,
       "asserted_by": "loom",
-      "asserted_at": "2026-08-16T04:17:13.793Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-18T17:12:38.599Z",
       "decision_mode": "individual"
     },
     {
@@ -77558,23 +77599,23 @@
       "recorded_at": "2026-08-17T07:31:27.935Z"
     },
     {
-      "id": "e420e1e63f643b4cb",
-      "fact_id": "f0160730324869af8",
-      "payload": {
-        "kind": "span",
-        "file": "src/maturity.rs",
-        "start": 334,
-        "end": 342,
-        "hash": "54fccc19d6cb0390"
-      },
-      "recorded_at": "2026-08-17T10:05:54.890Z"
-    },
-    {
       "id": "e6a6c655cd9d01156",
       "fact_id": "f0160730324869af8",
       "payload": {
         "kind": "claim",
         "text": "src/rolelease.rs:75-96,314-322 and src/maturity.rs:321-329 — roles map to explicit lane sets, roster debt reads QueueDepths per lane, and QueueDepths plus the ladder are computed from one LadderInputs gather."
+      },
+      "recorded_at": "2026-08-17T10:05:54.890Z"
+    },
+    {
+      "id": "ea37e274995855b53",
+      "fact_id": "f0160730324869af8",
+      "payload": {
+        "kind": "span",
+        "file": "src/maturity.rs",
+        "start": 333,
+        "end": 341,
+        "hash": "54fccc19d6cb0390"
       },
       "recorded_at": "2026-08-17T10:05:54.890Z"
     },
@@ -78797,7 +78838,22 @@
       "recorded_at": "2026-08-16T14:16:24.660Z"
     },
     {
-      "id": "e11df982753d97806",
+      "id": "e04eca2a9c358be54",
+      "fact_id": "f0559ab965d206a2a",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/hook_cmd.rs",
+        "start": 40,
+        "end": 40,
+        "hash": "a00dc15915da1534",
+        "symbol": "pre_push_content",
+        "symbol_hash": "9a2bcd96d70a515d",
+        "symbol_offset": 12
+      },
+      "recorded_at": "2026-08-18T17:14:00.617Z"
+    },
+    {
+      "id": "eaa902000f819ef61",
       "fact_id": "f0559ab965d206a2a",
       "payload": {
         "kind": "run",
@@ -78808,38 +78864,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/commands/hook_cmd.rs": "a8092791be129de0"
+          "src/commands/hook_cmd.rs": "635dde438bde3bdf"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786951661083",
-        "loom_version": "0.33.0"
+        "ran_at": "1787073240625",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-17T07:27:41.082Z"
+      "recorded_at": "2026-08-18T17:14:00.617Z"
     },
     {
-      "id": "e964061e2aa75fa8b",
-      "fact_id": "f0559ab965d206a2a",
-      "payload": {
-        "kind": "span",
-        "file": "src/commands/hook_cmd.rs",
-        "start": 28,
-        "end": 43,
-        "hash": "0ed61a2deb135e42",
-        "symbol": "pre_push_content",
-        "symbol_hash": "40453bf38f439adf"
-      },
-      "recorded_at": "2026-08-17T07:27:41.082Z"
-    },
-    {
-      "id": "e9aa6560ccc510723",
+      "id": "ed5bf9db4f53af2e5",
       "fact_id": "f0559ab965d206a2a",
       "payload": {
         "kind": "claim",
-        "text": "src/commands/hook_cmd.rs:28-43 — absolute and non-normal paths are rejected and apostrophes are shell-escaped before insertion into the fixed `exec \"$root\"/…` template."
+        "text": "src/commands/hook_cmd.rs:40 single-quote escaping (replace(char, quoted escape)) of the script path embedded in the sh template, after :29-36 rejects absolute/non-normal components — the one injection surface is defended at both layers; verified by ring20_hooks (6 passed)"
       },
-      "recorded_at": "2026-08-17T07:27:41.082Z"
+      "recorded_at": "2026-08-18T17:14:00.617Z"
     },
     {
       "id": "e2c0f22db53fd27ed",
@@ -78997,7 +79039,7 @@
       "recorded_at": "2026-08-17T10:19:44.035Z"
     },
     {
-      "id": "ec55cda7bdac65712",
+      "id": "e867d7b4cd639b29f",
       "fact_id": "f05c9b8d06714adaa",
       "payload": {
         "kind": "run",
@@ -79008,13 +79050,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787062700225",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072335449",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:19:44.035Z"
     },
@@ -81002,16 +81044,7 @@
       "recorded_at": "2026-08-14T07:16:40.528Z"
     },
     {
-      "id": "ebbdcd41f386cbf7b",
-      "fact_id": "f0b94834d0cce7e64",
-      "payload": {
-        "kind": "claim",
-        "text": "src/maturity.rs — grounded files of 'rung, lane, and queue state remain one invariant' re-scanned after the repair wave: zero interpolated SQL verbs and shell -c constructions present (pattern scan over every grounded file this session)"
-      },
-      "recorded_at": "2026-08-17T10:19:44.042Z"
-    },
-    {
-      "id": "ed930c1ce4ac7097d",
+      "id": "e27de6b967e72940e",
       "fact_id": "f0b94834d0cce7e64",
       "payload": {
         "kind": "run",
@@ -81022,13 +81055,22 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "495f7f87a17df020"
+          "src/maturity.rs": "cbfb87de54fb97f6"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787060919466",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072335505",
+        "loom_version": "0.34.0"
+      },
+      "recorded_at": "2026-08-17T10:19:44.042Z"
+    },
+    {
+      "id": "ebbdcd41f386cbf7b",
+      "fact_id": "f0b94834d0cce7e64",
+      "payload": {
+        "kind": "claim",
+        "text": "src/maturity.rs — grounded files of 'rung, lane, and queue state remain one invariant' re-scanned after the repair wave: zero interpolated SQL verbs and shell -c constructions present (pattern scan over every grounded file this session)"
       },
       "recorded_at": "2026-08-17T10:19:44.042Z"
     },
@@ -81175,13 +81217,13 @@
       "recorded_at": "2026-08-15T11:37:16.510Z"
     },
     {
-      "id": "e93256189b3f3782a",
+      "id": "e4bd0b684c4a50396",
       "fact_id": "f0d3f262d5ac34b67",
       "payload": {
         "kind": "span",
         "file": "src/maturity.rs",
-        "start": 452,
-        "end": 452,
+        "start": 451,
+        "end": 451,
         "hash": "b30d2954076720d9",
         "symbol": "compass",
         "symbol_hash": "2bf45a15766286da"
@@ -81189,13 +81231,13 @@
       "recorded_at": "2026-08-15T11:37:16.510Z"
     },
     {
-      "id": "ea26d95464736c006",
+      "id": "e805c821b1304432a",
       "fact_id": "f0d3f262d5ac34b67",
       "payload": {
         "kind": "span",
         "file": "src/maturity.rs",
-        "start": 384,
-        "end": 384,
+        "start": 383,
+        "end": 383,
         "hash": "713c991eb321888b",
         "symbol": "build_rungs",
         "symbol_hash": "899a1c3883b76670"
@@ -83767,85 +83809,40 @@
       "recorded_at": "2026-08-15T11:15:27.462Z"
     },
     {
-      "id": "e11b4552614fb57f3",
-      "fact_id": "f17ffd0840564e215",
-      "payload": {
-        "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 95,
-        "end": 95,
-        "hash": "fbe95dc04683354b"
-      },
-      "recorded_at": "2026-08-15T07:33:12.626Z"
-    },
-    {
-      "id": "e1251bb2b6b0dfd4d",
-      "fact_id": "f17ffd0840564e215",
-      "payload": {
-        "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 149,
-        "end": 149,
-        "hash": "e07fa31218da93aa"
-      },
-      "recorded_at": "2026-08-15T07:33:12.626Z"
-    },
-    {
-      "id": "e638f4f598f297685",
-      "fact_id": "f17ffd0840564e215",
-      "payload": {
-        "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 125,
-        "end": 125,
-        "hash": "3f5867c5d426f0ad"
-      },
-      "recorded_at": "2026-08-15T07:33:12.626Z"
-    },
-    {
-      "id": "e99a6c2302edc8d1b",
+      "id": "e40f213264043cab8",
       "fact_id": "f17ffd0840564e215",
       "payload": {
         "kind": "claim",
-        "text": "skills/loom-driver/SKILL.md:64 gate deferral to end sitting; skills/loom-driver/SKILL.md:95 pacing under 10 judgment writes/minute; skills/loom-driver/SKILL.md:45 cold-graph stop and handoff; skills/loom-driver/SKILL.md:121 exact-path local staging; skills/loom-driver/SKILL.md:125 push needs explicit human decision; skills/loom-driver/SKILL.md:149 absent-human fallback"
+        "text": "tests/ring59_driver_skill.rs:12-23 — the pin table holds the current decision set with the reversal annotated (single-threaded rule replaced by per-profile pacing pins at :17-18, contention discipline at :23); skills/loom-driver/SKILL.md:96 encodes the per-declared-profile budget and :105 the opt-in parallel-drivers section; observed run: cargo test --test ring59_driver_skill = 6 passed, 0 failed (2026-08-18); the reversal itself is a recorded decision note on skills/loom-driver/SKILL.md"
       },
-      "recorded_at": "2026-08-15T07:33:12.626Z"
+      "recorded_at": "2026-08-18T17:00:53.764Z"
     },
     {
-      "id": "ead5a11e8d628218b",
+      "id": "e6ab9a83f5c24546d",
       "fact_id": "f17ffd0840564e215",
       "payload": {
         "kind": "span",
         "file": "skills/loom-driver/SKILL.md",
-        "start": 64,
-        "end": 64,
-        "hash": "19f79090cc824ba3"
+        "start": 96,
+        "end": 96,
+        "hash": "29637b2c5afff69f"
       },
-      "recorded_at": "2026-08-15T07:33:12.626Z"
+      "recorded_at": "2026-08-18T17:00:53.764Z"
     },
     {
-      "id": "eaff04519be3ddb75",
+      "id": "ee814ecad8447b03f",
       "fact_id": "f17ffd0840564e215",
       "payload": {
         "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 45,
-        "end": 45,
-        "hash": "d6ac2818e33fd156"
+        "file": "tests/ring59_driver_skill.rs",
+        "start": 12,
+        "end": 23,
+        "hash": "4bf8560d0552aa76",
+        "symbol": "driver_skill_encodes_the_grilled_campaign_decisions",
+        "symbol_hash": "5f688956d027304a",
+        "symbol_offset": 2
       },
-      "recorded_at": "2026-08-15T07:33:12.626Z"
-    },
-    {
-      "id": "ec0bc973ca9007aed",
-      "fact_id": "f17ffd0840564e215",
-      "payload": {
-        "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 121,
-        "end": 121,
-        "hash": "1b599e5dce0e8741"
-      },
-      "recorded_at": "2026-08-15T07:33:12.626Z"
+      "recorded_at": "2026-08-18T17:00:53.764Z"
     },
     {
       "id": "e57d447a9776d556f",
@@ -84187,41 +84184,13 @@
       "recorded_at": "2026-08-17T07:31:10.390Z"
     },
     {
-      "id": "e000df6e459d58040",
-      "fact_id": "f1a30c299cbd06a60",
-      "payload": {
-        "kind": "span",
-        "file": "src/commands/hook_cmd.rs",
-        "start": 46,
-        "end": 66,
-        "hash": "bfe21bd8c46e4c92",
-        "symbol": "verify_pre_push_script",
-        "symbol_hash": "49e5b1c1dcc4ec0f"
-      },
-      "recorded_at": "2026-08-17T07:27:13.596Z"
-    },
-    {
-      "id": "e3667d9803594c3e8",
+      "id": "ec809e998bbd632d5",
       "fact_id": "f1a30c299cbd06a60",
       "payload": {
         "kind": "claim",
-        "text": "src/commands/hook_cmd.rs:46-66 and src/commands/hook_cmd.rs:69-140 — operations use scoped metadata and whole-file filesystem calls; no file, lock, process, or connection handle is acquired."
+        "text": "src/commands/hook_cmd.rs uses std::fs write/remove/set_permissions — RAII-scoped, no held handles, sockets, or locks in the grounded spans"
       },
-      "recorded_at": "2026-08-17T07:27:13.596Z"
-    },
-    {
-      "id": "e4b7bdefde0a3340c",
-      "fact_id": "f1a30c299cbd06a60",
-      "payload": {
-        "kind": "span",
-        "file": "src/commands/hook_cmd.rs",
-        "start": 69,
-        "end": 140,
-        "hash": "9fe9b248c5081214",
-        "symbol": "dispatch",
-        "symbol_hash": "a7a71f6dda96bd65"
-      },
-      "recorded_at": "2026-08-17T07:27:13.596Z"
+      "recorded_at": "2026-08-18T17:14:00.472Z"
     },
     {
       "id": "e4206b408ca2b0af3",
@@ -84859,7 +84828,16 @@
       "recorded_at": "2026-08-17T07:32:44.004Z"
     },
     {
-      "id": "e173b19021dbb625d",
+      "id": "e1ed6f8545a4edca6",
+      "fact_id": "f1c48055ac18cc845",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test ring61_signal_repairs an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean` exited 0"
+      },
+      "recorded_at": "2026-08-18T17:01:08.435Z"
+    },
+    {
+      "id": "e9acce5b1c3d11bec",
       "fact_id": "f1c48055ac18cc845",
       "payload": {
         "kind": "run",
@@ -84868,28 +84846,19 @@
         "cwd": "",
         "exit_code": 0,
         "stdout_hash": "b620147e0ba815e8",
-        "stderr_hash": "37389549b5870881",
+        "stderr_hash": "19404cdb90c14926",
         "stdout_excerpt": "\nrunning 1 test\ntest an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.04s\n\n",
-        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.42s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-0fb13628b0a45995)\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-48918bb36abc883a)\n",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 533,
-        "ran_at": "1787062739991",
-        "loom_version": "0.33.0"
+        "duration_ms": 575,
+        "ran_at": "1787072468421",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-18T14:19:00.006Z"
-    },
-    {
-      "id": "e1ed6f8545a4edca6",
-      "fact_id": "f1c48055ac18cc845",
-      "payload": {
-        "kind": "claim",
-        "text": "observed by loom: `cargo test --test ring61_signal_repairs an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean` exited 0"
-      },
-      "recorded_at": "2026-08-18T14:19:00.006Z"
+      "recorded_at": "2026-08-18T17:01:08.435Z"
     },
     {
       "id": "e1258054bbe51092b",
@@ -89638,7 +89607,7 @@
       "recorded_at": "2026-08-15T11:04:39.602Z"
     },
     {
-      "id": "e247511b6d42e9224",
+      "id": "e37c6cde5ab42ed19",
       "fact_id": "f2b96002c001b291c",
       "payload": {
         "kind": "run",
@@ -89649,13 +89618,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "skills/loom-driver/SKILL.md": "61b0f7910d388f9f"
+          "skills/loom-driver/SKILL.md": "d53334f01efa2387"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786952142388",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072335721",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T07:35:42.387Z"
     },
@@ -90342,7 +90311,7 @@
       "recorded_at": "2026-08-17T07:34:33.425Z"
     },
     {
-      "id": "e367e68d9c4f39994",
+      "id": "e7315d97f08f44cb3",
       "fact_id": "f2ea9902bff5c4084",
       "payload": {
         "kind": "run",
@@ -90353,13 +90322,25 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "495f7f87a17df020"
+          "src/maturity.rs": "cbfb87de54fb97f6"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787060920404",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072335736",
+        "loom_version": "0.34.0"
+      },
+      "recorded_at": "2026-08-17T10:08:27.154Z"
+    },
+    {
+      "id": "e91b17a3ee92a1860",
+      "fact_id": "f2ea9902bff5c4084",
+      "payload": {
+        "kind": "span",
+        "file": "src/maturity.rs",
+        "start": 381,
+        "end": 457,
+        "hash": "70ef7370a4bc85c2"
       },
       "recorded_at": "2026-08-17T10:08:27.154Z"
     },
@@ -90369,18 +90350,6 @@
       "payload": {
         "kind": "claim",
         "text": "src/maturity.rs:369-445 — rung construction and compass projection use lane state and command labels only; no credential-like literal is present"
-      },
-      "recorded_at": "2026-08-17T10:08:27.154Z"
-    },
-    {
-      "id": "efa627f2b87ff0218",
-      "fact_id": "f2ea9902bff5c4084",
-      "payload": {
-        "kind": "span",
-        "file": "src/maturity.rs",
-        "start": 382,
-        "end": 458,
-        "hash": "70ef7370a4bc85c2"
       },
       "recorded_at": "2026-08-17T10:08:27.154Z"
     },
@@ -92836,6 +92805,45 @@
       "recorded_at": "2026-08-17T10:22:53.861Z"
     },
     {
+      "id": "e35d69ff5a678e43a",
+      "fact_id": "f3650c3789001a7d6",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/hook_cmd.rs",
+        "start": 120,
+        "end": 121,
+        "hash": "f61235c2ed92896e",
+        "symbol": "dispatch",
+        "symbol_hash": "8da293faadf14a4a",
+        "symbol_offset": 51
+      },
+      "recorded_at": "2026-08-18T17:15:03.521Z"
+    },
+    {
+      "id": "e851de4b2814249e3",
+      "fact_id": "f3650c3789001a7d6",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/hook_cmd.rs",
+        "start": 42,
+        "end": 42,
+        "hash": "02974fd625e0276a",
+        "symbol": "pre_push_content",
+        "symbol_hash": "9a2bcd96d70a515d",
+        "symbol_offset": 14
+      },
+      "recorded_at": "2026-08-18T17:15:03.521Z"
+    },
+    {
+      "id": "e90de352b8cc5ce7d",
+      "fact_id": "f3650c3789001a7d6",
+      "payload": {
+        "kind": "claim",
+        "text": "durable remedies observed: src/commands/hook_cmd.rs:42 — the pre_push_content template header now teaches the failure mode and names ServerAliveInterval 30 / ServerAliveCountMax 120; src/commands/hook_cmd.rs:120-121 — the installer prints the same warning on every pre-push install; this repository's regenerated .git/hooks/pre-push carries the header (its line 6 names ServerAliveInterval 30); and a plain hooked git push transferred clean end-to-end after the operator ssh config change (journal: push a736d7b..01261ba, 2026-08-18)"
+      },
+      "recorded_at": "2026-08-18T17:15:03.521Z"
+    },
+    {
       "id": "e41b12317d6770a56",
       "fact_id": "f369bc3c4ec8814ea",
       "payload": {
@@ -93712,7 +93720,7 @@
       "recorded_at": "2026-08-17T10:06:46.708Z"
     },
     {
-      "id": "e5b6c5087ebd582e2",
+      "id": "e507874044fb3cd4f",
       "fact_id": "f3aa7a983c664e843",
       "payload": {
         "kind": "run",
@@ -93723,13 +93731,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787062701821",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072335829",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:19:44.071Z"
     },
@@ -95541,7 +95549,7 @@
       "recorded_at": "2026-08-17T10:08:27.160Z"
     },
     {
-      "id": "e5af78076e5ace013",
+      "id": "e3d91db2a6c451118",
       "fact_id": "f3de177650336228a",
       "payload": {
         "kind": "run",
@@ -95552,24 +95560,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "495f7f87a17df020"
+          "src/maturity.rs": "cbfb87de54fb97f6"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787060920673",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072335838",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:08:27.160Z"
     },
     {
-      "id": "e611e0588dac3e426",
+      "id": "e83c44e8ae047ffe8",
       "fact_id": "f3de177650336228a",
       "payload": {
         "kind": "span",
         "file": "src/maturity.rs",
-        "start": 431,
-        "end": 458,
+        "start": 430,
+        "end": 457,
         "hash": "f74fccc82faa181d"
       },
       "recorded_at": "2026-08-17T10:08:27.160Z"
@@ -96005,7 +96013,16 @@
       "recorded_at": "2026-08-18T04:05:07.455Z"
     },
     {
-      "id": "e804712788f01fe82",
+      "id": "eb0a67bf515d31743",
+      "fact_id": "f3f9cbc24777e72fe",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test ring61_signal_repairs one_proof_validating_two_behaviors_still_raises_a_shared_command_smell -- --exact` exited 0"
+      },
+      "recorded_at": "2026-08-18T16:59:57.003Z"
+    },
+    {
+      "id": "ef126ad5ed16aabf0",
       "fact_id": "f3f9cbc24777e72fe",
       "payload": {
         "kind": "run",
@@ -96013,29 +96030,20 @@
         "command": "cargo test --test ring61_signal_repairs one_proof_validating_two_behaviors_still_raises_a_shared_command_smell -- --exact",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "a7daa810d07ce732",
-        "stderr_hash": "daed6f33874bcf9e",
-        "stdout_excerpt": "\nrunning 1 test\ntest one_proof_validating_two_behaviors_still_raises_a_shared_command_smell ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.04s\n\n",
-        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.41s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-0fb13628b0a45995)\n",
+        "stdout_hash": "4651c81dbb831dd0",
+        "stderr_hash": "7b2b30103ae2df7b",
+        "stdout_excerpt": "\nrunning 1 test\ntest one_proof_validating_two_behaviors_still_raises_a_shared_command_smell ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.02s\n\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-48918bb36abc883a)\n",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 536,
-        "ran_at": "1787062797604",
-        "loom_version": "0.33.0"
+        "duration_ms": 224,
+        "ran_at": "1787072396994",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-18T14:19:57.616Z"
-    },
-    {
-      "id": "eb0a67bf515d31743",
-      "fact_id": "f3f9cbc24777e72fe",
-      "payload": {
-        "kind": "claim",
-        "text": "observed by loom: `cargo test --test ring61_signal_repairs one_proof_validating_two_behaviors_still_raises_a_shared_command_smell -- --exact` exited 0"
-      },
-      "recorded_at": "2026-08-18T14:19:57.616Z"
+      "recorded_at": "2026-08-18T16:59:57.003Z"
     },
     {
       "id": "e9aa6cacfea8f0606",
@@ -96228,26 +96236,26 @@
       "recorded_at": "2026-08-15T13:25:55.598Z"
     },
     {
-      "id": "e2560506d07302519",
-      "fact_id": "f412f6210f216dad7",
-      "payload": {
-        "kind": "span",
-        "file": "src/maturity.rs",
-        "start": 414,
-        "end": 414,
-        "hash": "a687e7220c311e6c",
-        "symbol": "build_rungs",
-        "symbol_hash": "899a1c3883b76670",
-        "symbol_offset": 30
-      },
-      "recorded_at": "2026-08-16T05:15:31.808Z"
-    },
-    {
       "id": "ef93bc03f64d57381",
       "fact_id": "f412f6210f216dad7",
       "payload": {
         "kind": "claim",
         "text": "src/maturity.rs:376"
+      },
+      "recorded_at": "2026-08-16T05:15:31.808Z"
+    },
+    {
+      "id": "efddafb8c8e02ebd5",
+      "fact_id": "f412f6210f216dad7",
+      "payload": {
+        "kind": "span",
+        "file": "src/maturity.rs",
+        "start": 413,
+        "end": 413,
+        "hash": "a687e7220c311e6c",
+        "symbol": "build_rungs",
+        "symbol_hash": "899a1c3883b76670",
+        "symbol_offset": 30
       },
       "recorded_at": "2026-08-16T05:15:31.808Z"
     },
@@ -98750,13 +98758,13 @@
       "recorded_at": "2026-08-17T10:06:49.414Z"
     },
     {
-      "id": "efb60e683bc41720f",
+      "id": "ecb19c3774d66d117",
       "fact_id": "f496c34825d931cec",
       "payload": {
         "kind": "span",
         "file": "src/maturity.rs",
-        "start": 384,
-        "end": 428,
+        "start": 383,
+        "end": 427,
         "hash": "9505258aeae0bd12",
         "symbol": "build_rungs",
         "symbol_hash": "899a1c3883b76670"
@@ -99121,6 +99129,28 @@
       "recorded_at": "2026-08-17T10:08:27.296Z"
     },
     {
+      "id": "e1d53dbc925af72c7",
+      "fact_id": "f4b4a9472bdd08bde",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-rel-no-unchecked-failure' [cef404846eae1cd3] (3 pattern(s)) over 1 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/signal.rs": "522fc17a12704934"
+        },
+        "assertions": 3,
+        "locally_minted": false,
+        "duration_ms": 0,
+        "ran_at": "1787072335915",
+        "loom_version": "0.34.0"
+      },
+      "recorded_at": "2026-08-17T10:08:27.296Z"
+    },
+    {
       "id": "ee8a2b6f59b189400",
       "fact_id": "f4b4a9472bdd08bde",
       "payload": {
@@ -99132,28 +99162,6 @@
         "symbol": "doctor",
         "symbol_hash": "d4cf2ff659963b8f",
         "symbol_offset": 186
-      },
-      "recorded_at": "2026-08-17T10:08:27.296Z"
-    },
-    {
-      "id": "eefa8633c502bb69a",
-      "fact_id": "f4b4a9472bdd08bde",
-      "payload": {
-        "kind": "run",
-        "producer": "prescreen",
-        "command": "scan 'iso5055-rel-no-unchecked-failure' [cef404846eae1cd3] (3 pattern(s)) over 1 realizing file(s)",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "cbf29ce484222325",
-        "stderr_hash": "cbf29ce484222325",
-        "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
-        },
-        "assertions": 3,
-        "locally_minted": false,
-        "duration_ms": 0,
-        "ran_at": "1787062702112",
-        "loom_version": "0.33.0"
       },
       "recorded_at": "2026-08-17T10:08:27.296Z"
     },
@@ -99577,7 +99585,7 @@
       "recorded_at": "2026-08-17T10:22:54.002Z"
     },
     {
-      "id": "e704c8dcc8f3d6292",
+      "id": "e316d2e9d8ab0be1f",
       "fact_id": "f4d5e3ff7d669a088",
       "payload": {
         "kind": "run",
@@ -99588,13 +99596,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787062702211",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072335935",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:22:54.002Z"
     },
@@ -103569,36 +103577,50 @@
       "recorded_at": "2026-08-14T07:16:39.507Z"
     },
     {
-      "id": "eb0002963d0b784b7",
+      "id": "e08e5279c44695a86",
       "fact_id": "f5a8312472d4df171",
       "payload": {
         "kind": "run",
         "producer": "locator",
-        "command": "resolve 'loom_owned; dispatch' in src/commands/hook_cmd.rs",
+        "command": "resolve 'loom_owned; dispatch; pre_push_content; verify_pre_push_script' in src/commands/hook_cmd.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "fbcb90454663f321",
+        "stdout_hash": "de4feec147b514a6",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'loom_owned' in src/commands/hook_cmd.rs (2 matches) [a0cb14f87608e2ae]",
+        "stdout_excerpt": "function 'loom_owned' in src/commands/hook_cmd.rs (4 matches) [569164df6bc9911b]",
         "covered": {
-          "src/commands/hook_cmd.rs": "deb2b2e11d0ac16a"
+          "src/commands/hook_cmd.rs": "635dde438bde3bdf"
         },
         "assertions": 1,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786793297373",
-        "loom_version": "0.33.0"
+        "ran_at": "1787073209451",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-15T11:28:17.369Z"
+      "recorded_at": "2026-08-18T17:13:29.441Z"
     },
     {
-      "id": "efabc468ae41e3565",
+      "id": "e116a97c776873148",
+      "fact_id": "f5a8312472d4df171",
+      "payload": {
+        "kind": "span",
+        "file": "src/commands/hook_cmd.rs",
+        "start": 24,
+        "end": 24,
+        "hash": "6b7810fff275e9b9",
+        "symbol": "loom_owned",
+        "symbol_hash": "883ecec6cd2fd681"
+      },
+      "recorded_at": "2026-08-18T17:13:29.441Z"
+    },
+    {
+      "id": "e23ceb426bc595b10",
       "fact_id": "f5a8312472d4df171",
       "payload": {
         "kind": "claim",
-        "text": "loom edge show de39b9de records locator 'loom_owned; dispatch' on src/commands/hook_cmd.rs; each named symbol resolves to a definition at loom_owned@src/commands/hook_cmd.rs:24, dispatch@src/commands/hook_cmd.rs:69. Edge status is uninspected. Intent criterion: Managed hooks touch only Loom-owned post-commit and post-merge hooks, refuse foreign hooks, and invoke synchronization fail-open without blocking Git."
+        "text": "src/commands/hook_cmd.rs:24 loom_owned still guards every removal (:129) and :69 dispatch still routes install/remove; the change only extended the pre_push_content template header (:41-43) and the installer notice (:116-122) — ownership and confinement logic untouched"
       },
-      "recorded_at": "2026-08-15T11:28:17.369Z"
+      "recorded_at": "2026-08-18T17:13:29.441Z"
     },
     {
       "id": "e6a6d0632561753c9",
@@ -108690,27 +108712,27 @@
       "recorded_at": "2026-08-17T10:24:07.457Z"
     },
     {
-      "id": "e58a0d8f42336918d",
-      "fact_id": "f6e85eb209151f4ef",
-      "payload": {
-        "kind": "claim",
-        "text": "src/commands/hook_cmd.rs:69-140 — dispatch centralizes target selection, ownership checks, writes, removals, journaling, and emission with no duplicated implementation block."
-      },
-      "recorded_at": "2026-08-17T07:26:47.412Z"
-    },
-    {
-      "id": "eae4ab886c29c6666",
+      "id": "ec2aeb5f8a8b4267e",
       "fact_id": "f6e85eb209151f4ef",
       "payload": {
         "kind": "span",
         "file": "src/commands/hook_cmd.rs",
         "start": 69,
-        "end": 140,
-        "hash": "9fe9b248c5081214",
+        "end": 69,
+        "hash": "fd46eb0761ad1a40",
         "symbol": "dispatch",
-        "symbol_hash": "a7a71f6dda96bd65"
+        "symbol_hash": "8da293faadf14a4a"
       },
-      "recorded_at": "2026-08-17T07:26:47.412Z"
+      "recorded_at": "2026-08-18T17:14:00.377Z"
+    },
+    {
+      "id": "ecd527c9031082a17",
+      "fact_id": "f6e85eb209151f4ef",
+      "payload": {
+        "kind": "claim",
+        "text": "src/commands/hook_cmd.rs:69 single dispatch, :24 loom_owned used by remove (:129) and install-overwrite guard; the template lives once in pre_push_content (:28-44); install/remove message branches (:113-125) both reachable by flag"
+      },
+      "recorded_at": "2026-08-18T17:14:00.377Z"
     },
     {
       "id": "e0a2ebaf35ec70a16",
@@ -109781,10 +109803,10 @@
         "kind": "claim",
         "text": "observed by loom: `cargo test --test ring61_signal_repairs an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean -- --exact` exited 0"
       },
-      "recorded_at": "2026-08-18T14:19:45.919Z"
+      "recorded_at": "2026-08-18T16:59:56.142Z"
     },
     {
-      "id": "edc7dd9d514f7c7df",
+      "id": "efe887a79348b8cb9",
       "fact_id": "f7308eb7d5e089066",
       "payload": {
         "kind": "run",
@@ -109793,19 +109815,19 @@
         "cwd": "",
         "exit_code": 0,
         "stdout_hash": "120a8e664cf92e37",
-        "stderr_hash": "035aa640d53afb43",
+        "stderr_hash": "7b2b30103ae2df7b",
         "stdout_excerpt": "\nrunning 1 test\ntest an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.03s\n\n",
-        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-0fb13628b0a45995)\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s\n     Running tests/ring61_signal_repairs.rs (target/debug/deps/ring61_signal_repairs-48918bb36abc883a)\n",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 562,
-        "ran_at": "1787062785906",
-        "loom_version": "0.33.0"
+        "duration_ms": 256,
+        "ran_at": "1787072396132",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-18T14:19:45.919Z"
+      "recorded_at": "2026-08-18T16:59:56.142Z"
     },
     {
       "id": "e053a0b7205f5601e",
@@ -114652,16 +114674,16 @@
       "recorded_at": "2026-08-17T09:58:07.545Z"
     },
     {
-      "id": "e586448864537d60c",
+      "id": "e396c500351a63be5",
       "fact_id": "f80e8216084534f45",
       "payload": {
         "kind": "claim",
-        "text": "`cargo test --test ring59_driver_skill an_absent_human_gets_a_printed_remainder_not_an_inference -- --exact` exit 0"
+        "text": "observed by loom: `cargo test --test ring59_driver_skill an_absent_human_gets_a_printed_remainder_not_an_inference -- --exact` exited 0"
       },
-      "recorded_at": "2026-08-15T07:46:04.272Z"
+      "recorded_at": "2026-08-18T16:59:56.570Z"
     },
     {
-      "id": "e79ccfc0cc74a7284",
+      "id": "ebfd8e185756e1e3e",
       "fact_id": "f80e8216084534f45",
       "payload": {
         "kind": "run",
@@ -114670,19 +114692,19 @@
         "cwd": "",
         "exit_code": 0,
         "stdout_hash": "73e371787e170bf5",
-        "stderr_hash": "e620ceed77f7169a",
+        "stderr_hash": "5e7a2b909495f9ff",
         "stdout_excerpt": "\nrunning 1 test\ntest an_absent_human_gets_a_printed_remainder_not_an_inference ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s\n\n",
-        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-0ac7343edc8ceefb)\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-de8c0486f8f62a1b)\n",
         "covered": {
-          "skills/loom-driver/SKILL.md": "61b0f7910d388f9f"
+          "skills/loom-driver/SKILL.md": "d53334f01efa2387"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 159,
-        "ran_at": "1786779964270",
-        "loom_version": "0.33.0"
+        "duration_ms": 235,
+        "ran_at": "1787072396559",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-15T07:46:04.272Z"
+      "recorded_at": "2026-08-18T16:59:56.570Z"
     },
     {
       "id": "e35e6704161e2ad58",
@@ -115719,19 +115741,16 @@
       "recorded_at": "2026-08-17T07:27:49.707Z"
     },
     {
-      "id": "e1f01bce6aa7e47d7",
+      "id": "e13273fbe49da7379",
       "fact_id": "f83b9286788aa8a94",
       "payload": {
-        "kind": "span",
-        "file": "src/commands/hook_cmd.rs",
-        "start": 12,
-        "end": 43,
-        "hash": "7ac233673e3effd5"
+        "kind": "claim",
+        "text": "src/commands/hook_cmd.rs — grep for secret/password/token literals is empty; the only embedded content is the hook shell template and ssh keepalive OPTION NAMES (ServerAliveInterval), not credentials"
       },
-      "recorded_at": "2026-08-17T07:27:25.428Z"
+      "recorded_at": "2026-08-18T17:14:00.540Z"
     },
     {
-      "id": "e5bd4f09e67a761d9",
+      "id": "e6b69b5eb8060bf3a",
       "fact_id": "f83b9286788aa8a94",
       "payload": {
         "kind": "run",
@@ -115742,24 +115761,15 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/commands/hook_cmd.rs": "a8092791be129de0"
+          "src/commands/hook_cmd.rs": "635dde438bde3bdf"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786951645428",
-        "loom_version": "0.33.0"
+        "ran_at": "1787073240551",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-17T07:27:25.428Z"
-    },
-    {
-      "id": "e804342f2ab2cafe6",
-      "fact_id": "f83b9286788aa8a94",
-      "payload": {
-        "kind": "claim",
-        "text": "src/commands/hook_cmd.rs:12-43 — literals are hook names, ownership markers, and shell templates only; the configured value is a repository-relative script path, not a secret."
-      },
-      "recorded_at": "2026-08-17T07:27:25.428Z"
+      "recorded_at": "2026-08-18T17:14:00.540Z"
     },
     {
       "id": "e261d2205c8943b59",
@@ -115952,16 +115962,7 @@
       "recorded_at": "2026-08-16T06:52:08.098Z"
     },
     {
-      "id": "ea60b004a859c28da",
-      "fact_id": "f845094b90af8ecd4",
-      "payload": {
-        "kind": "claim",
-        "text": "grounded files carry no unchecked-failure pattern hits after the repair wave"
-      },
-      "recorded_at": "2026-08-17T10:22:53.827Z"
-    },
-    {
-      "id": "eb3389c23e66917d4",
+      "id": "e32696463e617d1f3",
       "fact_id": "f845094b90af8ecd4",
       "payload": {
         "kind": "run",
@@ -115972,13 +115973,22 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "495f7f87a17df020"
+          "src/maturity.rs": "cbfb87de54fb97f6"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787060922435",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072336232",
+        "loom_version": "0.34.0"
+      },
+      "recorded_at": "2026-08-17T10:22:53.827Z"
+    },
+    {
+      "id": "ea60b004a859c28da",
+      "fact_id": "f845094b90af8ecd4",
+      "payload": {
+        "kind": "claim",
+        "text": "grounded files carry no unchecked-failure pattern hits after the repair wave"
       },
       "recorded_at": "2026-08-17T10:22:53.827Z"
     },
@@ -117727,13 +117737,13 @@
       "recorded_at": "2026-08-15T11:34:12.621Z"
     },
     {
-      "id": "ea0fcef666615b8ec",
+      "id": "ea51bbc5a1507f9a0",
       "fact_id": "f8ad0a76b49907e03",
       "payload": {
         "kind": "span",
         "file": "src/maturity.rs",
-        "start": 384,
-        "end": 384,
+        "start": 383,
+        "end": 383,
         "hash": "713c991eb321888b",
         "symbol": "build_rungs",
         "symbol_hash": "899a1c3883b76670"
@@ -120429,6 +120439,28 @@
       "recorded_at": "2026-08-17T07:29:03.380Z"
     },
     {
+      "id": "e157cff84f21c1034",
+      "fact_id": "f916e5004f1652542",
+      "payload": {
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-rel-no-unchecked-failure' [cef404846eae1cd3] (3 pattern(s)) over 1 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/commands/hook_cmd.rs": "635dde438bde3bdf"
+        },
+        "assertions": 3,
+        "locally_minted": false,
+        "duration_ms": 0,
+        "ran_at": "1787073120812",
+        "loom_version": "0.34.0"
+      },
+      "recorded_at": "2026-08-17T07:27:00.874Z"
+    },
+    {
       "id": "e2191e67a94201dc7",
       "fact_id": "f916e5004f1652542",
       "payload": {
@@ -120453,35 +120485,13 @@
       "recorded_at": "2026-08-17T07:27:00.874Z"
     },
     {
-      "id": "e5ba05c25fade22af",
-      "fact_id": "f916e5004f1652542",
-      "payload": {
-        "kind": "run",
-        "producer": "prescreen",
-        "command": "scan 'iso5055-rel-no-unchecked-failure' [cef404846eae1cd3] (3 pattern(s)) over 1 realizing file(s)",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "cbf29ce484222325",
-        "stderr_hash": "cbf29ce484222325",
-        "covered": {
-          "src/commands/hook_cmd.rs": "a8092791be129de0"
-        },
-        "assertions": 3,
-        "locally_minted": false,
-        "duration_ms": 0,
-        "ran_at": "1786951620874",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-17T07:27:00.874Z"
-    },
-    {
-      "id": "e743feaa57971e112",
+      "id": "ed19b177300efe552",
       "fact_id": "f916e5004f1652542",
       "payload": {
         "kind": "span",
         "file": "src/commands/hook_cmd.rs",
-        "start": 143,
-        "end": 151,
+        "start": 148,
+        "end": 156,
         "hash": "38aa0e28c5881920"
       },
       "recorded_at": "2026-08-17T07:27:00.874Z"
@@ -121301,13 +121311,13 @@
       "recorded_at": "2026-08-16T03:54:03.252Z"
     },
     {
-      "id": "e9e1109eb00dfe16f",
+      "id": "e94ed0c6abc60d6fb",
       "fact_id": "f9633089b9bd44e48",
       "payload": {
         "kind": "span",
         "file": "skills/loom-driver/SKILL.md",
-        "start": 113,
-        "end": 126,
+        "start": 151,
+        "end": 164,
         "hash": "d3e4e47389b0e1c8"
       },
       "recorded_at": "2026-08-17T07:35:26.356Z"
@@ -121322,7 +121332,16 @@
       "recorded_at": "2026-08-17T07:35:26.356Z"
     },
     {
-      "id": "e230c54518165b62c",
+      "id": "e642a82c6b63b3da8",
+      "fact_id": "f9639420d765097a0",
+      "payload": {
+        "kind": "claim",
+        "text": "src/maturity.rs — grounded files of 'the compass projects the lowest unmet rung' re-scanned after the repair wave: zero interpolated SQL verbs and shell -c constructions present (pattern scan over every grounded file this session)"
+      },
+      "recorded_at": "2026-08-17T10:19:44.094Z"
+    },
+    {
+      "id": "e94e67c21a007062b",
       "fact_id": "f9639420d765097a0",
       "payload": {
         "kind": "run",
@@ -121333,22 +121352,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "495f7f87a17df020"
+          "src/maturity.rs": "cbfb87de54fb97f6"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787060922767",
-        "loom_version": "0.33.0"
-      },
-      "recorded_at": "2026-08-17T10:19:44.094Z"
-    },
-    {
-      "id": "e642a82c6b63b3da8",
-      "fact_id": "f9639420d765097a0",
-      "payload": {
-        "kind": "claim",
-        "text": "src/maturity.rs — grounded files of 'the compass projects the lowest unmet rung' re-scanned after the repair wave: zero interpolated SQL verbs and shell -c constructions present (pattern scan over every grounded file this session)"
+        "ran_at": "1787072336298",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:19:44.094Z"
     },
@@ -122826,7 +122836,7 @@
       "recorded_at": "2026-08-17T10:19:44.113Z"
     },
     {
-      "id": "e5c13da00def41e91",
+      "id": "e8d948d7ac7200400",
       "fact_id": "f9d72d41123288d33",
       "payload": {
         "kind": "run",
@@ -122837,36 +122847,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "skills/loom-driver/SKILL.md": "61b0f7910d388f9f"
+          "skills/loom-driver/SKILL.md": "d53334f01efa2387"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786952134372",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072561033",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-17T07:35:34.371Z"
+      "recorded_at": "2026-08-18T17:02:41.031Z"
     },
     {
-      "id": "e9d666aba6e791761",
+      "id": "ee61dc61f94f03044",
       "fact_id": "f9d72d41123288d33",
       "payload": {
         "kind": "claim",
-        "text": "skills/loom-driver/SKILL.md:1-154 — configuration examples use role placeholders and command placeholders only, with no credential value"
+        "text": "skills/loom-driver/SKILL.md — grep for secret/password/token/api_key literals is empty; the only identity strings are placeholder env values like LOOM_AGENT_PROFILE=<unique-driver-name>"
       },
-      "recorded_at": "2026-08-17T07:35:34.371Z"
-    },
-    {
-      "id": "eb6d842b3f83e5b53",
-      "fact_id": "f9d72d41123288d33",
-      "payload": {
-        "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 1,
-        "end": 154,
-        "hash": "41cf3cf3f98e8c6f"
-      },
-      "recorded_at": "2026-08-17T07:35:34.371Z"
+      "recorded_at": "2026-08-18T17:02:41.031Z"
     },
     {
       "id": "ecebcf23cf04705d7",
@@ -129561,7 +129559,7 @@
       "recorded_at": "2026-08-14T07:26:57.905Z"
     },
     {
-      "id": "e85ddc6f4449289c2",
+      "id": "e9ea484c0cd34812f",
       "fact_id": "fbacc1ff2cd52489d",
       "payload": {
         "kind": "run",
@@ -129570,28 +129568,28 @@
         "cwd": "",
         "exit_code": 0,
         "stdout_hash": "2c3b43df0bcea833",
-        "stderr_hash": "e620ceed77f7169a",
+        "stderr_hash": "63de4197ab5bef75",
         "stdout_excerpt": "\nrunning 1 test\ntest a_human_gated_packet_is_deferred_never_answered ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s\n\n",
-        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-0ac7343edc8ceefb)\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-de8c0486f8f62a1b)\n",
         "covered": {
-          "skills/loom-driver/SKILL.md": "61b0f7910d388f9f"
+          "skills/loom-driver/SKILL.md": "d53334f01efa2387"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 159,
-        "ran_at": "1786779964062",
-        "loom_version": "0.33.0"
+        "duration_ms": 214,
+        "ran_at": "1787072395676",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-15T07:46:04.063Z"
+      "recorded_at": "2026-08-18T16:59:55.684Z"
     },
     {
-      "id": "eb8a96d4ace39f1dc",
+      "id": "ebe0a1fec4952e721",
       "fact_id": "fbacc1ff2cd52489d",
       "payload": {
         "kind": "claim",
-        "text": "`cargo test --test ring59_driver_skill a_human_gated_packet_is_deferred_never_answered -- --exact` exit 0"
+        "text": "observed by loom: `cargo test --test ring59_driver_skill a_human_gated_packet_is_deferred_never_answered -- --exact` exited 0"
       },
-      "recorded_at": "2026-08-15T07:46:04.063Z"
+      "recorded_at": "2026-08-18T16:59:55.684Z"
     },
     {
       "id": "e25f591713da80059",
@@ -132589,16 +132587,7 @@
       "recorded_at": "2026-08-16T04:11:10.910Z"
     },
     {
-      "id": "e3259f21efd4c4cfe",
-      "fact_id": "fc68d9002405dd1e1",
-      "payload": {
-        "kind": "claim",
-        "text": "`cargo test --test ring59_driver_skill` exit 0"
-      },
-      "recorded_at": "2026-08-15T07:41:00.228Z"
-    },
-    {
-      "id": "e9fc1267a37af1b12",
+      "id": "eb9a8d74a30d116f6",
       "fact_id": "fc68d9002405dd1e1",
       "payload": {
         "kind": "run",
@@ -132606,20 +132595,29 @@
         "command": "cargo test --test ring59_driver_skill",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "7ad4761452d17e9e",
-        "stderr_hash": "13a6b39b55e429d3",
-        "stdout_excerpt": "\nrunning 3 tests\ntest driver_skill_encodes_the_grilled_campaign_decisions ... ok\ntest driver_skill_lists_only_the_autonomous_lanes ... ok\ntest driver_skill_never_widens_the_staged_set_or_answers_for_the_human ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
-        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.14s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-0ac7343edc8ceefb)\n",
+        "stdout_hash": "5325ea6bab9fb4a4",
+        "stderr_hash": "5e7a2b909495f9ff",
+        "stdout_excerpt": "\nrunning 6 tests\ntest a_human_gated_packet_is_deferred_never_answered ... ok\ntest driver_skill_encodes_the_grilled_campaign_decisions ... ok\ntest an_absent_human_gets_a_printed_remainder_not_an_inference ... ok\ntest cold_graph_ends_the_campaign_instead_of_authoring_meaning ... ok\ntest driver_skill_lists_only_the_autonomous_lanes ... ok\ntest driver_skill_never_widens_the_staged_set_or_answers_for_the_human ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-de8c0486f8f62a1b)\n",
         "covered": {
-          "skills/loom-driver/SKILL.md": "61b0f7910d388f9f"
+          "skills/loom-driver/SKILL.md": "d53334f01efa2387"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 193,
-        "ran_at": "1786779660224",
-        "loom_version": "0.33.0"
+        "duration_ms": 241,
+        "ran_at": "1787072395235",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-15T07:41:00.228Z"
+      "recorded_at": "2026-08-18T16:59:55.243Z"
+    },
+    {
+      "id": "ee86d38613f6ce127",
+      "fact_id": "fc68d9002405dd1e1",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test ring59_driver_skill` exited 0"
+      },
+      "recorded_at": "2026-08-18T16:59:55.243Z"
     },
     {
       "id": "e1decd642d57c2718",
@@ -133290,19 +133288,7 @@
       "recorded_at": "2026-08-15T13:27:02.817Z"
     },
     {
-      "id": "e4f443ae36b5a05b6",
-      "fact_id": "fca89bcc675f39024",
-      "payload": {
-        "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 34,
-        "end": 41,
-        "hash": "e4dd448280e33614"
-      },
-      "recorded_at": "2026-08-17T07:35:18.343Z"
-    },
-    {
-      "id": "e74740eb161cf5a1b",
+      "id": "e1323a6675d3c5f8e",
       "fact_id": "fca89bcc675f39024",
       "payload": {
         "kind": "run",
@@ -133313,24 +133299,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "skills/loom-driver/SKILL.md": "61b0f7910d388f9f"
+          "skills/loom-driver/SKILL.md": "d53334f01efa2387"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786952118344",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072560878",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-17T07:35:18.343Z"
+      "recorded_at": "2026-08-18T17:02:40.814Z"
     },
     {
-      "id": "e9b020a9c6f52176a",
+      "id": "ee126f06039066ea1",
       "fact_id": "fca89bcc675f39024",
       "payload": {
         "kind": "claim",
-        "text": "skills/loom-driver/SKILL.md:34-41,54-81 — commands are presented as operator steps, with no executable control flow that can discard a Result"
+        "text": "skills/loom-driver/SKILL.md is protocol prose with no executable failure paths; the shell snippets it quotes (:66-68,:110-112) are operator commands, not error-handling code owned by this artifact"
       },
-      "recorded_at": "2026-08-17T07:35:18.343Z"
+      "recorded_at": "2026-08-18T17:02:40.814Z"
     },
     {
       "id": "e1ef2ba89b6bf0f28",
@@ -133567,7 +133553,7 @@
       "recorded_at": "2026-08-17T09:57:47.821Z"
     },
     {
-      "id": "e07da4683da906b8b",
+      "id": "e01d4b9144975adea",
       "fact_id": "fcc29b650151cf6f7",
       "payload": {
         "kind": "run",
@@ -133578,13 +133564,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787062705896",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072336603",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:19:44.083Z"
     },
@@ -133667,23 +133653,23 @@
       "recorded_at": "2026-08-17T10:19:44.074Z"
     },
     {
+      "id": "e55ff9fd4948ef260",
+      "fact_id": "fccc28a35658f770c",
+      "payload": {
+        "kind": "span",
+        "file": "skills/loom-driver/SKILL.md",
+        "start": 187,
+        "end": 188,
+        "hash": "7ca92aaface0155d"
+      },
+      "recorded_at": "2026-08-15T11:52:29.800Z"
+    },
+    {
       "id": "e661b7c04312f94c9",
       "fact_id": "fccc28a35658f770c",
       "payload": {
         "kind": "claim",
         "text": "skills/loom-driver/SKILL.md:149-150 states \"If the human is absent, do not wait and do not infer: print the remainder with the exact command for each item, and exit\"; :144-147 confines the mediated write-backs (loom question answer, loom judgment confirm, ratify packets) to the present-human branch and forbids paraphrasing an answer into the gate."
-      },
-      "recorded_at": "2026-08-15T11:52:29.800Z"
-    },
-    {
-      "id": "ea632dad2357dc1bf",
-      "fact_id": "fccc28a35658f770c",
-      "payload": {
-        "kind": "span",
-        "file": "skills/loom-driver/SKILL.md",
-        "start": 149,
-        "end": 150,
-        "hash": "7ca92aaface0155d"
       },
       "recorded_at": "2026-08-15T11:52:29.800Z"
     },
@@ -136889,7 +136875,16 @@
       "recorded_at": "2026-08-17T10:19:44.059Z"
     },
     {
-      "id": "e87901751e5f997f9",
+      "id": "e917562bc08c4bcfc",
+      "fact_id": "fd62aaec38eae3a84",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test ring59_driver_skill cold_graph_ends_the_campaign_instead_of_authoring_meaning -- --exact` exited 0"
+      },
+      "recorded_at": "2026-08-18T16:59:54.780Z"
+    },
+    {
+      "id": "eec15ff5aa6b9c357",
       "fact_id": "fd62aaec38eae3a84",
       "payload": {
         "kind": "run",
@@ -136898,28 +136893,19 @@
         "cwd": "",
         "exit_code": 0,
         "stdout_hash": "7e247772864745c5",
-        "stderr_hash": "71801f06a571e21d",
+        "stderr_hash": "a669387a339315be",
         "stdout_excerpt": "\nrunning 1 test\ntest cold_graph_ends_the_campaign_instead_of_authoring_meaning ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s\n\n",
-        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-0ac7343edc8ceefb)\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.77s\n     Running tests/ring59_driver_skill.rs (target/debug/deps/ring59_driver_skill-de8c0486f8f62a1b)\n",
         "covered": {
-          "skills/loom-driver/SKILL.md": "61b0f7910d388f9f"
+          "skills/loom-driver/SKILL.md": "d53334f01efa2387"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 331,
-        "ran_at": "1786779963823",
-        "loom_version": "0.33.0"
+        "duration_ms": 890,
+        "ran_at": "1787072394760",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-15T07:46:03.827Z"
-    },
-    {
-      "id": "ed0300b89ac46fe0d",
-      "fact_id": "fd62aaec38eae3a84",
-      "payload": {
-        "kind": "claim",
-        "text": "`cargo test --test ring59_driver_skill cold_graph_ends_the_campaign_instead_of_authoring_meaning -- --exact` exit 0"
-      },
-      "recorded_at": "2026-08-15T07:46:03.827Z"
+      "recorded_at": "2026-08-18T16:59:54.780Z"
     },
     {
       "id": "e807443801c8b9fc8",
@@ -136983,7 +136969,7 @@
       "recorded_at": "2026-08-17T10:39:04.645Z"
     },
     {
-      "id": "ed1e787fb6dcbcb1b",
+      "id": "e917749265b4126a0",
       "fact_id": "fd647222ad28e462d",
       "payload": {
         "kind": "run",
@@ -136994,13 +136980,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "495f7f87a17df020"
+          "src/maturity.rs": "cbfb87de54fb97f6"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787060924465",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072336645",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:39:04.645Z"
     },
@@ -141264,7 +141250,7 @@
       "recorded_at": "2026-08-17T07:36:43.836Z"
     },
     {
-      "id": "e212fb4fab16e1da3",
+      "id": "e535102f712747962",
       "fact_id": "fe29772b2bb57fbb1",
       "payload": {
         "kind": "run",
@@ -141275,13 +141261,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/signal.rs": "2c6ac13b2ff8bcca"
+          "src/signal.rs": "522fc17a12704934"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787062706580",
-        "loom_version": "0.33.0"
+        "ran_at": "1787072336734",
+        "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:19:44.041Z"
     },
@@ -141888,6 +141874,15 @@
       "recorded_at": "2026-08-17T10:06:49.450Z"
     },
     {
+      "id": "e2317713eb0526e81",
+      "fact_id": "fe607498661dd0124",
+      "payload": {
+        "kind": "claim",
+        "text": "both SIGPIPE mechanisms this finding covered are now closed in the template itself: src/commands/hook_cmd.rs:42 — pre_push_content drains git's ref list ('cat >/dev/null') so the hook never leaves git writing into a dead pipe, and the same template header documents the second mechanism (transport idling out during a long gate) with the ServerAlive keepalive remedy; the regenerated .git/hooks/pre-push in this repository carries both, and a full hooked push transferred clean (a736d7b..01261ba, 2026-08-18)"
+      },
+      "recorded_at": "2026-08-18T17:15:52.256Z"
+    },
+    {
       "id": "e47e5f635a501e02d",
       "fact_id": "fe607498661dd0124",
       "payload": {
@@ -141895,21 +141890,12 @@
         "file": "src/commands/hook_cmd.rs",
         "start": 42,
         "end": 42,
-        "hash": "d4092a0fe852ff78",
+        "hash": "02974fd625e0276a",
         "symbol": "pre_push_content",
-        "symbol_hash": "40453bf38f439adf",
+        "symbol_hash": "9a2bcd96d70a515d",
         "symbol_offset": 14
       },
-      "recorded_at": "2026-08-16T04:19:19.179Z"
-    },
-    {
-      "id": "e77fb16cc7740f64b",
-      "fact_id": "fe607498661dd0124",
-      "payload": {
-        "kind": "claim",
-        "text": "src/commands/hook_cmd.rs:42"
-      },
-      "recorded_at": "2026-08-16T04:19:19.179Z"
+      "recorded_at": "2026-08-18T17:15:52.256Z"
     },
     {
       "id": "ebd0edcd17ce76ad7",
@@ -146826,26 +146812,26 @@
       "recorded_at": "2026-08-17T07:32:34.665Z"
     },
     {
-      "id": "e55b2d02d88c3502c",
+      "id": "e44d7505cdf0c3c1a",
       "fact_id": "ffa921ecabdfe4bd1",
       "payload": {
         "kind": "claim",
-        "text": "skills/loom-driver/SKILL.md:34-41 is the Orient step; :43-52 chooses cold-graph stop versus warm-graph drain; :54-81 is the packet-by-packet drain loop with the lane list at :80-81; :102-111 defers human gates without answering them; :113-126 bounds checkpoints to exact included paths and forbids pushing; :128-154 is the one end sitting and the before/after report; :152-154 states the one-shot rule."
+        "text": "skills/loom-driver/SKILL.md:1-5 frontmatter names the batch-session scope (now including parallel drivers); :34-41 Orient unchanged; :58-88 drain loop intact with the profile addition at :66-68; :92-135 pacing + the new opt-in parallel-drivers section extend the campaign layer without displacing any packet-level authority (:15 'The served packet outranks this file' unchanged)"
       },
-      "recorded_at": "2026-08-15T11:52:11.893Z"
+      "recorded_at": "2026-08-18T17:01:32.944Z"
     },
     {
-      "id": "e9a89337def3ab47b",
+      "id": "ea8671ecd8bbaf6c7",
       "fact_id": "ffa921ecabdfe4bd1",
       "payload": {
         "kind": "span",
         "file": "skills/loom-driver/SKILL.md",
-        "start": 34,
-        "end": 41,
-        "hash": "e4dd448280e33614",
-        "file_hash": "41cf3cf3f98e8c6f"
+        "start": 1,
+        "end": 5,
+        "hash": "1dd69549b5b22f6a",
+        "file_hash": "668b36eee596a4d7"
       },
-      "recorded_at": "2026-08-15T11:52:11.893Z"
+      "recorded_at": "2026-08-18T17:01:32.944Z"
     },
     {
       "id": "e577b670a0aa235d2",
@@ -147237,7 +147223,16 @@
       "recorded_at": "2026-08-18T04:05:07.452Z"
     },
     {
-      "id": "e041c88091b5254a9",
+      "id": "e0d7cf738130f7da4",
+      "fact_id": "ffbba1e62e7e5a6f3",
+      "payload": {
+        "kind": "claim",
+        "text": "observed by loom: `cargo test --test ring20_hooks` exited 0"
+      },
+      "recorded_at": "2026-08-18T17:12:38.599Z"
+    },
+    {
+      "id": "e2bfb02d8fdd3781d",
       "fact_id": "ffbba1e62e7e5a6f3",
       "payload": {
         "kind": "run",
@@ -147245,29 +147240,20 @@
         "command": "cargo test --test ring20_hooks",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "2b1a5ef6d87d847b",
-        "stderr_hash": "4bde2930eb467c4b",
-        "stdout_excerpt": "\nrunning 6 tests\ntest local_ci_builds_the_adapter_then_runs_the_isolated_dogfood_gate ... ok\ntest pre_push_refuses_escape_non_executable_and_foreign_hook_without_partial_install ... ok\ntest install_refuses_a_foreign_hook ... ok\ntest install_upgrades_an_older_loom_authored_hook ... ok\ntest opt_in_pre_push_runs_only_a_confined_executable_script ... ok\ntest install_is_executable_idempotent_and_remove_cleans_up ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s\n\n",
-        "stderr_excerpt": "    Blocking waiting for file lock on build directory\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.70s\n     Running tests/ring20_hooks.rs (target/debug/deps/ring20_hooks-955ea21f2ca9deec)\n",
+        "stdout_hash": "ecff0e6cfade97e7",
+        "stderr_hash": "29d53dd3245f5443",
+        "stdout_excerpt": "\nrunning 6 tests\ntest local_ci_builds_the_adapter_then_runs_the_isolated_dogfood_gate ... ok\ntest pre_push_refuses_escape_non_executable_and_foreign_hook_without_partial_install ... ok\ntest install_refuses_a_foreign_hook ... ok\ntest install_upgrades_an_older_loom_authored_hook ... ok\ntest opt_in_pre_push_runs_only_a_confined_executable_script ... ok\ntest install_is_executable_idempotent_and_remove_cleans_up ... ok\n\ntest result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s\n\n",
+        "stderr_excerpt": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.40s\n     Running tests/ring20_hooks.rs (target/debug/deps/ring20_hooks-e61bcc461cb46cfb)\n",
         "covered": {
-          "src/commands/hook_cmd.rs": "a8092791be129de0"
+          "src/commands/hook_cmd.rs": "635dde438bde3bdf"
         },
         "assertions": 0,
         "locally_minted": false,
-        "duration_ms": 968,
-        "ran_at": "1786853833792",
-        "loom_version": "0.33.0"
+        "duration_ms": 661,
+        "ran_at": "1787073158588",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-16T04:17:13.793Z"
-    },
-    {
-      "id": "e0eb93a800e5a36f1",
-      "fact_id": "ffbba1e62e7e5a6f3",
-      "payload": {
-        "kind": "claim",
-        "text": "`cargo test --test ring20_hooks` exit 0"
-      },
-      "recorded_at": "2026-08-16T04:17:13.793Z"
+      "recorded_at": "2026-08-18T17:12:38.599Z"
     },
     {
       "id": "eb374e4daef387e6b",
@@ -148920,13 +148906,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "04f28bc475ffa049bfb0afc7623da7ac",
-      "target_kind": "edge",
-      "key": "evidence_spans",
-      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":34,\"end\":41,\"hash\":\"e4dd448280e33614\"}]",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "05300c05a146f89752a473e42189bb46",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -149427,7 +149406,7 @@
       "target_id": "07f07e1213f5fc36c0b89e9588ca90cd",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/hook_cmd.rs\",\"start\":69,\"end\":140,\"hash\":\"9fe9b248c5081214\",\"symbol\":\"dispatch\",\"symbol_hash\":\"a7a71f6dda96bd65\"}]",
+      "value": "[{\"file\":\"src/commands/hook_cmd.rs\",\"start\":69,\"end\":69,\"hash\":\"fd46eb0761ad1a40\",\"symbol\":\"dispatch\",\"symbol_hash\":\"8da293faadf14a4a\"}]",
       "truth_class": "asserted"
     },
     {
@@ -149855,6 +149834,13 @@
       "target_kind": "node",
       "key": "test_symbols",
       "value": "[]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "0b6bb8c62f906a19c7341d2bc555641f",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring20_hooks no longer holds (run_covered_file_changed)",
       "truth_class": "derived"
     },
     {
@@ -150379,7 +150365,7 @@
       "target_id": "10a8c9994a8bcfdc654d83a5d5b6ee7a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "61b0f7910d388f9f",
+      "value": "d53334f01efa2387",
       "truth_class": "derived"
     },
     {
@@ -150400,7 +150386,7 @@
       "target_id": "10a8c9994a8bcfdc654d83a5d5b6ee7a",
       "target_kind": "node",
       "key": "loc",
-      "value": "154",
+      "value": "192",
       "truth_class": "derived"
     },
     {
@@ -150630,6 +150616,20 @@
     {
       "target_id": "13a85a7f4d9da27876aa4aca72fa3f14",
       "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"5af569f41f427877527d689962c05645\":\"skills/loom-driver/SKILL.md=d53334f01efa2387\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "13a85a7f4d9da27876aa4aca72fa3f14",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "13a85a7f4d9da27876aa4aca72fa3f14",
+      "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
@@ -150646,13 +150646,6 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands/context_cmd.rs\",\"start\":60,\"end\":63,\"hash\":\"66ab1ecb1726076d\"},{\"file\":\"src/commands/orient_cmd.rs\",\"start\":3,\"end\":4,\"hash\":\"5e77021317e72055\"}]",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "13fd4ce441194f702c65bfb67484d0ac",
-      "target_kind": "edge",
-      "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/hook_cmd.rs\",\"start\":46,\"end\":66,\"hash\":\"bfe21bd8c46e4c92\",\"symbol\":\"verify_pre_push_script\",\"symbol_hash\":\"49e5b1c1dcc4ec0f\"},{\"file\":\"src/commands/hook_cmd.rs\",\"start\":69,\"end\":140,\"hash\":\"9fe9b248c5081214\",\"symbol\":\"dispatch\",\"symbol_hash\":\"a7a71f6dda96bd65\"}]",
       "truth_class": "asserted"
     },
     {
@@ -151403,6 +151396,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/journey.rs\",\"start\":235,\"end\":241,\"hash\":\"9abbeca46f8bed32\",\"symbol\":\"validate\",\"symbol_hash\":\"74f3b0c602514f78\",\"symbol_offset\":30},{\"file\":\"src/journey.rs\",\"start\":330,\"end\":336,\"hash\":\"fee8831d9e44ccf2\",\"symbol\":\"validate\",\"symbol_hash\":\"74f3b0c602514f78\",\"symbol_offset\":125}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "19eee116d216993e9685b861e8469fe9",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring59_driver_skill cold_graph_ends_the_campaign_instead_of_authoring_meaning -- --exact no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "1a02053c6095a9f4f77fc263674e5724",
@@ -154935,6 +154935,20 @@
     {
       "target_id": "3ccd0a3a41b7423b8960ea258de99efd",
       "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"c396233636e7827e497151e71108da91\":\"skills/loom-driver/SKILL.md=d53334f01efa2387\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3ccd0a3a41b7423b8960ea258de99efd",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "3ccd0a3a41b7423b8960ea258de99efd",
+      "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
@@ -155076,7 +155090,7 @@
       "target_id": "3f21aa4106013fe75caae086d624146a",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "a8092791be129de0",
+      "value": "635dde438bde3bdf",
       "truth_class": "derived"
     },
     {
@@ -155097,7 +155111,7 @@
       "target_id": "3f21aa4106013fe75caae086d624146a",
       "target_kind": "node",
       "key": "loc",
-      "value": "161",
+      "value": "166",
       "truth_class": "derived"
     },
     {
@@ -155118,7 +155132,7 @@
       "target_id": "3f21aa4106013fe75caae086d624146a",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"MARKER\":\"460f45e12647e30d\",\"PRE_PUSH_HOOK\":\"14f41433a23e0955\",\"SYNC_CONTENT\":\"844275ec9d0f75b3\",\"SYNC_HOOKS\":\"96f0abaa071b79f4\",\"dispatch\":\"a7a71f6dda96bd65\",\"emit\":\"a1a22274c12f5b9c\",\"journal_if_current\":\"c43ed079b93ab1f0\",\"loom_owned\":\"883ecec6cd2fd681\",\"pre_push_content\":\"40453bf38f439adf\",\"verify_pre_push_script\":\"49e5b1c1dcc4ec0f\"}",
+      "value": "{\"MARKER\":\"460f45e12647e30d\",\"PRE_PUSH_HOOK\":\"14f41433a23e0955\",\"SYNC_CONTENT\":\"844275ec9d0f75b3\",\"SYNC_HOOKS\":\"96f0abaa071b79f4\",\"dispatch\":\"8da293faadf14a4a\",\"emit\":\"a1a22274c12f5b9c\",\"journal_if_current\":\"c43ed079b93ab1f0\",\"loom_owned\":\"883ecec6cd2fd681\",\"pre_push_content\":\"9a2bcd96d70a515d\",\"verify_pre_push_script\":\"49e5b1c1dcc4ec0f\"}",
       "truth_class": "derived"
     },
     {
@@ -156123,6 +156137,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "47dc34df467617e47fb39667a8e9577e",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring59_driver_skill no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "481446bbf86e034e8ec61fd9958002a2",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -156273,7 +156294,7 @@
       "target_id": "498edb3b2f99d3645b92b98ab2a7519c",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/commands/hook_cmd.rs\",\"proven_by\":\"contract: isolated repository integrations\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -157190,7 +157211,7 @@
       "target_id": "52d78fcec992d2678cdb8d0e3d46551f",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":34,\"end\":41,\"hash\":\"e4dd448280e33614\"}]",
+      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":1,\"end\":5,\"hash\":\"1dd69549b5b22f6a\"}]",
       "truth_class": "asserted"
     },
     {
@@ -157549,6 +157570,13 @@
       "key": "step_ids",
       "value": "[\"inspect-derived-strength\"]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "563e623a656b17f26ea50d7546af0a76",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring59_driver_skill a_human_gated_packet_is_deferred_never_answered -- --exact no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "56727d10adafd18345bc483e8abf6521",
@@ -158282,7 +158310,7 @@
       "target_id": "5c8df0f7556614bba6a27bc150ae021b",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"bbd0126142a517757982cc9ba1d27a0d\":\"src/signal.rs=2c6ac13b2ff8bcca\"}",
+      "value": "{\"bbd0126142a517757982cc9ba1d27a0d\":\"src/signal.rs=522fc17a12704934\"}",
       "truth_class": "derived"
     },
     {
@@ -159259,13 +159287,6 @@
       "truth_class": "derived"
     },
     {
-      "target_id": "66fa7a333074e06da5470ae11084d765",
-      "target_kind": "edge",
-      "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/hook_cmd.rs\",\"start\":12,\"end\":43,\"hash\":\"7ac233673e3effd5\"}]",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "6700e997214de71fd059817f3db0f5fb",
       "target_kind": "node",
       "key": "calls",
@@ -159444,7 +159465,7 @@
       "target_id": "683d6457db3690b1d19bec2c6dc47c18",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "495f7f87a17df020",
+      "value": "cbfb87de54fb97f6",
       "truth_class": "derived"
     },
     {
@@ -159465,7 +159486,7 @@
       "target_id": "683d6457db3690b1d19bec2c6dc47c18",
       "target_kind": "node",
       "key": "loc",
-      "value": "470",
+      "value": "469",
       "truth_class": "derived"
     },
     {
@@ -159486,7 +159507,7 @@
       "target_id": "683d6457db3690b1d19bec2c6dc47c18",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"4a8c8052a914031b\",\"Rung\":\"0c964800adbcc5ad\",\"RungState\":\"77dbc8bfc634eb93\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"899a1c3883b76670\",\"compass\":\"2bf45a15766286da\",\"depths\":\"e9b2093b0aa5163e\",\"gather\":\"3ca18080d06c901e\",\"ladder\":\"eff82ff6ec22e516\",\"ladder_and_depths\":\"3f7c216942c0d513\",\"ladder_from_inputs\":\"803ad0485e5dc02c\",\"validation_summary\":\"44e66739272e4e0d\"}",
+      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"4a8c8052a914031b\",\"Rung\":\"0c964800adbcc5ad\",\"RungState\":\"77dbc8bfc634eb93\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"899a1c3883b76670\",\"compass\":\"2bf45a15766286da\",\"depths\":\"e9b2093b0aa5163e\",\"gather\":\"50d02139cb0480a8\",\"ladder\":\"eff82ff6ec22e516\",\"ladder_and_depths\":\"3f7c216942c0d513\",\"ladder_from_inputs\":\"803ad0485e5dc02c\",\"validation_summary\":\"44e66739272e4e0d\"}",
       "truth_class": "derived"
     },
     {
@@ -160216,6 +160237,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands.rs\",\"start\":49,\"end\":49,\"hash\":\"36de332927e51591\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "6eeb5dc4a7f4a151fbe2b02e65039ddc",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-18T17:15:52.262Z\",\"hash\":\"62dc6971338ccc4b\"}",
+      "truth_class": "derived"
     },
     {
       "target_id": "6ef05d51cfa480045fcecda1d1bd8331",
@@ -161187,7 +161215,7 @@
       "target_id": "7ab6d9dee5e0a1c13052988d52162cf0",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/commands/hook_cmd.rs\",\"start\":28,\"end\":43,\"hash\":\"0ed61a2deb135e42\",\"symbol\":\"pre_push_content\",\"symbol_hash\":\"40453bf38f439adf\"}]",
+      "value": "[{\"file\":\"src/commands/hook_cmd.rs\",\"start\":40,\"end\":40,\"hash\":\"a00dc15915da1534\",\"symbol\":\"pre_push_content\",\"symbol_hash\":\"9a2bcd96d70a515d\",\"symbol_offset\":12}]",
       "truth_class": "asserted"
     },
     {
@@ -161370,6 +161398,20 @@
       "target_kind": "node",
       "key": "test_symbols",
       "value": "[]",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7b9fd9fc0668d6d75cf08638716ba8d8",
+      "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"0d0cfe4a0497a60b7f286d64d8a7723b\":\"skills/loom-driver/SKILL.md=d53334f01efa2387\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "7b9fd9fc0668d6d75cf08638716ba8d8",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
       "truth_class": "derived"
     },
     {
@@ -162036,6 +162078,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/scan.rs\",\"start\":218,\"end\":230,\"hash\":\"6d6099df46c35d40\"},{\"file\":\"src/signal/debt/git.rs\",\"start\":71,\"end\":107,\"hash\":\"7998085c3aa44677\",\"symbol\":\"read_git_history\",\"symbol_hash\":\"d50da921dfca9892\",\"symbol_offset\":20}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "81a473c83141824988fb18145e91245d",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring59_driver_skill an_absent_human_gets_a_printed_remainder_not_an_inference -- --exact no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "81b12e037156bffbcfd38303671899e9",
@@ -165820,6 +165869,20 @@
     {
       "target_id": "a38a77d63b16c824379aeb3d8e8180df",
       "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"197dfd42886e121e6ca822065e390648\":\"skills/loom-driver/SKILL.md=d53334f01efa2387\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a38a77d63b16c824379aeb3d8e8180df",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "a38a77d63b16c824379aeb3d8e8180df",
+      "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
@@ -167291,7 +167354,7 @@
       "target_id": "b3237aa330ebe743b658f541458ea333",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "2c6ac13b2ff8bcca",
+      "value": "522fc17a12704934",
       "truth_class": "derived"
     },
     {
@@ -167312,7 +167375,7 @@
       "target_id": "b3237aa330ebe743b658f541458ea333",
       "target_kind": "node",
       "key": "loc",
-      "value": "2010",
+      "value": "2009",
       "truth_class": "derived"
     },
     {
@@ -167333,7 +167396,7 @@
       "target_id": "b3237aa330ebe743b658f541458ea333",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"Adjudication\":\"ab0e9a7cc3a62ffe\",\"AdjudicationStamp\":\"8f956579232df75d\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"HEDGE_TERMS\":\"cddd1407b3693a7a\",\"OUTCOME_STEMS\":\"d21b8940455504b9\",\"RESOLVING_METRIC_BAND\":\"adc9a22062977ee7\",\"RESOLVING_METRIC_FLOOR\":\"5cd16983d287d58d\",\"RelAdjacency\":\"4eedd5c92027a202\",\"SEAM_HINTS\":\"c0c0f26530aad606\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication\":\"ab747c10d722c982\",\"adjudication_of\":\"e37a4423875aafbb\",\"compiled_journey_provenance_problem\":\"3a43e179c99e8a91\",\"consumer_owned_file_smells\":\"1a3c66fb03407349\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"d4cf2ff659963b8f\",\"duplicated_responsibility_smells\":\"d731a514ad7a2a36\",\"edge_between\":\"f493536093ace585\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"facet_value\":\"11f9e8ec90e6ffc4\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"8775aeab110d8ca6\",\"hierarchy_cycle_issues\":\"1e98ee7de886906a\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"71c80bfaa7568c3e\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_integrity_issues\":\"5e87b3794a515585\",\"journey_proof_smells\":\"d91b1b8752e98b33\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"needed_findings\":\"b41afc87e8c537e1\",\"node_name\":\"7f49570215d4f5a7\",\"owners_connected\":\"bdb49e791cc1c94e\",\"ownership_smells\":\"4f81e061efba6d2c\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"relationship_adjacency\":\"026887a00ef21deb\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"resolving_is_stale\":\"ce95db4b93de0b19\",\"resolving_verdict\":\"bc56a4e890b36703\",\"self_dir\":\"cc099cf5d4a21388\",\"shared_proof_command_smells\":\"4f851c317be5d000\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_has_resolving_adjudication\":\"dbefd712e28dddd5\",\"smells\":\"262adeeddccdd762\",\"stale_findings\":\"b9bd1abf6df97a44\",\"strength_from\":\"e52669befe05c6a8\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"a47735ffdd813086\",\"unstable_proof_smells\":\"fb484722bcf54603\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
+      "value": "{\"Adjudication\":\"ab0e9a7cc3a62ffe\",\"AdjudicationStamp\":\"8f956579232df75d\",\"DoctorIssue\":\"ea87569d7f0d82d2\",\"FindingView\":\"e81faccc7e6d1b67\",\"HEDGE_TERMS\":\"cddd1407b3693a7a\",\"OUTCOME_STEMS\":\"d21b8940455504b9\",\"RESOLVING_METRIC_BAND\":\"adc9a22062977ee7\",\"RESOLVING_METRIC_FLOOR\":\"5cd16983d287d58d\",\"RelAdjacency\":\"4eedd5c92027a202\",\"SEAM_HINTS\":\"c0c0f26530aad606\",\"Smell\":\"466b7a952119fdb7\",\"active_intents\":\"4d0c3265327432fd\",\"adjudication\":\"ab747c10d722c982\",\"adjudication_of\":\"e37a4423875aafbb\",\"compiled_journey_provenance_problem\":\"3a43e179c99e8a91\",\"consumer_owned_file_smells\":\"1a3c66fb03407349\",\"crate_name_of_root\":\"0481375285d71024\",\"crate_src_root\":\"64d0c04afc8fdb15\",\"criterion_names_seam\":\"66f211c46de8b3af\",\"dir_cluster\":\"bfabcb5fb37f9a8e\",\"disclosure_smells\":\"b7cd30ed01b6c3b5\",\"doctor\":\"d4cf2ff659963b8f\",\"duplicated_responsibility_smells\":\"d731a514ad7a2a36\",\"edge_between\":\"f493536093ace585\",\"edge_is_superseded\":\"04cc1cd27af2e281\",\"edge_role\":\"89be16559138d1d2\",\"extern_crate_root\":\"369991fe9f89bdcd\",\"facet_map\":\"1ab120d446349285\",\"facet_value\":\"11f9e8ec90e6ffc4\",\"files_by_intent\":\"48add24bf3c1d9cf\",\"findings_view\":\"8775aeab110d8ca6\",\"hierarchy_cycle_issues\":\"1e98ee7de886906a\",\"implements_edges\":\"76292d0e76651562\",\"imports_by_file\":\"71c80bfaa7568c3e\",\"is_module_tree_edge\":\"9e0f7e2b4de3cc72\",\"journey_integrity_issues\":\"fd7103ea3844229f\",\"journey_proof_smells\":\"d91b1b8752e98b33\",\"layer_order\":\"199641fa95979de3\",\"layering_smells\":\"9451f44a305c2641\",\"needed_findings\":\"b41afc87e8c537e1\",\"node_name\":\"7f49570215d4f5a7\",\"owners_connected\":\"bdb49e791cc1c94e\",\"ownership_smells\":\"4f81e061efba6d2c\",\"pack_drift_smells\":\"ee4a8aa502942859\",\"parent_dir\":\"4c3c5b05f12558fe\",\"relationship_adjacency\":\"026887a00ef21deb\",\"resolve_import\":\"399e9464649b72f4\",\"resolve_rust_module\":\"f5a70cb572e658b3\",\"resolving_is_stale\":\"ce95db4b93de0b19\",\"resolving_verdict\":\"bc56a4e890b36703\",\"self_dir\":\"cc099cf5d4a21388\",\"shared_proof_command_smells\":\"4f851c317be5d000\",\"smell_det_key\":\"14b18be802f20c83\",\"smell_has_resolving_adjudication\":\"dbefd712e28dddd5\",\"smells\":\"262adeeddccdd762\",\"stale_findings\":\"b9bd1abf6df97a44\",\"strength_from\":\"e52669befe05c6a8\",\"tags_by_node\":\"0049dfbcc9e98d7e\",\"triage_findings\":\"04245b7aec5375a7\",\"undeclared_coupling_smells\":\"a47735ffdd813086\",\"unstable_proof_smells\":\"fb484722bcf54603\",\"untriaged_findings\":\"1aaaf4950a5f4393\",\"vague_intent_smells\":\"669bb9ec10573166\"}",
       "truth_class": "derived"
     },
     {
@@ -168684,7 +168747,7 @@
       "target_id": "c147459632065e1c3644704ba8a20843",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"bbd0126142a517757982cc9ba1d27a0d\":\"src/signal.rs=2c6ac13b2ff8bcca\"}",
+      "value": "{\"bbd0126142a517757982cc9ba1d27a0d\":\"src/signal.rs=522fc17a12704934\"}",
       "truth_class": "derived"
     },
     {
@@ -168758,13 +168821,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "c33b151421b512cff95c261cd55503b7",
-      "target_kind": "edge",
-      "key": "evidence_spans",
-      "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":1,\"end\":154,\"hash\":\"41cf3cf3f98e8c6f\"}]",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "c345b92d7f4ea7c373fb312d599cd51f",
       "target_kind": "edge",
       "key": "journey_hash",
@@ -168817,7 +168873,7 @@
       "target_id": "c3804f3aa1c8cbdbbe6b49dd418e4a32",
       "target_kind": "node",
       "key": "proof_anchors",
-      "value": "{\"d07d180c7138297956c1cb6badbcf1ec\":\"src/signal.rs=2c6ac13b2ff8bcca\"}",
+      "value": "{\"d07d180c7138297956c1cb6badbcf1ec\":\"src/signal.rs=522fc17a12704934\"}",
       "truth_class": "derived"
     },
     {
@@ -169626,6 +169682,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "ca058c319072fc51a1ee32fb296af78a",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "skills/loom-driver/SKILL.md:95-95 no longer holds (span_rewritten)",
+      "truth_class": "derived"
+    },
+    {
       "target_id": "cac140c4d6b6e626c35355228c22612c",
       "target_kind": "node",
       "key": "calls",
@@ -170212,6 +170275,13 @@
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/store/nodes/lookup.rs\",\"start\":196,\"end\":220,\"hash\":\"65ff80c22f6157fa\",\"symbol\":\"list_nodes_page\",\"symbol_hash\":\"65ff80c22f6157fa\"}]",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "cf67f61d201999c5f389c71c2efb7065",
+      "target_kind": "node",
+      "key": "adjudication_stamp",
+      "value": "{\"at\":\"2026-08-18T17:15:03.527Z\",\"hash\":\"635dde438bde3bdf\"}",
+      "truth_class": "derived"
     },
     {
       "target_id": "cf81cc7385281b18d42f800faaa49a2b",
@@ -172456,6 +172526,13 @@
     {
       "target_id": "de39b9de027164dfed7df67a1d3e0158",
       "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/commands/hook_cmd.rs\",\"start\":24,\"end\":24,\"hash\":\"6b7810fff275e9b9\",\"symbol\":\"loom_owned\",\"symbol_hash\":\"883ecec6cd2fd681\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "de39b9de027164dfed7df67a1d3e0158",
+      "target_kind": "edge",
       "key": "locator",
       "value": "loom_owned; dispatch; pre_push_content; verify_pre_push_script",
       "truth_class": "asserted"
@@ -173968,6 +174045,20 @@
     {
       "target_id": "ea935341f82ff408f87d9ad7ac4bcbd4",
       "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"498edb3b2f99d3645b92b98ab2a7519c\":\"src/commands/hook_cmd.rs=635dde438bde3bdf\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ea935341f82ff408f87d9ad7ac4bcbd4",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "ea935341f82ff408f87d9ad7ac4bcbd4",
+      "target_kind": "node",
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"6 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
@@ -174048,6 +174139,13 @@
       "key": "locator",
       "value": "backlog",
       "truth_class": "asserted"
+    },
+    {
+      "target_id": "eaf4ff89be500cd5a75fdaa790f2b2a5",
+      "target_kind": "edge",
+      "key": "stale_cause",
+      "value": "cargo test --test ring61_signal_repairs an_unreadable_upstream_registry_is_reported_instead_of_read_as_clean no longer holds (run_covered_file_changed)",
+      "truth_class": "derived"
     },
     {
       "target_id": "eb045fffecb04e70441f507d1a9e29d7",
@@ -175032,8 +175130,22 @@
     {
       "target_id": "f6fafa381872d2760615b412a1a1338a",
       "target_kind": "node",
+      "key": "proof_anchors",
+      "value": "{\"0d0cfe4a0497a60b7f286d64d8a7723b\":\"skills/loom-driver/SKILL.md=d53334f01efa2387\"}",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "f6fafa381872d2760615b412a1a1338a",
+      "target_kind": "node",
+      "key": "proof_last_outcome",
+      "value": "passed",
+      "truth_class": "derived"
+    },
+    {
+      "target_id": "f6fafa381872d2760615b412a1a1338a",
+      "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"3 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"6 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
     },
     {
@@ -175327,7 +175439,7 @@
       "target_id": "f90323739cd30a85789829751c9387e9",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":null,\"proven_by\":\"journey:system-purpose:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/completeness.rs\",\"proven_by\":\"journey:system-purpose:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {

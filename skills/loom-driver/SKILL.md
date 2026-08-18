@@ -1,6 +1,6 @@
 ---
 name: loom-driver
-description: Drive a full loom batch session — drain every autonomous queue packet by packet, batch the human-gated remainder into one sitting, checkpoint and export, and end with a before/after ladder report. Use in a repository with a routed loom graph.
+description: Drive a full loom batch session — drain every autonomous queue packet by packet, batch the human-gated remainder into one sitting, checkpoint and export, and end with a before/after ladder report. Supports parallel drivers via advisory role leases (lane partition or an in-lane fleet with per-profile budgets). Use in a repository with a routed loom graph.
 disable-model-invocation: true
 ---
 
@@ -69,7 +69,8 @@ For each served packet:
    the one place this file overrides the packet's "wait": the wait happens at
    the end, batched, not mid-drain.
 2. Export `LOOM_AGENT=llm:<owner_role>` to match the packet's `owner_role`
-   before writing.
+   before writing, and `LOOM_AGENT_PROFILE=<your-driver-name>` — the profile
+   is your attribution and your per-minute judgment budget.
 3. Obey the packet's `prompt_contract` exactly: its allowed and forbidden
    actions, required evidence, write-back command, and stop condition.
 4. Out-of-scope observations: capture with `loom finding add` (evidence-backed,
@@ -92,12 +93,49 @@ fresh evidence. Judgment items go one at a time, each with fresh reading.
 
 ### Pacing — this is a hard rule
 
-No parallel subagents for judgment work, and stay under **10 asserted
-judgment writes per minute**. Loom's audit flags faster bursts by one actor as
-judgment compression unless a human-gated batch authorization envelope covers
-them — honest inspection takes time, and the audit cannot tell fast from fake.
-Structural detector findings are always judgment triage; never batch-reaffirm
-them as mechanical.
+Stay under **10 asserted judgment writes per minute per declared profile**.
+Loom's audit buckets judgment by (actor, profile, minute): every declared
+profile is one independently budgeted, fully attributed judging mind, and
+speed cannot be laundered by omission — writers with no declared profile all
+share one anonymous bucket. Faster bursts read as judgment compression unless
+a human-gated batch authorization envelope covers them — honest inspection
+takes time, and the audit cannot tell fast from fake. Structural detector
+findings are always judgment triage; never batch-reaffirm them as mechanical.
+
+### Parallel drivers — opt-in, never the default
+
+One driver is the default; parallelize only when the queues are deep enough
+to pay for the coordination. Two sanctioned shapes, both taught by the binary
+(`loom guide --json` → `orchestrator`, `loom role list`):
+
+**Lane partition — several sessions, one role each.** Every session claims
+the role it drains:
+
+```bash
+export LOOM_AGENT=llm:<role> LOOM_AGENT_PROFILE=<unique-driver-name>
+loom role claim <role>     # heartbeat lease — every loom command refreshes it
+```
+
+Pick a free role with debt behind it from `loom role list` (the same `roles`
+block is in `loom session --json` and `loom status --json`). A fresh foreign
+lease refuses with exit 75 naming the holder; take over a stale one only with
+`--take-stale`. Honor a `lease_conflict` warning on a served packet: that
+packet is the holder's work — take another role instead of racing the write.
+Release every role at campaign end (`loom role release <role>`).
+
+**In-lane fleet — one role, many workers.** For a wide uniform queue
+(hundreds of quality pairs, mechanical residue): the orchestrator holds the
+role lease, enumerates the roster once (`loom next --mode <m> --all --json`),
+and precomputes DISJOINT target slices. Every worker keeps the holder's
+`LOOM_AGENT=llm:<role>` but gets its OWN `LOOM_AGENT_PROFILE` and only its
+slice. Workers never pick their own targets, never touch another worker's
+slice, and record verdicts only from fresh reading of their slice — the
+per-profile budget makes the fleet's honesty auditable per worker.
+
+**Contention discipline — exit 75 is infrastructure, never a verdict:**
+graph lock → brief backoff, retry the same write (the error names the
+holder); harness lock → do not wait, take a different packet; role lease →
+take a free role. Never record a refusal as a failing proof.
 
 ### Human gates met mid-drain
 

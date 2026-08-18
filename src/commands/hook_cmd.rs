@@ -39,7 +39,7 @@ fn pre_push_content(script: &Path) -> Result<String> {
         .context("pre-push script path must be valid UTF-8")?;
     let quoted = script.replace('\'', "'\\''");
     Ok(format!(
-        "#!/bin/sh\n# Installed by loom; local CI gate. Blocks a push when the configured script fails.\nset -eu\nroot=\"$(git rev-parse --show-toplevel)\"\n# Drain git's pre-push ref list before exec so git does not see SIGPIPE.\ncat >/dev/null\nexec \"$root\"/'{quoted}'\n"
+        "#!/bin/sh\n# Installed by loom; local CI gate. Blocks a push when the configured script fails.\n# NOTE: git opens the SSH transport BEFORE this hook runs; a gate longer than the\n# remote's idle timeout kills the push with SIGPIPE (exit 141) AFTER the gate\n# passes. Keep the connection alive in ~/.ssh/config for your git host:\n#   ServerAliveInterval 30\n#   ServerAliveCountMax 120\nset -eu\nroot=\"$(git rev-parse --show-toplevel)\"\n# Drain git's pre-push ref list before exec so git does not see SIGPIPE.\ncat >/dev/null\nexec \"$root\"/'{quoted}'\n"
     ))
 }
 
@@ -114,7 +114,12 @@ pub(crate) fn dispatch(graph: Option<&Path>, cmd: HookCmd, json: bool) -> Result
                 json,
                 payload,
                 if pre_push.is_some() {
-                    "installed Loom local pre-push CI"
+                    // The transport warning is load-bearing: git opens SSH
+                    // before the hook runs, so a long gate outlives an idle
+                    // connection and the push dies AFTER the gate passes.
+                    "installed Loom local pre-push CI\n  note: a gate longer than your git host's idle timeout kills the push \
+                     with SIGPIPE after passing — set ServerAliveInterval 30 / ServerAliveCountMax 120 \
+                     for the host in ~/.ssh/config (the installed hook's header repeats this)"
                 } else {
                     "installed loom sync hooks"
                 },

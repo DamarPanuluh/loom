@@ -9,8 +9,18 @@ const SKILL: &str = include_str!(concat!(
 #[test]
 fn driver_skill_encodes_the_grilled_campaign_decisions() {
     for (decision, marker) in [
-        ("single-threaded pacing", "10 asserted"),
-        ("no parallel judgment subagents", "No parallel subagents"),
+        // REVERSED 2026-08-18 (recorded via loom decide): the audit now
+        // budgets judgment per (actor, profile, minute), so coordinated
+        // parallel drivers with distinct declared profiles are sanctioned.
+        // The old grilled decision was "No parallel subagents"; the pins
+        // below hold the shape that replaced it.
+        ("per-profile pacing", "10 asserted"),
+        ("per-profile pacing", "per declared profile"),
+        ("parallelism is opt-in", "opt-in, never the default"),
+        ("lane partition claims its role", "loom role claim"),
+        ("fleets slice disjointly", "DISJOINT target slices"),
+        ("lease conflicts are honored", "lease_conflict"),
+        ("contention is never a verdict", "exit 75 is infrastructure"),
         ("one-shot per invocation", "this\nskill is one-shot"),
         ("cold graph stops early", "**Cold graph**"),
         ("human gates batch to one end sitting", "one sitting"),
