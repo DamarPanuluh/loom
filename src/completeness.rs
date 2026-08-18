@@ -430,6 +430,19 @@ fn interface_has_code(store: &Store, interface: &Node) -> Result<bool> {
 
 /// Compute all seven readiness stages for one authored Journey.
 pub fn journey_readiness(store: &Store, journey: &Node) -> Result<JourneyReadiness> {
+    let journal = crate::journal::read(store.root())?;
+    journey_readiness_with_journal(store, journey, &journal)
+}
+
+/// The same readiness over a journal read ONCE by the caller. Ratification
+/// standing consults the journal; the per-call `Store::ratification` re-parsed
+/// the entire journal file for every derived intent, which multiplied to
+/// seconds per readiness walk (the residual hotspot noted on finding 6825299d).
+pub(crate) fn journey_readiness_with_journal(
+    store: &Store,
+    journey: &Node,
+    journal: &[crate::journal::Entry],
+) -> Result<JourneyReadiness> {
     let schema_ok = journey.body.get("schema").and_then(|v| v.as_str()) == Some("loom.journey/v1");
     let stable_id = journey
         .body
@@ -491,7 +504,7 @@ pub fn journey_readiness(store: &Store, journey: &Node) -> Result<JourneyReadine
             implemented = false;
             continue;
         };
-        if store.ratification(id)? != "ratified" {
+        if store.ratification_with_journal(id, journal)? != "ratified" {
             derivations_ratified = false;
         }
         if intent.status != "implemented" || store.realizing_groundings(id)?.is_empty() {
@@ -605,12 +618,14 @@ pub fn journey_readiness(store: &Store, journey: &Node) -> Result<JourneyReadine
 
 /// Every active authored Journey, stable by authored id.
 pub fn all_journey_readiness(store: &Store) -> Result<Vec<JourneyReadiness>> {
+    // One journal read for the whole walk — see `journey_readiness_with_journal`.
+    let journal = crate::journal::read(store.root())?;
     let mut out = Vec::new();
     for journey in store.list_nodes(Some(NodeType::Journey), usize::MAX)? {
         if journey.status == "deprecated" {
             continue;
         }
-        out.push(journey_readiness(store, &journey)?);
+        out.push(journey_readiness_with_journal(store, &journey, &journal)?);
     }
     out.sort_by(|a, b| a.journey_name.cmp(&b.journey_name));
     Ok(out)

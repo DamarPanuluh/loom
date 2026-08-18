@@ -1181,6 +1181,21 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
 /// gaps belong to the ladder; doctor reports malformed or internally
 /// contradictory Journey data that normal commands should never persist.
 fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> {
+    // One journal read for every ratification check below: the per-call
+    // `Store::ratification` re-parses the whole journal file, and this loop
+    // asks once per Derives edge — the doctor-side share of the residual
+    // hotspot on finding 6825299d. A journal read failure falls back to the
+    // per-call path so a damaged journal degrades, never hides, the check.
+    let journal = crate::journal::read(store.root()).ok();
+    let ratified = |intent_id: &str| -> bool {
+        match &journal {
+            Some(entries) => {
+                store.ratification_with_journal(intent_id, entries).ok()
+                    == Some("ratified".into())
+            }
+            None => store.ratification(intent_id).ok() == Some("ratified".into()),
+        }
+    };
     let mut issues = Vec::new();
     // Assemble retired keys so the terminology guard can continue treating an
     // exact source-level spelling as accidental teaching, while doctor still
@@ -1319,7 +1334,7 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
                     ),
                 });
             }
-            if store.ratification(&edge.to_id).ok().as_deref() != Some("ratified") {
+            if !ratified(&edge.to_id) {
                 issues.push(DoctorIssue {
                     kind: "unratified_journey_derivation".into(),
                     message: format!(
