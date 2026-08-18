@@ -10067,6 +10067,24 @@
       "updated_at": "2026-08-13T05:06:24.914Z"
     },
     {
+      "id": "6825299d44a76b74b10a92936191ba26",
+      "type": "finding",
+      "name": "LadderInputs::gather burns ~4.7 CPU-minutes on the current 1586-edge graph, making every driver-loop command unusably slow",
+      "description": "status, next, session, and role list all pay this on every driver turn; a drain-loop turn that needs 5 minutes of routing overhead breaks the campaign protocol and makes findings db08497c/ddbcb66c ('session long', justified) look wrongly settled",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.9,
+        "evidence": "src/maturity.rs:124 gather / :332 ladder_and_depths — measured on idle machine, debug build, 2026-08-18: loom role list 4:44 (259s user), loom --json status 4:55; loom doctor alone 6.5s, so the cost is the ladder/depth gather, not doctor; graph is 140 codefiles / 1586 edges / 98 validations after the fleet added ~485 governs edges",
+        "file": "src/maturity.rs",
+        "impact": "status, next, session, and role list all pay this on every driver turn; a drain-loop turn that needs 5 minutes of routing overhead breaks the campaign protocol and makes findings db08497c/ddbcb66c ('session long', justified) look wrongly settled",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-18T13:22:05.618Z",
+      "updated_at": "2026-08-18T13:22:05.618Z"
+    },
+    {
       "id": "682f0bb6bf7840c4800e8e3dfa5ffb7e",
       "type": "interface_surface",
       "name": "shared-proof-inspection-cli",
@@ -11446,6 +11464,24 @@
       },
       "created_at": "2026-08-16T07:04:02.536Z",
       "updated_at": "2026-08-16T07:04:02.536Z"
+    },
+    {
+      "id": "73b43c854460d89560c890164dd93164",
+      "type": "finding",
+      "name": "validation subcommand family opens the graph exclusively even for pure reads (list/show), blocking and being blocked by concurrent drivers",
+      "description": "read-only validation queries cannot run beside any long reader/writer; same bug class as the session exclusive-open fixed in d0f60ea — parallel drivers will hit this constantly in the validate lane",
+      "status": "code_audit",
+      "truth_class": "asserted",
+      "body": {
+        "confidence": 0.85,
+        "evidence": "src/commands/proof_cmd/validation.rs:10 — dispatch opens with open(graph) (exclusive) for every subcommand; observed 2026-08-18: 'loom --json validation list' failed exit 75 loom-lock-contention naming a concurrent read-locked status as holder, proving it requested write access for a read",
+        "file": "src/commands/proof_cmd/validation.rs",
+        "impact": "read-only validation queries cannot run beside any long reader/writer; same bug class as the session exclusive-open fixed in d0f60ea — parallel drivers will hit this constantly in the validate lane",
+        "kind": "code_audit",
+        "source": "code_audit"
+      },
+      "created_at": "2026-08-18T13:22:05.632Z",
+      "updated_at": "2026-08-18T13:22:05.632Z"
     },
     {
       "id": "73fe1c9ca6ff610dfb4e571b2781b694",
