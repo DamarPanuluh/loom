@@ -1190,8 +1190,7 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
     let ratified = |intent_id: &str| -> bool {
         match &journal {
             Some(entries) => {
-                store.ratification_with_journal(intent_id, entries).ok()
-                    == Some("ratified".into())
+                store.ratification_with_journal(intent_id, entries).ok() == Some("ratified".into())
             }
             None => store.ratification(intent_id).ok() == Some("ratified".into()),
         }

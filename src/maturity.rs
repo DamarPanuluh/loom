@@ -147,8 +147,7 @@ impl LadderInputs {
             .count();
         let derive_gaps =
             crate::completeness::journey_derive_gaps_with(store, &journey_readiness)?.len();
-        let surface_gaps =
-            crate::completeness::journey_surface_gaps_with(&journey_readiness).len();
+        let surface_gaps = crate::completeness::journey_surface_gaps_with(&journey_readiness).len();
 
         // Edge residue, split exactly the way the lanes serve it.
         let failing_edges =
