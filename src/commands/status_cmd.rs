@@ -750,10 +750,15 @@ pub(crate) fn next_output(store: &Store, mode: Option<&str>) -> Result<workitem:
     let lease_conflict = item.as_ref().and_then(|w| {
         crate::rolelease::conflict_warning(store.root(), &store.execution_identity(), &w.owner_role)
     });
+    // The compass answers a different question than this walk does; name its
+    // gate whenever the two differ, so an agreeing run stays silent and a
+    // differing one is legible instead of looking like a contradiction.
+    let compass_gate = workitem::off_gate(&crate::maturity::ladder(store)?, item.as_ref());
     Ok(workitem::NextOutput {
         work_item: item,
         graph_state: workitem::graph_state(store)?,
         lease_conflict,
+        compass_gate,
     })
 }
 
@@ -772,6 +777,9 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
     }
     if let Some(warning) = &out.lease_conflict {
         println!("  ⚠ {warning}");
+    }
+    if let Some(gate) = &out.compass_gate {
+        println!("  compass gate: {} — {}", gate.rung, gate.note);
     }
     let pulse = out.graph_state;
     println!(

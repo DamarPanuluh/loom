@@ -782,3 +782,66 @@ fn every_per_item_gating_rung_is_unmet_iff_it_serves_something() {
         );
     }
 }
+
+/// The compass and the autonomous walk answer DIFFERENT questions — "what is
+/// the lowest rung blocking maturity?" versus "what can a driver do alone right
+/// now?" — and the router deliberately never serves `seed`, `export`, or
+/// `ratify` on its own. Both answers are correct, but nothing in the output
+/// said they were different questions, so a reader saw `status` name one phase
+/// and `next` hand over another and concluded loom was of two minds.
+///
+/// A cold graph is the sharpest case: it gates at `seeded`, which the walk
+/// never serves, while coverage work sits above that gate and is served. The
+/// packet must name the gate. When the two agree, the notice must be ABSENT —
+/// a notice on every packet is noise, not signal.
+#[test]
+fn a_packet_above_the_compass_gate_names_the_gate_and_stays_silent_otherwise() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    tmp.write("src/a.rs", "pub fn a() {}\n");
+    store
+        .add_node(
+            NodeType::CodeFile,
+            "src/a.rs",
+            "a registered file nothing owns yet",
+            "active",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    loom::sync::run(&store, tmp.path()).unwrap();
+
+    let ladder = ladder(&store).unwrap();
+    assert_eq!(
+        ladder.phase, "seed",
+        "a graph with no authored Journey gates at seed"
+    );
+    let served = workitem::next(&store, None)
+        .unwrap()
+        .expect("coverage work is served");
+    assert_ne!(
+        served.mode, ladder.phase,
+        "fixture precondition: the walk must serve something other than the gate"
+    );
+
+    let gate = workitem::off_gate(&ladder, Some(&served))
+        .expect("a packet that is not the gate must name the gate");
+    assert_eq!(gate.lane, "seed");
+    assert_eq!(gate.rung, "seeded");
+    // The gate closes through a whole-graph command, not `loom next --mode
+    // seed` — which is not even a legal mode, so naming the command matters
+    // more than naming the lane.
+    assert_eq!(gate.next_command, "loom journey add <spec>");
+    assert!(
+        gate.note.contains("above the gate") && gate.note.contains("not a work packet"),
+        "the note must say why this packet is not the gate: {}",
+        gate.note
+    );
+
+    // Agreement is silent: a packet whose mode IS the gate names nothing.
+    let mut agreeing = served.clone();
+    agreeing.mode = ladder.phase.clone();
+    assert!(
+        workitem::off_gate(&ladder, Some(&agreeing)).is_none(),
+        "the notice must be absent when the served packet IS the compass gate"
+    );
+}

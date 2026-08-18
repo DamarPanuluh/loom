@@ -665,6 +665,26 @@ pub struct GraphState {
     pub open_questions: usize,
 }
 
+/// The compass gate, reported only when it is NOT what this walk served.
+///
+/// The compass and `loom next` answer different questions — "what is the
+/// lowest rung blocking maturity?" versus "what can an autonomous driver do
+/// right now?" — and the router deliberately never serves `seed`, `export`,
+/// or `ratify` on its own. Both answers are correct; nothing in the output
+/// used to say they were different questions, so a reader saw `status` name
+/// one phase and `next` hand over another and concluded the two disagreed.
+#[derive(Debug, Clone, Serialize)]
+pub struct CompassGate {
+    /// The gate rung's name (`maturity.rung`).
+    pub rung: String,
+    /// The gate lane's wire name (`maturity.phase`).
+    pub lane: String,
+    /// What actually closes the gate.
+    pub next_command: String,
+    /// Why the served packet is not this gate.
+    pub note: String,
+}
+
 /// The full `loom next --json` envelope: the work item plus the graph pulse.
 #[derive(Debug, Clone, Serialize)]
 pub struct NextOutput {
@@ -675,6 +695,61 @@ pub struct NextOutput {
     /// Absent when there is no conflict, so single-driver output is unchanged.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lease_conflict: Option<String>,
+    /// Present only when the served packet is not the compass gate. An
+    /// agreeing run stays silent, so the common case is unchanged.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compass_gate: Option<CompassGate>,
+}
+
+/// Name the compass gate when this walk served something else.
+///
+/// The gate is recovered from the ladder's own `phase` — the compass's single
+/// decision — never re-derived here, so this can never become a second
+/// opinion about which rung gates the graph.
+pub fn off_gate(
+    ladder: &crate::maturity::Ladder,
+    served: Option<&WorkItem>,
+) -> Option<CompassGate> {
+    let Some(gate) = ladder
+        .rungs
+        .iter()
+        .find(|rung| rung.lane.as_str() == ladder.phase)
+    else {
+        // `complete`: no rung gates the graph, so there is nothing to name.
+        return None;
+    };
+    if served.map(|item| item.mode.as_str()) == Some(gate.lane.as_str()) {
+        return None;
+    }
+    let next_command = gate.lane.next_command();
+    let note = match served {
+        None if !gate.lane.serves_items() => format!(
+            "no autonomous packet remains, and the '{}' rung closes through `{next_command}` rather than a work packet",
+            gate.name
+        ),
+        None => format!(
+            "no autonomous packet remains, but the '{}' rung is still open — serve it deliberately with `{next_command}`",
+            gate.name
+        ),
+        Some(item) if !gate.lane.serves_items() => format!(
+            "this '{}' packet is above the gate: '{}' is the lowest rung blocking maturity and closes through `{next_command}`, which is not a work packet",
+            item.mode, gate.name
+        ),
+        Some(item) if gate.lane.requires_human_decision() => format!(
+            "this '{}' packet is above the gate: '{}' needs a human decision, so the autonomous walk skips it — serve it deliberately with `{next_command}`",
+            item.mode, gate.name
+        ),
+        Some(item) => format!(
+            "this '{}' packet is above the gate: '{}' is the lowest rung blocking maturity — `{next_command}`",
+            item.mode, gate.name
+        ),
+    };
+    Some(CompassGate {
+        rung: gate.name.clone(),
+        lane: gate.lane.as_str().to_string(),
+        next_command,
+        note,
+    })
 }
 
 pub fn graph_state(store: &Store) -> Result<GraphState> {

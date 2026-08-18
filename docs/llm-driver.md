@@ -93,6 +93,23 @@ Every turn is: **compute → prompt → act → write-back → verify → ripple
 
 A promptable unit of work emitted by `loom next`. In JSON mode the envelope is the real serialized `NextOutput`:
 
+Two optional fields ride beside the item and are absent when they have nothing
+to say: `lease_conflict` (the packet's owning role is freshly leased to another
+profile — see Role leases) and `compass_gate`.
+
+**`compass_gate` — the compass and `loom next` answer different questions.**
+The compass names the lowest rung blocking maturity; `loom next` names the
+highest-priority packet an autonomous driver can work *right now*, and it never
+serves `seed`, `export`, or `ratify` on its own (they close through a
+whole-graph command or need a human). So `loom status` can report `phase: seed`
+while `loom next` hands over a coverage packet — both answers are correct for
+their own question. Whenever the served packet is not the gate, the envelope
+carries `compass_gate` with the gate's `rung`, `lane`, the `next_command` that
+actually closes it, and a `note` saying why the packet is not it. When the two
+agree the field is absent. Do not treat its presence as an error, and do not
+build `loom next --mode <phase>` from the compass phase — `seed` and `export`
+are not legal modes; use the gate's `next_command` verbatim.
+
 ```json
 {
   "work_item": { "...": "WorkItem or null" },
