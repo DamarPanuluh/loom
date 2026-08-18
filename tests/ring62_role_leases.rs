@@ -17,7 +17,9 @@ use common::*;
 const TTL_MS: u64 = 900_000;
 
 fn lease_path(root: &Path, role: &str) -> std::path::PathBuf {
-    root.join(".loom").join("leases").join(format!("{role}.json"))
+    root.join(".loom")
+        .join("leases")
+        .join(format!("{role}.json"))
 }
 
 fn read_lease(root: &Path, role: &str) -> serde_json::Value {
@@ -38,7 +40,12 @@ fn as_driver(root: &Path, lane: &str, profile: &str, args: &[&str]) -> std::proc
 fn claim_without_a_graph_fails_closed_and_scaffolds_nothing() {
     let tmp = Tmp::new();
     // No `loom init`: a mistyped --graph path must not invent lease state.
-    let out = as_driver(tmp.path(), "analyzer", "agent-a", &["role", "claim", "analyzer"]);
+    let out = as_driver(
+        tmp.path(),
+        "analyzer",
+        "agent-a",
+        &["role", "claim", "analyzer"],
+    );
     assert!(!out.status.success());
     assert!(
         String::from_utf8_lossy(&out.stderr).contains("run `loom init` first"),
@@ -69,7 +76,12 @@ fn claim_demands_matching_lane_authority_and_a_profile() {
     );
 
     // The wrong lane authority cannot claim on another role's behalf.
-    let out = as_driver(tmp.path(), "builder", "agent-a", &["role", "claim", "analyzer"]);
+    let out = as_driver(
+        tmp.path(),
+        "builder",
+        "agent-a",
+        &["role", "claim", "analyzer"],
+    );
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("set LOOM_AGENT=llm:analyzer"));
 
@@ -90,7 +102,12 @@ fn fresh_foreign_lease_refuses_with_contention_exit_naming_the_holder() {
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("leases"));
 
-    let out = as_driver(tmp.path(), "analyzer", "agent-a", &["role", "claim", "analyzer"]);
+    let out = as_driver(
+        tmp.path(),
+        "analyzer",
+        "agent-a",
+        &["role", "claim", "analyzer"],
+    );
     assert!(
         out.status.success(),
         "claim failed: {}",
@@ -99,21 +116,41 @@ fn fresh_foreign_lease_refuses_with_contention_exit_naming_the_holder() {
 
     // Second driver, same role: bounded refusal on the reserved exit code,
     // naming the recorded holder — the same convention as the graph lock.
-    let out = as_driver(tmp.path(), "analyzer", "agent-b", &["role", "claim", "analyzer"]);
+    let out = as_driver(
+        tmp.path(),
+        "analyzer",
+        "agent-b",
+        &["role", "claim", "analyzer"],
+    );
     assert_eq!(out.status.code(), Some(75), "contention is exit 75");
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(stderr.contains("loom-role-contention"), "stderr: {stderr}");
     assert!(stderr.contains("agent-a"), "names the holder: {stderr}");
 
     // Re-claim by the holder is an idempotent refresh, not an error.
-    let out = as_driver(tmp.path(), "analyzer", "agent-a", &["role", "claim", "analyzer"]);
+    let out = as_driver(
+        tmp.path(),
+        "analyzer",
+        "agent-a",
+        &["role", "claim", "analyzer"],
+    );
     assert!(out.status.success());
 
     // Release is holder-only.
-    let out = as_driver(tmp.path(), "analyzer", "agent-b", &["role", "release", "analyzer"]);
+    let out = as_driver(
+        tmp.path(),
+        "analyzer",
+        "agent-b",
+        &["role", "release", "analyzer"],
+    );
     assert!(!out.status.success());
     assert!(String::from_utf8_lossy(&out.stderr).contains("only the holder releases"));
-    let out = as_driver(tmp.path(), "analyzer", "agent-a", &["role", "release", "analyzer"]);
+    let out = as_driver(
+        tmp.path(),
+        "analyzer",
+        "agent-a",
+        &["role", "release", "analyzer"],
+    );
     assert!(out.status.success());
     assert!(!lease_path(tmp.path(), "analyzer").exists());
 }
@@ -123,7 +160,12 @@ fn ordinary_commands_heartbeat_the_lease_and_stale_takeover_is_deliberate() {
     let tmp = Tmp::new();
     loom_init(tmp.path(), Some("leases"));
 
-    let out = as_driver(tmp.path(), "quality", "agent-a", &["role", "claim", "quality"]);
+    let out = as_driver(
+        tmp.path(),
+        "quality",
+        "agent-a",
+        &["role", "claim", "quality"],
+    );
     assert!(out.status.success());
 
     // Age the lease far past the TTL by editing operational state directly.
@@ -155,13 +197,20 @@ fn ordinary_commands_heartbeat_the_lease_and_stale_takeover_is_deliberate() {
     let out = as_driver(tmp.path(), "quality", "agent-b", &["status"]);
     assert!(out.status.success());
     assert_eq!(
-        read_lease(tmp.path(), "quality")["last_seen_ms"].as_u64().unwrap(),
+        read_lease(tmp.path(), "quality")["last_seen_ms"]
+            .as_u64()
+            .unwrap(),
         aged,
         "a non-holder must not heartbeat a foreign lease"
     );
 
     // Stale takeover requires the explicit acknowledgement…
-    let out = as_driver(tmp.path(), "quality", "agent-b", &["role", "claim", "quality"]);
+    let out = as_driver(
+        tmp.path(),
+        "quality",
+        "agent-b",
+        &["role", "claim", "quality"],
+    );
     assert!(!out.status.success());
     assert_ne!(out.status.code(), Some(75), "stale is not contention");
     assert!(String::from_utf8_lossy(&out.stderr).contains("--take-stale"));
@@ -177,7 +226,10 @@ fn ordinary_commands_heartbeat_the_lease_and_stale_takeover_is_deliberate() {
     assert_eq!(read_lease(tmp.path(), "quality")["profile"], "agent-b");
 
     let journal = std::fs::read_to_string(
-        tmp.path().join(".loom").join("journal").join("events.jsonl"),
+        tmp.path()
+            .join(".loom")
+            .join("journal")
+            .join("events.jsonl"),
     )
     .unwrap();
     assert!(journal.contains("\"role_claimed\""));
@@ -202,11 +254,21 @@ fn next_warns_when_the_packets_role_is_leased_to_someone_else() {
             )
             .unwrap();
     }
-    let out = as_driver(tmp.path(), "builder", "agent-a", &["role", "claim", "builder"]);
+    let out = as_driver(
+        tmp.path(),
+        "builder",
+        "agent-a",
+        &["role", "claim", "builder"],
+    );
     assert!(out.status.success());
 
     // The holder drains its own lane: no warning.
-    let out = as_driver(tmp.path(), "builder", "agent-a", &["--json", "next", "--mode", "build"]);
+    let out = as_driver(
+        tmp.path(),
+        "builder",
+        "agent-a",
+        &["--json", "next", "--mode", "build"],
+    );
     assert!(out.status.success());
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert!(v["work_item"].is_object(), "build packet is served");
@@ -214,12 +276,20 @@ fn next_warns_when_the_packets_role_is_leased_to_someone_else() {
 
     // A different profile draining the same lane is warned — and still served:
     // the lease is advisory, so the collision is chosen, never accidental.
-    let out = as_driver(tmp.path(), "builder", "agent-b", &["--json", "next", "--mode", "build"]);
+    let out = as_driver(
+        tmp.path(),
+        "builder",
+        "agent-b",
+        &["--json", "next", "--mode", "build"],
+    );
     assert!(out.status.success());
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert!(v["work_item"].is_object(), "the packet is still served");
     let warning = v["lease_conflict"].as_str().expect("conflict is named");
-    assert!(warning.contains("agent-a"), "warning names the holder: {warning}");
+    assert!(
+        warning.contains("agent-a"),
+        "warning names the holder: {warning}"
+    );
 }
 
 #[test]
@@ -234,7 +304,12 @@ fn announce_reports_holders_freshness_and_debt() {
     assert!(out.status.success());
     assert!(!String::from_utf8_lossy(&out.stdout).contains("roles:"));
 
-    let out = as_driver(tmp.path(), "builder", "agent-a", &["role", "claim", "builder"]);
+    let out = as_driver(
+        tmp.path(),
+        "builder",
+        "agent-a",
+        &["role", "claim", "builder"],
+    );
     assert!(out.status.success());
 
     // role list --json: six claimable roles, holder + freshness + lanes + debt.
@@ -261,7 +336,11 @@ fn announce_reports_holders_freshness_and_debt() {
 
     // status --json carries the same block; status text names the holder.
     let mut status = loom_command();
-    status.arg("--graph").arg(tmp.path()).arg("--json").arg("status");
+    status
+        .arg("--graph")
+        .arg(tmp.path())
+        .arg("--json")
+        .arg("status");
     let out = status.output().unwrap();
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["roles"]["builder"]["claimed_by"], "agent-a");
@@ -277,7 +356,11 @@ fn announce_reports_holders_freshness_and_debt() {
 
     // session --json also announces, so a joining driver sees it turn-zero.
     let mut session = loom_command();
-    session.arg("--graph").arg(tmp.path()).arg("--json").arg("session");
+    session
+        .arg("--graph")
+        .arg(tmp.path())
+        .arg("--json")
+        .arg("session");
     let out = session.output().unwrap();
     assert!(out.status.success());
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();

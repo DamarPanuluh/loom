@@ -17,6 +17,7 @@ use crate::store::Store;
 use crate::Result;
 use anyhow::bail;
 use serde::Serialize;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// The completeness axes, in narrative order: what can happen around the
 /// behavior, what it needs, what governs it, how it is proven, how a consumer
@@ -753,6 +754,15 @@ impl Scorecard {
 
 /// Compute the scorecard for one intent.
 pub fn scorecard(store: &Store, intent: &Node) -> Result<Scorecard> {
+    let boundaries = BoundaryIndex::load(store)?;
+    scorecard_with_boundaries(store, intent, &boundaries)
+}
+
+fn scorecard_with_boundaries(
+    store: &Store,
+    intent: &Node,
+    boundaries: &BoundaryIndex,
+) -> Result<Scorecard> {
     let visibility = store.get_facet(&intent.id, TargetKind::Node, "visibility")?;
     let user_visible = visibility.as_deref() == Some("user_visible");
     let mut axes = Vec::with_capacity(AXES.len());
@@ -766,7 +776,11 @@ pub fn scorecard(store: &Store, intent: &Node) -> Result<Scorecard> {
         intent,
         prerequisites_axis(store, intent)?,
     )?);
-    axes.push(apply_waiver(store, intent, boundary_axis(store, intent)?)?);
+    axes.push(apply_waiver(
+        store,
+        intent,
+        boundary_axis(boundaries, intent)?,
+    )?);
     axes.push(apply_waiver(store, intent, proof_axis(store, intent)?)?);
     axes.push(apply_waiver(
         store,
@@ -788,6 +802,7 @@ pub fn scorecard(store: &Store, intent: &Node) -> Result<Scorecard> {
 
 /// Scorecards for every active feature-level intent, most-incomplete first.
 pub fn all_scorecards(store: &Store) -> Result<Vec<Scorecard>> {
+    let boundaries = BoundaryIndex::load(store)?;
     let mut cards = Vec::new();
     for intent in store.list_nodes(Some(NodeType::Intent), usize::MAX)? {
         if intent.status == "deprecated" {
@@ -799,7 +814,7 @@ pub fn all_scorecards(store: &Store) -> Result<Vec<Scorecard>> {
         if level != "feature" {
             continue;
         }
-        cards.push(scorecard(store, &intent)?);
+        cards.push(scorecard_with_boundaries(store, &intent, &boundaries)?);
     }
     cards.sort_by(|a, b| b.open.cmp(&a.open).then(a.intent_name.cmp(&b.intent_name)));
     Ok(cards)
@@ -945,42 +960,197 @@ fn prerequisites_axis(store: &Store, intent: &Node) -> Result<AxisState> {
     }
 }
 
-/// Boundary expectations (auth, validation, errors, …) are the quality rules:
-/// measured on this intent or an ancestor (highest honest altitude).
-fn boundary_axis(store: &Store, intent: &Node) -> Result<AxisState> {
-    let rules_exist = !store.list_nodes(Some(NodeType::QualityRule), 1)?.is_empty();
-    if !rules_exist {
+/// In-memory quality topology shared by every scorecard in one projection.
+/// Loading the three edge families once avoids turning a status read into
+/// hundreds of SQLite round trips as scenario and hierarchy depth grows.
+struct BoundaryIndex {
+    rules_exist: bool,
+    hierarchy_parents: BTreeMap<String, Vec<String>>,
+    hierarchy_children: BTreeMap<String, Vec<String>>,
+    scenario_parents: BTreeMap<String, Vec<String>>,
+    governs: BTreeMap<String, Vec<Edge>>,
+}
+
+impl BoundaryIndex {
+    fn load(store: &Store) -> Result<Self> {
+        let active: BTreeSet<String> = store
+            .list_nodes(Some(NodeType::Intent), usize::MAX)?
+            .into_iter()
+            .filter(|node| node.status != "deprecated")
+            .map(|node| node.id)
+            .collect();
+        let mut hierarchy_parents: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut hierarchy_children: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for edge in store.edges_with(Some(EdgeKind::Hierarchy), None, None)? {
+            if active.contains(&edge.from_id) && active.contains(&edge.to_id) {
+                hierarchy_parents
+                    .entry(edge.to_id.clone())
+                    .or_default()
+                    .push(edge.from_id.clone());
+                hierarchy_children
+                    .entry(edge.from_id)
+                    .or_default()
+                    .push(edge.to_id);
+            }
+        }
+        let mut scenario_parents: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for edge in store.edges_with(Some(EdgeKind::ScenarioOf), None, None)? {
+            if active.contains(&edge.from_id) && active.contains(&edge.to_id) {
+                scenario_parents
+                    .entry(edge.from_id)
+                    .or_default()
+                    .push(edge.to_id);
+            }
+        }
+        let mut governs: BTreeMap<String, Vec<Edge>> = BTreeMap::new();
+        for edge in store.edges_with(Some(EdgeKind::Governs), None, None)? {
+            if active.contains(&edge.to_id) {
+                governs.entry(edge.to_id.clone()).or_default().push(edge);
+            }
+        }
+        for values in hierarchy_parents
+            .values_mut()
+            .chain(hierarchy_children.values_mut())
+            .chain(scenario_parents.values_mut())
+        {
+            values.sort();
+            values.dedup();
+        }
+        for edges in governs.values_mut() {
+            edges.sort_by(|left, right| left.id.cmp(&right.id));
+            edges.dedup_by(|left, right| left.id == right.id);
+        }
+        Ok(Self {
+            rules_exist: !store.list_nodes(Some(NodeType::QualityRule), 1)?.is_empty(),
+            hierarchy_parents,
+            hierarchy_children,
+            scenario_parents,
+            governs,
+        })
+    }
+
+    fn hierarchy_ancestor_ids(&self, intent_id: &str) -> BTreeSet<String> {
+        let mut ids = BTreeSet::new();
+        let mut pending = vec![intent_id.to_string()];
+        while let Some(current) = pending.pop() {
+            if !ids.insert(current.clone()) {
+                continue;
+            }
+            if let Some(parents) = self.hierarchy_parents.get(&current) {
+                pending.extend(parents.iter().cloned());
+            }
+        }
+        ids
+    }
+
+    fn hierarchy_leaf_scopes(
+        &self,
+        intent_id: &str,
+        inherited: &BTreeSet<String>,
+    ) -> Result<Vec<BTreeSet<String>>> {
+        let mut reachable = BTreeSet::new();
+        let mut leaves = BTreeSet::new();
+        let mut pending = vec![intent_id.to_string()];
+        while let Some(current) = pending.pop() {
+            if !reachable.insert(current.clone()) {
+                continue;
+            }
+            match self.hierarchy_children.get(&current) {
+                Some(children) if !children.is_empty() => {
+                    pending.extend(children.iter().cloned());
+                }
+                _ => {
+                    leaves.insert(current);
+                }
+            }
+        }
+        if leaves.is_empty() {
+            bail!("hierarchy cycle while computing boundary coverage at '{intent_id}'");
+        }
+
+        Ok(leaves
+            .into_iter()
+            .map(|leaf_id| {
+                let mut scope = inherited.clone();
+                scope.extend(self.hierarchy_ancestor_ids(&leaf_id));
+                scope
+            })
+            .collect())
+    }
+
+    fn surface_scopes(&self, intent_id: &str) -> Result<Vec<BTreeSet<String>>> {
+        fn visit(
+            index: &BoundaryIndex,
+            intent_id: &str,
+            scenario_path: &mut BTreeSet<String>,
+        ) -> Result<Vec<BTreeSet<String>>> {
+            if !scenario_path.insert(intent_id.to_string()) {
+                bail!("scenario cycle while computing boundary coverage at '{intent_id}'");
+            }
+            let own_scope = index.hierarchy_ancestor_ids(intent_id);
+            let mut scopes = match index.scenario_parents.get(intent_id) {
+                Some(parents) if !parents.is_empty() => {
+                    let mut inherited = Vec::new();
+                    for parent_id in parents {
+                        for mut scope in visit(index, parent_id, scenario_path)? {
+                            scope.extend(own_scope.iter().cloned());
+                            inherited.push(scope);
+                        }
+                    }
+                    inherited
+                }
+                _ => index.hierarchy_leaf_scopes(intent_id, &own_scope)?,
+            };
+            scenario_path.remove(intent_id);
+            scopes.sort();
+            scopes.dedup();
+            Ok(scopes)
+        }
+
+        visit(self, intent_id, &mut BTreeSet::new())
+    }
+}
+
+/// Boundary expectations (auth, validation, errors, …) are quality rules.
+/// A behavior uses verdicts recorded directly on it, inherited from hierarchy
+/// ancestors, or inherited from the happy-path quality surfaces it surrounds.
+/// Roll-up intents aggregate their hierarchy leaves because those leaves are
+/// the code-bearing surfaces served by the quality queue.
+fn boundary_axis(index: &BoundaryIndex, intent: &Node) -> Result<AxisState> {
+    if !index.rules_exist {
         return Ok(axis(
             "boundary",
             "not_applicable",
             "no quality rules seeded (loom rule seed <pack>)".into(),
         ));
     }
-    // Walk self + hierarchy ancestors (bounded) collecting governs edges.
-    let mut ids = vec![intent.id.clone()];
-    let mut cursor = intent.id.clone();
-    for _ in 0..5 {
-        let parents = store.edges_with(Some(EdgeKind::Hierarchy), None, Some(&cursor))?;
-        match parents.into_iter().next() {
-            Some(e) => {
-                cursor = e.from_id.clone();
-                ids.push(e.from_id);
-            }
-            None => break,
-        }
-    }
+
+    let scopes = index.surface_scopes(&intent.id)?;
+    let mut seen_edges = BTreeSet::new();
     let mut measured = 0usize;
     let mut failing = 0usize;
     let mut pending = 0usize;
-    for id in &ids {
-        for e in store.edges_with(Some(EdgeKind::Governs), None, Some(id))? {
-            match e.status.as_str() {
-                "passing" | "independent" => measured += 1,
-                "failing" => failing += 1,
-                _ => pending += 1,
+    let mut uncovered = 0usize;
+    for ids in &scopes {
+        let mut covered = false;
+        for id in ids {
+            for edge in index.governs.get(id).into_iter().flatten() {
+                covered = true;
+                if !seen_edges.insert(edge.id.clone()) {
+                    continue;
+                }
+                match edge.status.as_str() {
+                    "passing" | "independent" => measured += 1,
+                    "failing" => failing += 1,
+                    _ => pending += 1,
+                }
             }
         }
+        if !covered {
+            uncovered += 1;
+        }
     }
+
     if failing > 0 {
         Ok(axis(
             "boundary",
@@ -993,11 +1163,19 @@ fn boundary_axis(store: &Store, intent: &Node) -> Result<AxisState> {
             "open",
             format!("{pending} unmeasured/stale rule(s) — quality queue"),
         ))
+    } else if uncovered > 0 {
+        Ok(axis(
+            "boundary",
+            "open",
+            format!(
+                "{uncovered} code-bearing quality surface(s) have no measured rule — quality queue proposes pairs"
+            ),
+        ))
     } else if measured > 0 {
         Ok(axis(
             "boundary",
             "met",
-            format!("{measured} rule verdict(s) standing at this altitude"),
+            format!("{measured} rule verdict(s) standing across every quality surface"),
         ))
     } else {
         Ok(axis(

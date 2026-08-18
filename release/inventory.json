@@ -21,7 +21,9 @@
       "cargo",
       "test",
       "--all-targets",
-      "--quiet"
+      "--quiet",
+      "--",
+      "--test-threads=1"
     ],
     [
       "cargo",
@@ -511,10 +513,6 @@
       "mode": "regular"
     },
     {
-      "path": "src/commands/diagnostics_cmd.rs",
-      "mode": "absent"
-    },
-    {
       "path": "src/commands/diagnostics_cmd/advisory.rs",
       "mode": "regular"
     },
@@ -541,10 +539,6 @@
     {
       "path": "src/commands/discover_cmd.rs",
       "mode": "regular"
-    },
-    {
-      "path": "src/commands/domain_cmd.rs",
-      "mode": "absent"
     },
     {
       "path": "src/commands/domain_cmd/hypothesis.rs",
@@ -581,10 +575,6 @@
     {
       "path": "src/commands/hook_cmd.rs",
       "mode": "regular"
-    },
-    {
-      "path": "src/commands/intent.rs",
-      "mode": "absent"
     },
     {
       "path": "src/commands/intent/commands.rs",
@@ -631,10 +621,6 @@
       "mode": "regular"
     },
     {
-      "path": "src/commands/proof_cmd.rs",
-      "mode": "absent"
-    },
-    {
       "path": "src/commands/proof_cmd/mod.rs",
       "mode": "regular"
     },
@@ -668,6 +654,10 @@
     },
     {
       "path": "src/commands/release_cmd.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/role_cmd.rs",
       "mode": "regular"
     },
     {
@@ -827,10 +817,6 @@
       "mode": "regular"
     },
     {
-      "path": "src/release.rs",
-      "mode": "absent"
-    },
-    {
       "path": "src/release/mod.rs",
       "mode": "regular"
     },
@@ -872,6 +858,10 @@
     },
     {
       "path": "src/risk.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/rolelease.rs",
       "mode": "regular"
     },
     {
@@ -933,10 +923,6 @@
     {
       "path": "src/store/mod.rs",
       "mode": "regular"
-    },
-    {
-      "path": "src/store/nodes.rs",
-      "mode": "absent"
     },
     {
       "path": "src/store/nodes/lookup.rs",
@@ -1271,6 +1257,14 @@
       "mode": "regular"
     },
     {
+      "path": "tests/ring62_role_leases.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring63_proof_window_audit.rs",
+      "mode": "regular"
+    },
+    {
       "path": "tests/ring7.rs",
       "mode": "regular"
     },
@@ -1291,6 +1285,7 @@
     ".claude",
     ".git",
     ".loom",
+    ".nodeterm",
     ".qoder",
     ".reasonix",
     ".release-sandbox",

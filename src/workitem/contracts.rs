@@ -51,7 +51,8 @@ pub(super) fn elaborator_contract(
             format!(
                 "prerequisites: loom edge relate requires {name} '<intent that must exist first>'"
             ),
-            "boundary/proof/journey: author or refine the Journey root, then let the derive, surface, and validate queues compile and run its proof profile".into(),
+            "boundary: work the quality queue; it proposes the applicable rule × code-bearing intent pair and requires an evidence-backed verdict".into(),
+            "proof/journey: author or refine the Journey root, then let the derive, surface, and validate queues compile and run its proof profile".into(),
             format!(
                 "product decision: loom question add \"<one crisp product question>\" --intent {name}; ask that question directly in plain language, offer a recommended default with consequences when useful, WAIT for the reply, then loom question answer <question> --answer '<the user’s answer>'"
             ),

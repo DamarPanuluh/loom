@@ -109,20 +109,22 @@ fn require_passed_journey_report_with_sandbox(
 ) -> Result<()> {
     let report: crate::journey_runtime::RuntimeReport = serde_json::from_slice(bytes)
         .context("Journey run output is not one complete runtime report")?;
+    // Exit codes are deliberately NOT re-checked per step: the runtime bails
+    // (status != Passed) whenever an observed exit differs from the step's
+    // declared expected_exit, and it records exit_code = expected_exit on
+    // success — so a Passed report with a nonzero step exit is a declared
+    // refusal step, not a failure. Re-requiring zero here would reject it.
     if report.journey_id != journey_id
         || report.profile != profile
         || report.status != crate::journey_runtime::RuntimeStatus::Passed
         || report.assertions_failed != 0
         || report.steps.len() != expected_steps
-        || report
-            .steps
-            .iter()
-            .any(|step| step.exit_code != 0 || step.assertions_failed != 0)
+        || report.steps.iter().any(|step| step.assertions_failed != 0)
     {
         let failing_steps: Vec<_> = report
             .steps
             .iter()
-            .filter(|step| step.exit_code != 0 || step.assertions_failed != 0)
+            .filter(|step| step.assertions_failed != 0)
             .take(8)
             .map(|step| {
                 serde_json::json!({
@@ -175,7 +177,7 @@ fn require_passed_journey_report_with_sandbox(
                 "detail": detail,
                 "failing_steps": failing_steps,
                 "failing_steps_omitted": report.steps.iter()
-                    .filter(|step| step.exit_code != 0 || step.assertions_failed != 0)
+                    .filter(|step| step.assertions_failed != 0)
                     .count().saturating_sub(8),
                 "failed_assertions": failed_assertions,
                 "failed_assertions_omitted": failed_assertions_omitted,
@@ -229,13 +231,23 @@ pub fn require_clean_coverage(bytes: &[u8]) -> Result<()> {
         .get("unowned")
         .and_then(serde_json::Value::as_u64)
         .ok_or_else(|| anyhow!("coverage is missing codefiles.unowned"))?;
-    if planned != 0
-        || ungrounded != 0
-        || unowned != 0
-        || registered != owned.saturating_add(unowned)
-    {
+    // Coverage excludes declared compatibility facades from ownership while
+    // retaining them in the registered-file census. Older modeled executors
+    // predate this field, so absence means zero; a present non-integer remains
+    // malformed rather than silently bypassing the accounting invariant.
+    let excluded = match codefiles.get("excluded") {
+        Some(value) => value
+            .as_u64()
+            .ok_or_else(|| anyhow!("coverage has invalid codefiles.excluded"))?,
+        None => 0,
+    };
+    let accounted = owned
+        .checked_add(unowned)
+        .and_then(|count| count.checked_add(excluded))
+        .ok_or_else(|| anyhow!("coverage codefile accounting overflowed"))?;
+    if planned != 0 || ungrounded != 0 || unowned != 0 || registered != accounted {
         bail!(
-            "release candidate coverage is blocking: planned={planned}, ungrounded={ungrounded}, unowned={unowned}"
+            "release candidate coverage is blocking: planned={planned}, ungrounded={ungrounded}, registered={registered}, owned={owned}, excluded={excluded}, unowned={unowned}"
         );
     }
     Ok(())

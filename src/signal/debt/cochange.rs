@@ -672,23 +672,17 @@ mod tests {
         path_b: &str,
     ) -> Vec<GitCommit> {
         let mut out = Vec::new();
-        let mut n = 0usize;
         for _ in 0..joint {
-            n += 1;
             out.push(commit(vec![touch(path_a), touch(path_b)]));
         }
         for _ in 0..solo_a {
-            n += 1;
             out.push(commit(vec![touch(path_a)]));
         }
         for _ in 0..solo_b {
-            n += 1;
             out.push(commit(vec![touch(path_b)]));
         }
         for i in 0..filler {
-            n += 1;
-            out.push(commit(vec![touch(&format!("filler/{i}.rs"))],
-            ));
+            out.push(commit(vec![touch(&format!("filler/{i}.rs"))]));
         }
         out
     }
@@ -754,12 +748,11 @@ mod tests {
         // Jaccard=1, dir=1, but lift = 9*12/(9*9) = 1.33 < 1.5 → filtered by lift alone.
         let snap = snap_with_fillers(&[("na", "a.rs"), ("nb", "b.rs")], 3);
         let mut commits = Vec::new();
-        for i in 0..9 {
+        for _ in 0..9 {
             commits.push(commit(vec![touch("a.rs"), touch("b.rs")]));
         }
         for i in 0..3 {
-            commits.push(commit(vec![touch(&format!("filler/{i}.rs"))],
-            ));
+            commits.push(commit(vec![touch(&format!("filler/{i}.rs"))]));
         }
         let clusters = co_change_from_raw(&snap, &commits);
         assert!(
@@ -777,21 +770,17 @@ mod tests {
         // AB/BC pass gates; AC Jaccard 5/15 < 1/2.
         let snap = snap_with_fillers(&[("na", "a.rs"), ("nb", "b.rs"), ("nc", "c.rs")], 8);
         let mut commits = Vec::new();
-        for i in 0..5 {
-            commits.push(commit(vec![touch("a.rs"), touch("b.rs"), touch("c.rs")],
-            ));
+        for _ in 0..5 {
+            commits.push(commit(vec![touch("a.rs"), touch("b.rs"), touch("c.rs")]));
         }
-        for i in 0..5 {
-            commits.push(commit(vec![touch("a.rs"), touch("b.rs")],
-            ));
+        for _ in 0..5 {
+            commits.push(commit(vec![touch("a.rs"), touch("b.rs")]));
         }
-        for i in 0..5 {
-            commits.push(commit(vec![touch("b.rs"), touch("c.rs")],
-            ));
+        for _ in 0..5 {
+            commits.push(commit(vec![touch("b.rs"), touch("c.rs")]));
         }
         for i in 0..8 {
-            commits.push(commit(vec![touch(&format!("filler/{i}.rs"))],
-            ));
+            commits.push(commit(vec![touch(&format!("filler/{i}.rs"))]));
         }
         let clusters = co_change_from_raw(&snap, &commits);
         for c in &clusters {
@@ -821,17 +810,13 @@ mod tests {
         let snap = empty_snap(nodes);
         let mut commits = Vec::new();
         // Rename events ride with other so they count as joint, not solo support.
-        commits.push(commit(vec![ren("mid.rs", "new.rs"), touch("other.rs")],
-        ));
-        for i in 0..4 {
-            commits.push(commit(vec![touch("mid.rs"), touch("other.rs")],
-            ));
+        commits.push(commit(vec![ren("mid.rs", "new.rs"), touch("other.rs")]));
+        for _ in 0..4 {
+            commits.push(commit(vec![touch("mid.rs"), touch("other.rs")]));
         }
-        commits.push(commit(vec![ren("old.rs", "mid.rs"), touch("other.rs")],
-        ));
-        for i in 0..3 {
-            commits.push(commit(vec![touch("old.rs"), touch("other.rs")],
-            ));
+        commits.push(commit(vec![ren("old.rs", "mid.rs"), touch("other.rs")]));
+        for _ in 0..3 {
+            commits.push(commit(vec![touch("old.rs"), touch("other.rs")]));
         }
         // delete-only: bulk-noise only, not a touch (empty after map → dropped)
         commits.push(commit(vec![del("new.rs")]));
@@ -870,17 +855,14 @@ mod tests {
             4,
         );
         let mut commits = Vec::new();
-        for i in 0..4 {
-            commits.push(commit(vec![touch("a.rs"), touch("b.rs")],
-            ));
+        for _ in 0..4 {
+            commits.push(commit(vec![touch("a.rs"), touch("b.rs")]));
+        }
+        for _ in 0..4 {
+            commits.push(commit(vec![touch("c.rs"), touch("d.rs")]));
         }
         for i in 0..4 {
-            commits.push(commit(vec![touch("c.rs"), touch("d.rs")],
-            ));
-        }
-        for i in 0..4 {
-            commits.push(commit(vec![touch(&format!("filler/{i}.rs"))],
-            ));
+            commits.push(commit(vec![touch(&format!("filler/{i}.rs"))]));
         }
 
         let mut rev = commits.clone();
@@ -923,9 +905,8 @@ mod tests {
         }
         let snap = empty_snap(nodes);
         let mut commits = Vec::new();
-        for i in 0..5 {
-            commits.push(commit(vec![touch("dup.rs"), touch("solo.rs")],
-            ));
+        for _ in 0..5 {
+            commits.push(commit(vec![touch("dup.rs"), touch("solo.rs")]));
         }
         for i in 0..6 {
             commits.push(commit(vec![touch(&format!("z{i}.rs"))]));

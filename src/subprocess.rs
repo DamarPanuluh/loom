@@ -279,9 +279,7 @@ pub(crate) fn strict_simple_tokens(command: &str) -> Option<Vec<String>> {
         let mut token = String::new();
         if first == '\'' || first == '"' {
             // `first` came from peek(); consuming it cannot miss.
-            let Some(quote) = chars.next() else {
-                return None;
-            };
+            let quote = chars.next()?;
             let mut closed = false;
             for c in chars.by_ref() {
                 if c == quote {

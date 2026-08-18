@@ -52,11 +52,21 @@ const RELEASE_CODE_GATES: &[&[&str]] = &[
         "-D",
         "warnings",
     ],
-    &["cargo", "test", "--all-targets", "--quiet"],
+    &[
+        "cargo",
+        "test",
+        "--all-targets",
+        "--quiet",
+        "--",
+        "--test-threads=1",
+    ],
     &["cargo", "build", "--quiet"],
 ];
 const RELEASE_CACHE_ROOT_ENVIRONMENT: &[&str] = &["CARGO_HOME", "RUSTUP_HOME"];
 const SOURCE_EXCLUDES: [&str; 3] = [".git", ".loom", "target"];
+// Release-owned authority and process scratch lives here after the caller
+// baseline is captured. It is neither caller source nor result identity.
+const CALLER_SOURCE_EXCLUDES: [&str; 4] = [".git", ".loom", ".release-sandbox", "target"];
 // loom.graph.json is excluded because the gate's own export step rewrites it
 // with candidate-local journal ids (<millis>-<pid>-<seq>), fresh validation
 // node ids, and wall-clock timestamps — legitimate per-candidate identity that
@@ -71,10 +81,11 @@ const RESULT_EXCLUDES: [&str; 5] = [
     "loom.graph.json",
     "target",
 ];
-const INVENTORY_RESERVED_COMPONENTS: [&str; 8] = [
+const INVENTORY_RESERVED_COMPONENTS: [&str; 9] = [
     ".claude",
     ".git",
     ".loom",
+    ".nodeterm",
     ".qoder",
     ".reasonix",
     ".release-sandbox",

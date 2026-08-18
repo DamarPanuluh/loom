@@ -21,10 +21,10 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "6c82737ad1640457";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 313;
-const RELEASE_INVENTORY_FILE_COUNT: usize = 307;
-const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 6;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "0aef592bec52e638";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 311;
+const RELEASE_INVENTORY_FILE_COUNT: usize = 311;
+const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
 
 #[test]
 fn cold_journey_rehearsal_parser_is_proof_only_and_has_no_override_or_retention_flags() {
@@ -1204,6 +1204,25 @@ fn journey_coverage_and_drift_evidence_fail_closed() {
 }
 
 #[test]
+fn release_coverage_accounts_for_declared_exclusions() {
+    let clean = json!({
+        "intents":{"planned_or_needs_change":0},
+        "grounding":{"ungrounded":0},
+        "codefiles":{"registered":2,"owned":1,"observed":0,"excluded":1,"unowned":0}
+    });
+    loom::release::require_clean_coverage(&serde_json::to_vec(&clean).unwrap()).unwrap();
+
+    let mut inconsistent = clean;
+    inconsistent["codefiles"]["excluded"] = json!(0);
+    let error = loom::release::require_clean_coverage(&serde_json::to_vec(&inconsistent).unwrap())
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("registered=2"), "{error}");
+    assert!(error.contains("owned=1"), "{error}");
+    assert!(error.contains("excluded=0"), "{error}");
+}
+
+#[test]
 fn exact_outer_recursion_is_suppressed_but_variants_and_escape_argv_are_rejected() {
     let spec = loom::journey::parse(Path::new("journeys/release-workflow.yaml")).unwrap();
     let manifest: loom::journey::SurfaceManifest =
@@ -1794,17 +1813,7 @@ fn source_inventory_manifest_binds_exact_tombstones_and_counts() {
         .filter(|entry| entry["mode"] == "absent")
         .map(|entry| entry["path"].as_str().unwrap())
         .collect();
-    assert_eq!(
-        tombstones,
-        [
-            "src/commands/diagnostics_cmd.rs",
-            "src/commands/domain_cmd.rs",
-            "src/commands/intent.rs",
-            "src/commands/proof_cmd.rs",
-            "src/release.rs",
-            "src/store/nodes.rs",
-        ]
-    );
+    assert_eq!(tombstones, [] as [&str; 0]);
 }
 
 #[test]
@@ -2022,13 +2031,13 @@ fn self_audit_binds_to_current_local_exact_set_authorization() {
         r#""claim":\s*"ratification""#,
         r#""operation":\s*"ratify""#,
         r#""decision_mode":\s*"batch""#,
-        "journey-derive-accept:2",
+        "journey-derive-accept:4",
     ] {
         assert!(envelope.contains(current_field), "missing {current_field}");
     }
     assert!(
-        envelope.contains(r#""subjects":\s*\[\s*"[0-9a-f]{32}"\s*,\s*"[0-9a-f]{32}"\s*\]"#),
-        "the authorization must cover exactly two deterministic subjects"
+        envelope.contains(r#""subjects":\s*\[\s*"[0-9a-f]{32}"\s*,\s*"[0-9a-f]{32}"\s*,\s*"[0-9a-f]{32}"\s*,\s*"[0-9a-f]{32}"\s*\]"#),
+        "the authorization must cover exactly four deterministic subjects"
     );
 
     let manifest = loom::journey::SurfaceManifest::parse_json(&path).unwrap();
@@ -2935,7 +2944,7 @@ impl RuntimeFixture {
                 "code_gates":[
                     ["cargo","fmt","--all","--","--check"],
                     ["cargo","clippy","--all-targets","--all-features","--","-D","warnings"],
-                    ["cargo","test","--all-targets","--quiet"],
+                    ["cargo","test","--all-targets","--quiet","--","--test-threads=1"],
                     ["cargo","build","--quiet"]
                 ],
                 "cache_root_environment":["CARGO_HOME","RUSTUP_HOME"],
@@ -2953,7 +2962,7 @@ impl RuntimeFixture {
                     {"path":"src/release/mod.rs","mode":"regular"},
                     {"path":"src/removed.rs","mode":"absent"}
                 ],
-                "reserved_components":[".claude",".git",".loom",".qoder",".reasonix",".release-sandbox","review-manifests","target"],
+                "reserved_components":[".claude",".git",".loom",".nodeterm",".qoder",".reasonix",".release-sandbox","review-manifests","target"],
                 "secret_name_patterns":[".env",".env.*","*.key","*.pem",".netrc",".npmrc",".pypirc","credentials","credentials.json","id_ed25519","id_rsa","secrets.json"]
             })).unwrap(),
         );

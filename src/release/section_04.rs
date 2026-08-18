@@ -437,9 +437,23 @@ fn run_candidate_journeys(
     expected_bindings: &BTreeMap<String, (String, String)>,
     exec: &mut CandidateExec<'_>,
 ) -> Result<Vec<JourneyResultSummary>> {
+    // Derivation replay and imported source drift can leave derived state
+    // awaiting INV-2's single rebuild door. Establish one clean baseline
+    // before any profile is allowed to observe or settle against it.
+    run_loom(
+        root,
+        exec.binary,
+        &["sync", "--json"],
+        exec.executor,
+        exec.sandbox,
+        exec.ledger,
+    )?;
     let mut excluded = 0usize;
     let mut summaries = Vec::new();
     let mut identities = BTreeSet::new();
+    // A failed preflight never touches the canonical candidate. Keep it for
+    // settlement retries after other profiles have committed their proofs.
+    let mut retries: Vec<(crate::journey::JourneySpec, String, anyhow::Error)> = Vec::new();
     for path in journey_artifacts(root)? {
         let spec = crate::journey::parse(&path)?;
         let (expected_journey_hash, expected_surface_hash) =
@@ -477,52 +491,83 @@ fn run_candidate_journeys(
                 });
                 continue;
             }
-            let observed = run_loom(
+            match run_candidate_journey_transaction(
                 root,
-                exec.binary,
-                &["journey", "run", &spec.id, "--profile", profile, "--json"],
-                exec.executor,
-                exec.sandbox,
-                exec.ledger,
-            )?;
-            if let Some(pending) = pending_human_gate(&observed.stdout)? {
-                require_declared_human_gate(root, &spec.id, profile, &pending)?;
-                let journey_hash = &pending.binding.journey_hash;
-                let surface_hash = &pending.binding.surface_hash;
-                if journey_hash != expected_journey_hash || surface_hash != expected_surface_hash {
-                    bail!("pending Journey report has a stale Journey or surface hash");
-                }
-                summaries.push(JourneyResultSummary {
-                    journey_id: spec.id.clone(),
-                    profile: profile.clone(),
-                    journey_hash: journey_hash.into(),
-                    surface_hash: surface_hash.into(),
-                    verdict: "pending_human".into(),
-                });
-                continue;
-            }
-            require_passed_journey_report_with_sandbox(
-                &observed.stdout,
-                &spec.id,
+                &spec,
                 profile,
-                spec.steps.len(),
-                Some(exec.sandbox),
-            )?;
-            let report: crate::journey_runtime::RuntimeReport =
-                serde_json::from_slice(&observed.stdout)?;
-            if &report.journey_hash != expected_journey_hash
-                || &report.surface_hash != expected_surface_hash
-            {
-                bail!("Journey report has a stale Journey or surface hash");
+                expected_journey_hash,
+                expected_surface_hash,
+                exec,
+            )? {
+                Ok(summary) => summaries.push(summary),
+                Err(error) => {
+                    // Some profiles measure live graph maturity that only
+                    // settles after later profiles commit their proofs. The
+                    // failed disposable preflight changed no canonical state,
+                    // so it is safe to retry after the full pass.
+                    retries.push((spec.clone(), profile.clone(), error));
+                }
             }
-            summaries.push(JourneyResultSummary {
-                journey_id: spec.id.clone(),
-                profile: profile.clone(),
-                journey_hash: report.journey_hash,
-                surface_hash: report.surface_hash,
-                verdict: "passed".into(),
-            });
         }
+    }
+    // Settlement convergence for first-pass failures. Journeys run in path
+    // order, and some snapshot graph maturity that only settles after later
+    // journeys record their proofs; derived findings converge only at
+    // `loom sync` (INV-2's single wipe/rebuild door in seed.rs). Each round
+    // syncs, re-runs every still-failing journey, and continues only while a
+    // round makes progress — a deterministic failure converges to a round
+    // with no progress and is reported with every remaining journey named.
+    let mut pending = retries;
+    while !pending.is_empty() {
+        let observed = run_loom(
+            root,
+            exec.binary,
+            &["sync", "--json"],
+            exec.executor,
+            exec.sandbox,
+            exec.ledger,
+        )?;
+        if !observed.success {
+            bail!(
+                "candidate settlement sync failed before Journey retries: {}",
+                String::from_utf8_lossy(&observed.stderr).trim()
+            );
+        }
+        let pending_len = pending.len();
+        let mut still_failing = Vec::new();
+        for (spec, profile, first_error) in pending {
+            let (expected_journey_hash, expected_surface_hash) = expected_bindings
+                .get(&spec.id)
+                .expect("retry journeys were resolved from expected bindings above");
+            match run_candidate_journey_transaction(
+                root,
+                &spec,
+                &profile,
+                expected_journey_hash,
+                expected_surface_hash,
+                exec,
+            )? {
+                Ok(summary) => summaries.push(summary),
+                Err(retry_error) => still_failing.push((spec, profile, first_error, retry_error)),
+            }
+        }
+        if still_failing.len() == pending_len {
+            let named = still_failing
+                .iter()
+                .map(|(spec, profile, first_error, retry_error)| {
+                    format!(
+                        "'{}:{profile}' (first failure: {first_error:#}; retry failure: {retry_error:#})",
+                        spec.id
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join("; ");
+            bail!("candidate Journeys failed after settlement retries: {named}");
+        }
+        pending = still_failing
+            .into_iter()
+            .map(|(spec, profile, first_error, _)| (spec, profile, first_error))
+            .collect();
     }
     if excluded != 1 {
         bail!(
@@ -538,4 +583,140 @@ fn run_candidate_journeys(
         }
     }
     Ok(summaries)
+}
+
+/// Preflight one profile in a Store-owned local snapshot. A failed report is
+/// discarded with that snapshot; a passing report is rerun against the
+/// canonical candidate so its trusted settlement is available to profiles
+/// that measure aggregate graph maturity.
+fn run_candidate_journey_transaction(
+    root: &Path,
+    spec: &crate::journey::JourneySpec,
+    profile: &str,
+    expected_journey_hash: &str,
+    expected_surface_hash: &str,
+    exec: &mut CandidateExec<'_>,
+) -> Result<std::result::Result<JourneyResultSummary, anyhow::Error>> {
+    // ReleaseExecutor is an injectable process boundary. A modeled executor
+    // may report successful init/import commands without materializing their
+    // SQLite side effects; in that seam there is no graph to clone, so preserve
+    // the single modeled run. The system executor always creates this file
+    // before candidate Journeys begin.
+    if !root.join(crate::LOOM_DIR).join(crate::GRAPH_DB).is_file() {
+        return run_one_candidate_journey(
+            root,
+            spec,
+            profile,
+            expected_journey_hash,
+            expected_surface_hash,
+            exec,
+        );
+    }
+    let snapshot = DetachedCandidate::allocate(root, "journey-preflight")?;
+    {
+        let store = Store::open_read(root)?;
+        store.clone_local_snapshot(snapshot.path())?;
+    }
+    let manifest_relative =
+        Path::new(SURFACE_MANIFEST_ROOT).join(format!("{}.surface.json", spec.id));
+    let manifest_destination = snapshot.path().join(&manifest_relative);
+    fs::create_dir_all(
+        manifest_destination
+            .parent()
+            .expect("surface manifest has a parent"),
+    )?;
+    fs::copy(root.join(&manifest_relative), &manifest_destination).with_context(|| {
+        format!(
+            "copying canonical surface manifest for Journey '{}'",
+            spec.id
+        )
+    })?;
+    let preflight = run_one_candidate_journey(
+        snapshot.path(),
+        spec,
+        profile,
+        expected_journey_hash,
+        expected_surface_hash,
+        exec,
+    )?;
+    let summary = match preflight {
+        Ok(summary) => summary,
+        Err(error) => return Ok(Err(error)),
+    };
+    if summary.verdict == "pending_human" {
+        return Ok(Ok(summary));
+    }
+    match run_one_candidate_journey(
+        root,
+        spec,
+        profile,
+        expected_journey_hash,
+        expected_surface_hash,
+        exec,
+    )? {
+        Ok(committed) => Ok(Ok(committed)),
+        Err(error) => bail!(
+            "Journey '{}:{profile}' passed its isolated preflight but failed its canonical settlement run: {error:#}",
+            spec.id
+        ),
+    }
+}
+
+/// Run one candidate journey/profile. The outer `Result` carries
+/// infrastructure errors (subprocess spawn, stale hashes, undeclared human
+/// gates) that fail the rehearsal immediately; the inner `Result` carries a
+/// journey verdict, where `Err` is a run that did not pass and is eligible
+/// for one post-settlement retry.
+fn run_one_candidate_journey(
+    root: &Path,
+    spec: &crate::journey::JourneySpec,
+    profile: &str,
+    expected_journey_hash: &str,
+    expected_surface_hash: &str,
+    exec: &mut CandidateExec<'_>,
+) -> Result<std::result::Result<JourneyResultSummary, anyhow::Error>> {
+    let observed = run_loom(
+        root,
+        exec.binary,
+        &["journey", "run", &spec.id, "--profile", profile, "--json"],
+        exec.executor,
+        exec.sandbox,
+        exec.ledger,
+    )?;
+    if let Some(pending) = pending_human_gate(&observed.stdout)? {
+        require_declared_human_gate(root, &spec.id, profile, &pending)?;
+        let journey_hash = &pending.binding.journey_hash;
+        let surface_hash = &pending.binding.surface_hash;
+        if journey_hash != expected_journey_hash || surface_hash != expected_surface_hash {
+            bail!("pending Journey report has a stale Journey or surface hash");
+        }
+        return Ok(Ok(JourneyResultSummary {
+            journey_id: spec.id.clone(),
+            profile: profile.into(),
+            journey_hash: journey_hash.into(),
+            surface_hash: surface_hash.into(),
+            verdict: "pending_human".into(),
+        }));
+    }
+    if let Err(error) = require_passed_journey_report_with_sandbox(
+        &observed.stdout,
+        &spec.id,
+        profile,
+        spec.steps.len(),
+        Some(exec.sandbox),
+    ) {
+        return Ok(Err(error));
+    }
+    let report: crate::journey_runtime::RuntimeReport = serde_json::from_slice(&observed.stdout)?;
+    if report.journey_hash != expected_journey_hash || report.surface_hash != expected_surface_hash
+    {
+        bail!("Journey report has a stale Journey or surface hash");
+    }
+    Ok(Ok(JourneyResultSummary {
+        journey_id: spec.id.clone(),
+        profile: profile.into(),
+        journey_hash: report.journey_hash,
+        surface_hash: report.surface_hash,
+        verdict: "passed".into(),
+    }))
 }

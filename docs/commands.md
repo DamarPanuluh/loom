@@ -662,7 +662,7 @@ inference:
 ```text
 cargo fmt --all -- --check
 cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all-targets --quiet
+cargo test --all-targets --quiet -- --test-threads=1
 cargo build --quiet
 ```
 

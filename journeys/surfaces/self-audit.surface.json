@@ -87,7 +87,7 @@
             },
             {
               "id": "authorized-current-ratification-envelope",
-              "matches": "(?s)\"event\":\\s*\"batch_authorization\".*?\"origin\":\\s*\"local\".*?\"payload\":\\s*\\{\\s*\"authority\":\\s*\"human\"\\s*,\\s*\"claim\":\\s*\"ratification\"\\s*,\\s*\"command_id\":\\s*\"journey-derive-accept:2\"\\s*,\\s*\"criterion\":\\s*\"accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest [0-9a-f]{16}\"\\s*,\\s*\"decision_mode\":\\s*\"batch\".*?\"operation\":\\s*\"ratify\"\\s*,\\s*\"subject_digest\":\\s*\"b[0-9a-f]{16}\"\\s*,\\s*\"subjects\":\\s*\\[\\s*\"[0-9a-f]{32}\"\\s*,\\s*\"[0-9a-f]{32}\"\\s*\\]",
+              "matches": "(?s)\"event\":\\s*\"batch_authorization\".*?\"origin\":\\s*\"local\".*?\"payload\":\\s*\\{\\s*\"authority\":\\s*\"human\"\\s*,\\s*\"claim\":\\s*\"ratification\"\\s*,\\s*\"command_id\":\\s*\"journey-derive-accept:4\"\\s*,\\s*\"criterion\":\\s*\"accepted Journey 'self-audit' derivation at semantic hash 0dcc2efcd203fd34 from canonical manifest [0-9a-f]{16}\"\\s*,\\s*\"decision_mode\":\\s*\"batch\".*?\"operation\":\\s*\"ratify\"\\s*,\\s*\"subject_digest\":\\s*\"b[0-9a-f]{16}\"\\s*,\\s*\"subjects\":\\s*\\[\\s*\"[0-9a-f]{32}\"\\s*,\\s*\"[0-9a-f]{32}\"\\s*,\\s*\"[0-9a-f]{32}\"\\s*,\\s*\"[0-9a-f]{32}\"\\s*\\]",
               "pointer": "/responses/1/result/content/0/text",
               "type": "string"
             },

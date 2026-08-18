@@ -445,7 +445,7 @@ fn needed_finding_work(store: &Store, fv: &crate::signal::FindingView) -> Result
         target: node_target(&fv.node),
         stale_causes: Vec::new(),
         prompt_contract: needed_finding_fix_contract(
-            &crate::model::short(&fv.node.id),
+            crate::model::short(&fv.node.id),
             fv.node.body.get("file").and_then(|v| v.as_str()),
         ),
         context: node_context(

@@ -56,7 +56,7 @@ impl LiveState {
     fn capture(root: &Path) -> Result<Self> {
         let git_dir = git_directory(root)?;
         Ok(Self {
-            source: hash_tree(root, &SOURCE_EXCLUDES)?,
+            source: hash_tree(root, &CALLER_SOURCE_EXCLUDES)?,
             // The cooperative holder record is ephemeral coordination, not
             // graph truth. Read-only Store access refreshes it by design; the
             // rehearsal compares every durable graph byte around it.
@@ -351,6 +351,22 @@ mod tests {
             }
         }
         panic!("could not allocate isolated release fixture")
+    }
+    #[test]
+    fn caller_state_ignores_release_owned_scratch() {
+        let root = isolated_live_root("caller-scratch");
+        fs::write(root.path().join("source.txt"), b"stable").unwrap();
+        let before = LiveState::capture(root.path()).unwrap();
+        fs::create_dir_all(root.path().join(".release-sandbox/permits")).unwrap();
+        fs::write(
+            root.path().join(".release-sandbox/permits/permit.json"),
+            b"release-owned",
+        )
+        .unwrap();
+        let after = LiveState::capture(root.path()).unwrap();
+        let effects = before.compare(&after, &[]);
+        assert!(!effects.live_source_changed);
+        assert!(!caller_state_changed(&effects));
     }
 
     fn write_test_inventory(root: &Path, declared: &[(&str, &str)]) {

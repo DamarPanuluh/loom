@@ -1802,7 +1802,13 @@ mod tests {
         )
         .unwrap();
 
-        let store = Store::init_with_identity(&root, Some("multi-symbol witness"), false, crate::identity::ExecutionIdentity::solo()).unwrap();
+        let store = Store::init_with_identity(
+            &root,
+            Some("multi-symbol witness"),
+            false,
+            crate::identity::ExecutionIdentity::solo(),
+        )
+        .unwrap();
         let intent = node(&store, NodeType::Intent, "release recovery path works");
         let implementation = node(&store, NodeType::CodeFile, "src/subjects.rs");
         let realizing = store

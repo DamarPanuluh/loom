@@ -3,6 +3,8 @@
 .reasonix/
 .qoder/
 .claude/settings.local.json
+# local visual workspace layout, never repository source.
+.nodeterm/
 
 # insta writes pending snapshots next to the source under test; they are
 # review scratch, never source.
@@ -20,3 +22,6 @@
 /.package-cache-mutate
 /registry/
 /relative/
+
+# per-session drain campaign reports are operator scratch, never source.
+campaign-report-*.md

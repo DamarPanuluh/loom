@@ -379,7 +379,10 @@ pub fn conflict_warning(
     identity: &ExecutionIdentity,
     owner_role: &str,
 ) -> Option<String> {
-    let role = CLAIMABLE.iter().copied().find(|r| r.as_str() == owner_role)?;
+    let role = CLAIMABLE
+        .iter()
+        .copied()
+        .find(|r| r.as_str() == owner_role)?;
     let lease = read(root, role)?;
     if !lease.is_fresh(now_ms()) {
         return None;

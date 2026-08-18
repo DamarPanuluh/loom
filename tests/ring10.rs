@@ -334,6 +334,103 @@ fn scorecard_intent_carrying_aspect_sad_is_itself_a_scenario() {
 }
 
 #[test]
+fn scenario_boundary_inherits_every_happy_path_leaf_verdict() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    packs::seed(&store, "iso5055").unwrap();
+    let rule = store
+        .resolve_node(
+            "iso5055-rel-no-unchecked-failure",
+            Some(NodeType::QualityRule),
+        )
+        .unwrap();
+
+    let root = feature_intent(&store, "user completes checkout", Some("user_visible"));
+    let card_leaf = feature_intent(&store, "card payment completes", Some("user_visible"));
+    let cash_leaf = feature_intent(&store, "cash payment completes", Some("user_visible"));
+    for leaf in [&card_leaf, &cash_leaf] {
+        store
+            .add_edge(
+                EdgeKind::Hierarchy,
+                &root.id,
+                &leaf.id,
+                TruthClass::Asserted,
+            )
+            .unwrap();
+    }
+    let sad = scenario_of(&store, "checkout payment fails", "sad", &root);
+    let nested = scenario_of(
+        &store,
+        "failed payment provider disappears",
+        "edge_case",
+        &sad,
+    );
+
+    let card_rule = store
+        .add_edge(
+            EdgeKind::Governs,
+            &rule.id,
+            &card_leaf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &card_rule.id,
+            loom::model::InspectionStatus::Passing,
+            "failures are handled",
+            "src/payment.rs:10-20",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    for intent in [&root, &sad, &nested] {
+        let card = completeness::scorecard(&store, intent).unwrap();
+        let boundary = axis_state(&card, "boundary");
+        assert_eq!(
+            boundary.state, "open",
+            "an uncovered sibling quality surface must keep '{}' open",
+            intent.name
+        );
+        assert!(
+            boundary.detail.contains("1 code-bearing quality surface"),
+            "the missing-surface count must be explicit: {}",
+            boundary.detail
+        );
+    }
+
+    let cash_rule = store
+        .add_edge(
+            EdgeKind::Governs,
+            &rule.id,
+            &cash_leaf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &cash_rule.id,
+            loom::model::InspectionStatus::Passing,
+            "failures are handled",
+            "src/payment.rs:30-40",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+
+    for intent in [&root, &sad, &nested] {
+        let card = completeness::scorecard(&store, intent).unwrap();
+        assert_eq!(
+            axis_state(&card, "boundary").state,
+            "met",
+            "scenario '{}' must inherit complete quality coverage from every happy-path leaf",
+            intent.name
+        );
+    }
+}
+
+#[test]
 fn all_scorecards_lists_feature_intents_most_incomplete_first() {
     // Contract 1: all_scorecards returns feature-level intents, sorted
     // most-incomplete first; a non-feature intent is excluded. Scenario
