@@ -68,10 +68,8 @@ impl RoleLease {
     }
 }
 
-/// The lanes each role drains, for the announce's per-role debt. The `review`
-/// lane is shared: its packet runs AS the low-confidence edge's owning lane
-/// (see `review_item` in `workitem/queues.rs`), so it appears under analyzer,
-/// validator, AND quality — per-role debt sums overlap there by design.
+/// The lanes each role drains. Review is shared, but its debt is later split by
+/// each candidate's actual owner rather than copied wholesale to every role.
 pub fn role_lanes(role: OwnerRole) -> &'static [Lane] {
     match role {
         OwnerRole::Builder => &[
@@ -311,15 +309,30 @@ pub fn refresh(root: &Path, identity: &ExecutionIdentity) {
 
 /// The announce block: every claimable role with its lease (if any),
 /// freshness, per-lane queue depths, and their sum as `debt`.
-pub fn roster_value(root: &Path, queues: &crate::lane::QueueDepths) -> serde_json::Value {
+pub fn roster_value(
+    store: &crate::store::Store,
+    queues: &crate::lane::QueueDepths,
+) -> crate::Result<serde_json::Value> {
+    let root = store.root();
     let now = now_ms();
+    let review = crate::review::pending(store)?;
     let mut roles = serde_json::Map::new();
     for &role in CLAIMABLE {
         let lanes: serde_json::Map<String, serde_json::Value> = role_lanes(role)
             .iter()
-            .map(|&lane| (lane.as_str().to_string(), queues.get(lane).into()))
+            .map(|&lane| {
+                let depth = if lane == Lane::Review {
+                    review
+                        .iter()
+                        .filter(|candidate| candidate.owner_role == role.as_str())
+                        .count()
+                } else {
+                    queues.get(lane)
+                };
+                (lane.as_str().to_string(), depth.into())
+            })
             .collect();
-        let debt: u64 = role_lanes(role).iter().map(|&l| queues.get(l) as u64).sum();
+        let debt: u64 = lanes.values().filter_map(|value| value.as_u64()).sum();
         let entry = match read(root, role) {
             Some(lease) => serde_json::json!({
                 "claimed_by": lease.profile,
@@ -338,16 +351,33 @@ pub fn roster_value(root: &Path, queues: &crate::lane::QueueDepths) -> serde_jso
         };
         roles.insert(role.as_str().to_string(), entry);
     }
-    serde_json::Value::Object(roles)
+    Ok(serde_json::Value::Object(roles))
 }
 
 /// One human-readable line per role for `loom role list` and the session offer.
-pub fn describe(root: &Path, queues: &crate::lane::QueueDepths) -> Vec<String> {
+pub fn describe(
+    store: &crate::store::Store,
+    queues: &crate::lane::QueueDepths,
+) -> crate::Result<Vec<String>> {
+    let root = store.root();
     let now = now_ms();
-    CLAIMABLE
+    let review = crate::review::pending(store)?;
+    Ok(CLAIMABLE
         .iter()
         .map(|&role| {
-            let debt: u64 = role_lanes(role).iter().map(|&l| queues.get(l) as u64).sum();
+            let debt: u64 = role_lanes(role)
+                .iter()
+                .map(|&lane| {
+                    if lane == Lane::Review {
+                        review
+                            .iter()
+                            .filter(|candidate| candidate.owner_role == role.as_str())
+                            .count() as u64
+                    } else {
+                        queues.get(lane) as u64
+                    }
+                })
+                .sum();
             match read(root, role) {
                 Some(l) if l.is_fresh(now) => format!(
                     "{:<10} held by {} (seen {}s ago)   debt={}",
@@ -366,7 +396,7 @@ pub fn describe(root: &Path, queues: &crate::lane::QueueDepths) -> Vec<String> {
                 None => format!("{:<10} free   debt={}", role.as_str(), debt),
             }
         })
-        .collect()
+        .collect())
 }
 
 /// A one-line collision warning when a served packet's owning role holds a

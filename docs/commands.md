@@ -16,7 +16,7 @@ Plain-English orientation: what loom is plus the one thing to do next. This is a
 loom status [--json]
 ```
 
-Graph identity, integrity, maturity ladder, queue counts, validation summary, code ownership, and the compass. Doctor issues make integrity `INVALID`, block every non-audit rung, and route the compass to audit before any other work. Code ownership always reports the full registered denominator split into owned, unowned, excluded, and observed files; exclusions are grouped by recorded reason and never presented as owned coverage. `graph_state.low_confidence` is the count served by `loom next --mode review`; `graph_state.open_questions` is the count of open first-class `Question` nodes.
+Graph identity, integrity, maturity ladder, queue counts, validation summary, code ownership, and the compass. Doctor issues make integrity `INVALID`, block every non-audit rung, and route the compass to audit before any other work. Code ownership always reports the full registered denominator split into owned, unowned, excluded, and observed files; exclusions are grouped by recorded reason and never presented as owned coverage. The Review lane has two autonomous variants: `graph_state.low_confidence` counts verdicts below the configured confidence floor, while `graph_state.adversarial_review` counts unchallenged verdict revisions in the bounded risk frontier. `inconclusive_challenges` is historical/current review residue rather than new work; `review_independence_warnings` is non-blocking profile-attribution debt. `graph_state.open_questions` is the count of open first-class `Question` nodes.
 
 `loom status` prints a true per-queue backlog line, including Journey `derive` and `surface` work alongside `fix`, `validate`, `build`, `coverage`, `quality`, `analyze`, `prove`, `triage`, `review`, and `elaborate`. Counts come from the same partition that `loom next` serves. In JSON mode the output gains a `queues` object with the same counts, including human-only `ratify` work.
 
@@ -53,7 +53,7 @@ Queue partition is deliberately disjoint:
 - `quality`: uninspected or stale `governs` only. Failing `governs` routes to `fix`.
 - `validate`: uninspected or stale `validates`, plus every uninspected or stale edge of a compiler-owned Journey proof closure (`proves`/`calls`/`exercises` included) folded into one work unit per Validation, whose write-back is `loom journey compile/run`. Failing `validates` routes to `fix`.
 - `coverage`: registered codefiles with no live realizing owner. One intent may realize in many files (sibling slices): if this file implements a slice of an existing criterion, ground `--role realizes` here. `consumes` / `configures` / `verifies` never own the file. If a distinct criterion lives here and no intent names it, record `discovered_behavior` and stop — do not mint in coverage. If the file is missing from disk, the packet is a dedicated missing-file contract: re-ground any successors, then unregister the dead registration — do not attempt to read a ghost.
-- `review`: asserted `passing` or `independent` verdicts with `0 < confidence < 0.7`, lowest confidence first. The work item keeps the edge kind's registry owner as `owner_role`, but the mindset is independent re-inspection.
+- `review`: first serves asserted `passing` or `independent` verdicts with `0 < confidence < policy.review_confidence_floor`, lowest confidence first. It then serves the unclosed portion of a fixed, policy-bounded adversarial frontier over otherwise-green Verdict revisions. The frontier is selected before challenged rows are removed, so the driver cannot silently walk the whole graph. Adversarial packets carry `review.variant=adversarial`, the exact target Verdict fact id, risk score, and the prior executor profile to avoid when known. The reviewer forms a falsification hypothesis before reading prior evidence and records exactly one `Challenge` outcome (`survived`, `counterexample`, or `inconclusive`) for that revision; a changed Verdict snapshot reopens the edge. A counterexample atomically creates an untriaged Finding and never rewrites the Verdict directly.
 - `elaborate`: the most-incomplete user-visible feature intent by Definition-of-Complete scorecard. The packet tells the LLM to proactively explain that a partial idea is enough, fill technical/repository-derivable gaps, and translate a true product decision into ONE plain-language question. Evidence of unnamed wantedness (a sad path, missing gate, or unauthored rule the code already enforces) is offered as one Keep / Decline / Revise question; mint or ratify only after the human answers. Completeness surroundings of an already-wanted idea may still be minted as planned intents. It records the Question, asks the user directly, waits rather than inferring consent, records the answer, then resumes. The packet also routes missing scenarios, prerequisites, proofs, and Journey ancestry. An Intent is either rooted by a current accepted derivation or deliberately Journey-exempt through a separate human decision.
 - `rectify`: live, re-derived structural friction before human ratify. Duplicate-intent clears are pair decisions tied to the content hash of both descriptions, so unrelated writes do not resurrect them and rewording either intent does. Discovered-behavior entries remain observations of the current graph: a structural write can create a new witness and legitimately raise the count mid-drain. Treat the queue as live work, not a fixed settle snapshot.
 
@@ -82,7 +82,7 @@ Quality fallback: if no `governs` edge needs work, `loom next --mode quality` pr
     "truth_gap": { "axis": "verdict", "missing_form": "...", "correct_when": "..." },
     "next_step": "after recording the verdict, run `loom status`"
   },
-  "graph_state": { "planned": 0, "stale": 0, "uninspected": 0, "low_confidence": 0, "open_questions": 0 }
+  "graph_state": { "planned": 0, "stale": 0, "uninspected": 0, "low_confidence": 0, "adversarial_review": 0, "inconclusive_challenges": 0, "review_independence_warnings": 0, "open_questions": 0 }
 }
 ```
 
@@ -272,7 +272,7 @@ Several LLM drivers coordinate on one graph by each claiming a distinct role. A 
 
 The lease is a **heartbeat**, not a held lock: drivers are many short-lived processes, so nothing lives long enough to hold a flock for a session. `claim` requires the matching lane authority (`LOOM_AGENT=llm:<role>`) plus a profile, and every later loom command run under that identity stamps the lease's `last_seen_ms` at store open. A lease not refreshed within `role_lease_ttl_ms` (see `loom limits`) reads as **stale** — a crashed driver frees its role by silence, with no cleanup step. Claiming a **fresh** foreign lease refuses with exit 75 and a `loom-role-contention` error naming the holder; taking over a **stale** one requires the deliberate `--take-stale`. Release is holder-only. Claims, releases, and takeovers land in the journal (`role_claimed` / `role_released`); the heartbeat itself is journal-silent.
 
-`loom role list` (and the `roles` block in `loom status --json` / `loom session --json`) announces every claimable role with its holder, freshness, per-lane queue depths, and their sum as `debt` — a joining driver picks the free role with the most debt behind it. The `review` lane is shared: its packet runs as the low-confidence edge's owning lane, so it is listed under analyzer, validator, and quality alike. Solo operators need none of this: solo drives every lane and `claim` refuses it. `loom next` cooperates: when the served packet's owning role is freshly leased to a different profile, the output carries a `lease_conflict` warning naming the holder — the packet is still served (the lease stays advisory), so a collision is chosen, never accidental.
+`loom role list` (and the `roles` block in `loom status --json` / `loom session --json`) announces every claimable role with its holder, freshness, actual per-role queue depths, and their sum as `debt` — a joining driver picks the free role with the most debt behind it. Review debt is attributed to the challenged edge kind's registry owner instead of being copied onto every review-capable role. The Review packet prefers a different `LOOM_AGENT_PROFILE` from the profile that recorded the target Verdict; using the same or an unavailable profile remains possible but is surfaced by status and audit as a non-blocking warning. Solo operators need none of this: solo drives every lane and `claim` refuses it. `loom next` cooperates: when the served packet's owning role is freshly leased to a different profile, the output carries a `lease_conflict` warning naming the holder — the packet is still served (the lease stays advisory), so a collision is chosen, never accidental.
 
 **Orchestrated sub-drivers (within one lane).** A master driver that holds a role's lease may fan the lane's targets out to coordinated sub-drivers: each exports the same lane authority (`LOOM_AGENT=llm:<role>`) with its **own** `LOOM_AGENT_PROFILE`, and works an explicit disjoint slice handed to it by the master (sub-drivers never race `loom next`). The judgment-burst audit budgets asserted writes per (actor, profile, minute) and every fact records `asserted_profile`, so each declared profile is one independently budgeted, fully attributed judging mind — parallel speed stays defensible because the attribution stays visible. Proof execution remains serial regardless: the harness lock admits one executor and refuses the second with exit 75.
 
@@ -323,12 +323,13 @@ The manual counterpart to `calibrate`: hand-set a single gate instead of fitting
 ```text
 loom policy show [--json]
 loom policy set-floor <fraction> [--json]
+loom policy set-adversarial-frontier <count> [--json]
 loom policy gate-add <lane> [--json]
 loom policy gate-remove <lane> [--json]
 loom policy reset [--json]
 ```
 
-Read or set the evidence policy. `set-floor` sets the review-confidence floor (a fraction in `[0.0, 1.0]`) below which a recorded verdict is routed to `loom next --mode review`; `gate-add`/`gate-remove` move an owner lane (`builder | analyzer | fixer | validator | quality`) in or out of the human-gated set described in `llm-driver.md`. The policy persists to portable `config.evidence_policy` and travels with the export; absent config means the shipped defaults, and `reset` drops the config to restore them.
+Read or set the evidence policy. `set-floor` sets the review-confidence floor (a fraction in `[0.0, 1.0]`) below which a recorded verdict is routed to `loom next --mode review`. `set-adversarial-frontier` sets the fixed risk frontier size (`0` disables it, shipped default `5`, maximum `100`). `gate-add`/`gate-remove` move an owner lane (`builder | analyzer | fixer | validator | quality`) in or out of the human-gated set described in `llm-driver.md`. The policy persists to portable `config.evidence_policy` and travels with the export; absent config means the shipped defaults, and `reset` drops the config to restore them.
 
 ```text
 loom completeness [<intent>] [--json]
@@ -440,6 +441,21 @@ loom edge explore <intent-a> <intent-b> <ground|issue|independent>
 ```
 
 Verdict commands inspect relationship/grounding claims. `independent` means measured and not related/applicable; it requires real evidence. **Evidence anchoring:** every verdict-recording command (`edge verdict`, `edge explore`, `rule verdict`, `validation verdict`, `apply` batches) parses citations out of `--evidence`; each citation that resolves to a real file under the graph root is stamped with a fingerprint of the cited lines (asserted `evidence_spans` edge facet) so sync can later grade a re-open as "cited span intact" vs "rewritten". Three citation forms: `file:line[-line]` (explicit span — an end beyond EOF rejects), `file:line-` (open range, clamped to EOF), and `file:@symbol` (the span is resolved server-side from the symbol's declaration; an unknown or ambiguous symbol rejects). Citing an existing file at lines that do not exist rejects the verdict — evidence must describe bytes someone can read. More than 16 distinct resolvable citations also rejects the verdict rather than silently dropping dependency evidence. Citations that resolve to nothing (URLs, tool output, deleted paths) are ignored, never guessed at. A stamped span anchors to its content and enclosing symbol, not its line position: a body that moves intact is re-anchored and journaled (`evidence_reanchor`) on sync, and the verdict stands.
+
+### Adversarial challenge commands
+
+```text
+loom challenge record <edge> <survived|counterexample|inconclusive>
+  --hypothesis "<falsifiable attack>"
+  --evidence "<attempt and observation with file:line or journal:id>"
+  [--impact "<required for counterexample>"]
+  [--confidence <0.0-1.0>]
+  [--json]
+loom challenge show <edge> [--json]
+loom challenge list [--state survived|counterexample|inconclusive] [--limit N] [--offset N] [--json]
+```
+
+`challenge record` is the write-back for an adversarial Review packet. It targets the current Verdict fact through an automatically minted semantic snapshot, allows only one attempt per edge and Verdict revision, and is replay-idempotent. `survived` and `inconclusive` close that exact revision without changing its Verdict. `counterexample` requires an impact statement and creates the corresponding asserted Finding in the same database transaction; Triage alone decides whether the claim needs repair. A changed Verdict or Verdict evidence invalidates the snapshot on `loom sync` and reopens the candidate. Reviewer-profile equality or missing profile attribution is recorded as a non-blocking audit warning, not a reason to drop the observation.
 
 ---
 
@@ -1055,7 +1071,7 @@ Mutating commands support `--json`. In JSON mode they emit one object containing
 ```json
 {
   "next_step": "loom status",
-  "graph_state": { "planned": 0, "stale": 0, "uninspected": 0, "low_confidence": 0, "open_questions": 0 }
+  "graph_state": { "planned": 0, "stale": 0, "uninspected": 0, "low_confidence": 0, "adversarial_review": 0, "inconclusive_challenges": 0, "review_independence_warnings": 0, "open_questions": 0 }
 }
 ```
 

@@ -34,7 +34,7 @@ fn loom_json(root: &std::path::Path, args: &[&str]) -> serde_json::Value {
 
 #[test]
 fn journey_vocabulary_and_topology_are_exact() {
-    assert_eq!(loom::SCHEMA_VERSION, 12);
+    assert_eq!(loom::SCHEMA_VERSION, 13);
     assert_eq!(FORMAT, 4);
     assert_eq!(NodeType::from_str("journey").unwrap(), NodeType::Journey);
     assert!(NodeType::from_str("journey_coverage").is_err());
@@ -235,12 +235,12 @@ fn format_four_exports_and_status_expose_schema_and_journeys() {
     add_node(&store, NodeType::Journey, "operator completes checkout");
     let export = Export::from_snapshot(store.snapshot().unwrap());
     assert_eq!(export.format, 4);
-    assert_eq!(export.schema_version, 12);
-    assert_eq!(export.into_snapshot().identity.schema_version, 12);
+    assert_eq!(export.schema_version, 13);
+    assert_eq!(export.into_snapshot().identity.schema_version, 13);
     drop(store);
 
     let status = loom_json(tmp.path(), &["status"]);
-    assert_eq!(status["graph"]["schema_version"], 12);
+    assert_eq!(status["graph"]["schema_version"], 13);
     assert_eq!(status["counts"]["journeys"], 1);
 
     let schema = loom_json(tmp.path(), &["schema"]);

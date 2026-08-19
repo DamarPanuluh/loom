@@ -117,7 +117,8 @@ Never copy v1 code. Re-derive clean.
 - `loom door "<utterance>"` + InboxItem landing menu + `loom inbox` add/list/show/mark/remove
 - **TaskRecord** — `loom task add / start / close / abandon / show / list`; lightweight operational work record; lives alongside InboxItem as an intake/work-tracking node
 - `loom session` — turn-zero offer menu
-- `loom status` — maturity + compass + graph_state including low_confidence
+- `loom status` — maturity + compass + graph_state including low-confidence and bounded adversarial Review debt
+- `loom challenge record/show/list` — one snapshot-bound adversarial attempt per Verdict revision; counterexamples atomically route to Finding/Triage
 - `loom guide --role <role>` — PromptContract for a lane
 
 **Invariants to test:**

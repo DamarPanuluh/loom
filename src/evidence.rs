@@ -25,6 +25,8 @@
 //! - [`Evidence::Journal`] — a `journal:<id>` reference that must resolve in the
 //!   append-only journal.
 //! - [`Evidence::Claim`] — prose. Recorded, never counted.
+//! - [`Evidence::FactSnapshot`] — a Store-minted digest of a target fact and
+//!   its live evidence. Callers cannot construct one through [`CitedEvidence`].
 //!
 //! Citations are parsed conservatively: the path must look like a relative file
 //! path with an alphabetic extension, and only paths that exist under the root
@@ -215,6 +217,7 @@ pub enum Evidence {
     Span(SpanStamp),
     Journal { r#ref: String },
     Claim { text: String },
+    FactSnapshot { fact_id: String, digest: String },
 }
 
 impl Evidence {
@@ -230,6 +233,7 @@ impl Evidence {
             Evidence::Span(_) => EvidenceKind::Span,
             Evidence::Journal { .. } => EvidenceKind::Journal,
             Evidence::Claim { .. } => EvidenceKind::Claim,
+            Evidence::FactSnapshot { .. } => EvidenceKind::FactSnapshot,
         }
     }
 
@@ -238,6 +242,7 @@ impl Evidence {
         match self {
             Evidence::Run(_) => Verification::Verified,
             Evidence::Span(_) | Evidence::Journal { .. } => Verification::Cited,
+            Evidence::FactSnapshot { .. } => Verification::Cited,
             Evidence::Claim { .. } => Verification::Claimed,
         }
     }
@@ -281,8 +286,82 @@ impl Evidence {
             Evidence::Span(s) => format!("span\u{1f}{}\u{1f}{}\u{1f}{}", s.file, s.start, s.end),
             Evidence::Journal { r#ref } => format!("journal\u{1f}{ref}", ref = r#ref),
             Evidence::Claim { text } => format!("claim\u{1f}{text}"),
+            Evidence::FactSnapshot { fact_id, digest } => {
+                format!("fact_snapshot\u{1f}{fact_id}\u{1f}{digest}")
+            }
         }
     }
+}
+
+/// Canonical semantic digest of one fact revision and the evidence supporting
+/// it. Volatile timestamps, tool versions, run durations, and movable span
+/// coordinates are excluded; changes to the claim or what its anchors actually
+/// observed change the digest.
+pub(crate) fn fact_snapshot_digest(fact: &Fact, evidence: &[EvidenceRow]) -> String {
+    let mut parts = vec![
+        fact.id.clone(),
+        fact.subject_kind.as_str().to_string(),
+        fact.subject_id.clone(),
+        fact.claim.as_str().to_string(),
+        fact.state.clone(),
+        fact.criterion.clone(),
+        fact.verification.as_str().to_string(),
+        fact.confidence.to_bits().to_string(),
+        fact.asserted_by.clone(),
+        fact.asserted_profile.clone().unwrap_or_default(),
+        fact.decision_mode.as_str().to_string(),
+        fact.batch_id.clone(),
+    ];
+    let mut anchors: Vec<String> = evidence
+        .iter()
+        .map(|row| {
+            let semantic = match &row.payload {
+                Evidence::Run(run) => {
+                    let mut covered: Vec<String> = run
+                        .covered
+                        .iter()
+                        .map(|(file, hash)| format!("{file}={hash}"))
+                        .collect();
+                    covered.sort();
+                    let mut assertions = run.observed_assertions.clone();
+                    assertions.sort();
+                    format!(
+                        "run|{}|{}|{}|{}|{}|{}|{}|{}",
+                        run.producer,
+                        run.command,
+                        run.exit_code,
+                        run.stdout_hash,
+                        run.stderr_hash,
+                        covered.join(";"),
+                        run.assertions,
+                        assertions
+                            .iter()
+                            .map(|a| format!("{}:{}", a.group, a.assertion))
+                            .collect::<Vec<_>>()
+                            .join(";")
+                    )
+                }
+                Evidence::Span(span) => format!(
+                    "span|{}|{}|{}|{}|{}",
+                    span.hash, span.file_hash, span.symbol, span.symbol_hash, span.symbol_offset
+                ),
+                Evidence::Journal { r#ref } => format!("journal|{ref}", ref = r#ref),
+                Evidence::Claim { text } => format!("claim|{text}"),
+                Evidence::FactSnapshot { fact_id, digest } => {
+                    format!("fact_snapshot|{fact_id}|{digest}")
+                }
+            };
+            format!(
+                "{}|{}|{}",
+                semantic,
+                row.holds,
+                row.expiry_reason.map(|cause| cause.as_str()).unwrap_or("")
+            )
+        })
+        .collect();
+    anchors.sort();
+    parts.extend(anchors);
+    crate::store::fnv_hex_digest(&parts.iter().map(String::as_str).collect::<Vec<_>>())
 }
 
 /// What a CALLER may supply. Structurally has no `Run` variant — this is the
@@ -415,6 +494,7 @@ impl StaleReason {
             StaleCause::RoleChanged => "the grounding role changed",
             StaleCause::Rehomed => "the grounding was rehomed",
             StaleCause::AnchorMissing => "nothing re-checkable anchors this claim",
+            StaleCause::FactChanged => "the fact this challenge reviewed changed",
         };
         if self.subjects.is_empty() {
             what.to_string()

@@ -860,6 +860,69 @@ ALTER TABLE fact DROP COLUMN asserted_profile;
 ALTER TABLE fact RENAME COLUMN asserted_profile_nullable TO asserted_profile;
 "#;
 
+/// Migration 13 — durable adversarial challenge facts and fact-snapshot
+/// evidence. SQLite cannot extend a CHECK constraint in place, so both tables
+/// are rebuilt while preserving every existing row and the edge projection.
+const MIGRATION_13_ADVERSARIAL_REVIEW: &str = r#"
+DROP VIEW edge_view;
+
+CREATE TABLE fact_v13 (
+    id               TEXT PRIMARY KEY,
+    subject_kind     TEXT NOT NULL CHECK (subject_kind IN ('node','edge')),
+    subject_id       TEXT NOT NULL,
+    claim            TEXT NOT NULL CHECK (claim IN ('verdict','observation','adjudication','ratification','challenge')),
+    state            TEXT NOT NULL,
+    criterion        TEXT NOT NULL DEFAULT '',
+    verification     TEXT NOT NULL CHECK (verification IN ('verified','cited','claimed','expired')),
+    confidence       REAL NOT NULL DEFAULT 0,
+    asserted_by      TEXT NOT NULL DEFAULT '',
+    asserted_at      TEXT NOT NULL,
+    stale            TEXT NOT NULL DEFAULT '',
+    decision_mode    TEXT NOT NULL DEFAULT 'individual',
+    batch_id         TEXT NOT NULL DEFAULT '',
+    asserted_profile TEXT,
+    UNIQUE (subject_kind, subject_id, claim)
+);
+
+CREATE TABLE evidence_v13 (
+    id            TEXT PRIMARY KEY,
+    fact_id       TEXT NOT NULL REFERENCES fact_v13(id) ON DELETE CASCADE,
+    payload       TEXT NOT NULL DEFAULT '{}',
+    kind          TEXT NOT NULL CHECK (kind IN ('run','span','journal','claim','fact_snapshot')),
+    recorded_at   TEXT NOT NULL,
+    holds         INTEGER NOT NULL DEFAULT 1,
+    expiry_reason TEXT NOT NULL DEFAULT ''
+);
+
+INSERT INTO "fact_v13"
+SELECT id,subject_kind,subject_id,claim,state,criterion,verification,confidence,
+       asserted_by,asserted_at,stale,decision_mode,batch_id,asserted_profile
+  FROM fact;
+INSERT INTO "evidence_v13"
+SELECT id,fact_id,payload,kind,recorded_at,holds,expiry_reason FROM evidence;
+
+DROP TABLE evidence;
+DROP TABLE fact;
+ALTER TABLE fact_v13 RENAME TO fact;
+ALTER TABLE evidence_v13 RENAME TO evidence;
+
+CREATE INDEX idx_fact_subject      ON fact(subject_kind, subject_id);
+CREATE INDEX idx_fact_verification ON fact(verification, claim);
+CREATE INDEX idx_fact_claim_state  ON fact(claim, state);
+CREATE INDEX idx_evidence_fact     ON evidence(fact_id, kind);
+CREATE INDEX idx_evidence_holds    ON evidence(holds);
+
+CREATE VIEW edge_view AS
+SELECT e.id, e.from_id, e.to_id, e.kind, e.truth_class, e.status,
+       e.depends_on, e.created_at, e.updated_at,
+       COALESCE(f.criterion, '')   AS criterion,
+       COALESCE(f.confidence, 0.0) AS confidence,
+       COALESCE(f.asserted_by, '') AS inspected_by
+FROM edge e
+LEFT JOIN fact f
+  ON f.subject_kind = 'edge' AND f.subject_id = e.id AND f.claim = 'verdict';
+"#;
+
 fn schema_migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(SCHEMA),
@@ -879,6 +942,7 @@ fn schema_migrations() -> Migrations<'static> {
         // V12 is a semantic hard cut: the SQLite shape is unchanged, but old
         // graph vocabularies cannot be interpreted under the journey-root model.
         M::up("SELECT 1;"),
+        M::up(MIGRATION_13_ADVERSARIAL_REVIEW),
     ])
 }
 
@@ -919,7 +983,7 @@ fn ensure_supported_persisted_schema(conn: &Connection) -> Result<()> {
         .into_iter()
         .flatten()
     {
-        if version < SCHEMA_VERSION {
+        if version < 12 {
             bail!(
                 "this graph is v{version}; loom v12 introduced the journey paradigm — re-init \
                  and rebuild (loom bootstrap suggest, author journeys, loom journey derive). \
@@ -943,6 +1007,18 @@ fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
     schema_migrations()
         .to_latest(conn)
         .context("migrating graph schema")?;
+    let foreign_key_issue: Option<(String, i64, String)> = conn
+        .query_row(
+            "SELECT \"table\", rowid, parent FROM pragma_foreign_key_check LIMIT 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()?;
+    if let Some((table, rowid, parent)) = foreign_key_issue {
+        bail!(
+            "graph migration left a foreign-key violation: table={table} rowid={rowid} parent={parent}"
+        );
+    }
     // Keep the portable identity stamp aligned with the migration counter when
     // meta already exists (re-open / upgrade). Fresh init inserts schema_version
     // itself after this returns.
@@ -995,8 +1071,8 @@ fn adopt_legacy_schema_version(conn: &Connection) -> Result<()> {
         })
         .transpose()?;
 
-    if legacy_schema_version == Some(SCHEMA_VERSION) {
-        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    if matches!(legacy_schema_version, Some(12) | Some(SCHEMA_VERSION)) {
+        conn.pragma_update(None, "user_version", legacy_schema_version.unwrap())?;
     }
     Ok(())
 }
@@ -1349,6 +1425,97 @@ mod tests {
             asserted_profile_not_null, 0,
             "absent executor attribution must be represented as SQL NULL"
         );
+    }
+
+    #[test]
+    fn v12_store_migrates_in_place_to_v13_without_losing_fact_evidence() {
+        let tmp = TmpRoot::new("loom-store-v12-to-v13");
+        let store = Store::init(tmp.path(), Some("v12-upgrade"), false).unwrap();
+        let finding = store
+            .add_node(
+                NodeType::Finding,
+                "preserve this observation",
+                "migration must keep it",
+                "code_audit",
+                serde_json::json!({
+                    "kind": "code_audit",
+                    "source": "code_audit",
+                    "evidence": "migration fixture",
+                    "impact": "loss would corrupt history",
+                    "confidence": 0.8,
+                    "link": "migration-fixture"
+                }),
+            )
+            .unwrap();
+        let fact = store
+            .assert_fact(
+                crate::store::Assertion::new(
+                    crate::store::Subject::Node(finding.id.clone()),
+                    Claim::Observation,
+                    "observed",
+                    "solo",
+                )
+                .confidence(0.8)
+                .cited(vec![crate::evidence::CitedEvidence::Claim(
+                    "migration fixture".into(),
+                )]),
+            )
+            .unwrap();
+        let evidence_id = fact.evidence[0].id.clone();
+        store
+            .conn
+            .pragma_update(None, "user_version", 12u32)
+            .unwrap();
+        store
+            .conn
+            .execute("UPDATE meta SET value='12' WHERE key='schema_version'", [])
+            .unwrap();
+        drop(store);
+
+        let read_error = match Store::open_read(tmp.path()) {
+            Ok(_) => panic!("read-only v12 open must require migration"),
+            Err(error) => error.to_string(),
+        };
+        assert!(read_error.contains("write-capable"), "{read_error}");
+
+        let store = Store::open(tmp.path()).unwrap();
+        assert_eq!(sqlite_user_version(&store.conn), 13);
+        assert_eq!(store.identity().unwrap().schema_version, 13);
+        assert!(store.fact_by_id(&fact.fact.id).unwrap().is_some());
+        let evidence_count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM evidence WHERE id=?1",
+                [&evidence_id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(evidence_count, 1);
+        let fact_sql: String = store
+            .conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='fact'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let evidence_sql: String = store
+            .conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='evidence'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(fact_sql.contains("'challenge'"));
+        assert!(evidence_sql.contains("'fact_snapshot'"));
+        let fk_issues: i64 = store
+            .conn
+            .query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(fk_issues, 0);
     }
 
     #[test]

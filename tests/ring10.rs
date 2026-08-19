@@ -1025,6 +1025,14 @@ fn default_next_reaches_elaborate_only_after_other_queues_drain() {
             .collect::<String>(),
     );
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    // This fixture isolates queue precedence around Elaborate. Adversarial
+    // Review has its own frontier/routing tests; disable it here so freshly
+    // green claims do not intentionally become an earlier Review packet.
+    let policy = loom::policy::EvidencePolicy {
+        adversarial_review_frontier: 0,
+        ..loom::policy::EvidencePolicy::default()
+    };
+    loom::policy::save(&store, &policy).unwrap();
     let a = feature_intent(&store, "user can log in", Some("user_visible"));
     let b = feature_intent(&store, "user can log out", Some("user_visible"));
     let rel = store

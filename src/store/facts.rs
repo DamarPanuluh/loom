@@ -142,7 +142,7 @@ fn touches(payload: &Evidence, changed: &BTreeSet<String>) -> bool {
     match payload {
         Evidence::Run(run) => run.covered.keys().any(|f| changed.contains(f)),
         Evidence::Span(span) => changed.contains(&span.file),
-        Evidence::Journal { .. } | Evidence::Claim { .. } => false,
+        Evidence::Journal { .. } | Evidence::Claim { .. } | Evidence::FactSnapshot { .. } => false,
     }
 }
 
@@ -315,6 +315,7 @@ impl Store {
                     self.check_lane(registry::spec(kind).owner)?;
                 }
             }
+            Claim::Challenge => self.check_lane(crate::registry::OwnerRole::Analyzer)?,
             Claim::Adjudication | Claim::Observation => {}
         }
 
@@ -323,12 +324,22 @@ impl Store {
         // and accepts any sentence; the floor below is what actually decides.
         if anchor::is_settling(a.state)
             && crate::model::is_placeholder(a.criterion)
-            && matches!(a.claim, Claim::Verdict)
+            && matches!(a.claim, Claim::Verdict | Claim::Challenge)
         {
             bail!(
                 "a settled verdict needs a criterion stating what would falsify it \
                  (got {:?})",
                 a.criterion
+            );
+        }
+        if a.claim == Claim::Challenge
+            && !a
+                .cited
+                .iter()
+                .any(|e| matches!(e, CitedEvidence::Span(_) | CitedEvidence::Journal(_)))
+        {
+            bail!(
+                "a challenge needs at least one live file:line or journal:id citation from the adversarial attempt"
             );
         }
         if !(0.0..=1.0).contains(&a.confidence) || !a.confidence.is_finite() {
@@ -486,12 +497,32 @@ impl Store {
     )> {
         let mut shape = anchor::Shape::default();
         let (edge_kind, role) = match (&a.subject, a.claim) {
-            (Subject::Edge(id), Claim::Verdict) => {
+            (Subject::Edge(id), claim @ (Claim::Verdict | Claim::Challenge)) => {
                 let edge = self
                     .get_edge(id)?
                     .ok_or_else(|| anyhow!("no edge '{id}'"))?;
                 if edge.truth_class != crate::model::TruthClass::Asserted {
-                    bail!("edge '{id}' is derived — sync owns its status, not a verdict");
+                    bail!("edge '{id}' is derived — sync owns its truth");
+                }
+                if claim == Claim::Challenge {
+                    if !matches!(
+                        edge.status,
+                        InspectionStatus::Passing | InspectionStatus::Independent
+                    ) {
+                        bail!(
+                            "edge '{id}' is {} — adversarial review challenges only settled green claims",
+                            edge.status
+                        );
+                    }
+                    let verdict = self
+                        .fact(&Subject::Edge(id.clone()), Claim::Verdict)?
+                        .ok_or_else(|| anyhow!("edge '{id}' has no verdict fact to challenge"))?;
+                    if !verdict.fact.verification.counts() {
+                        bail!(
+                            "edge '{id}' verdict is only {} — strengthen or re-inspect it before adversarial review",
+                            verdict.fact.verification
+                        );
+                    }
                 }
                 // A proof's floor depends on whether loom CAN run it.
                 shape.runnable_proof = edge.kind == crate::model::EdgeKind::Validates
@@ -560,7 +591,9 @@ impl Store {
                         // demanding a span would only produce invented ones.
                         shape.flagged_file = self.finding_codefile_hash(id)?.is_some();
                     }
-                    Claim::Verdict => bail!("a verdict is about an edge, not a node"),
+                    Claim::Verdict | Claim::Challenge => {
+                        bail!("claim '{}' is about an edge, not a node", claim.as_str())
+                    }
                 }
                 (None, None)
             }
@@ -737,6 +770,26 @@ impl Store {
                 expiry_reason: None,
             });
         }
+        // A challenge is about one exact revision of the edge's current
+        // verdict. The caller cannot supply or forge this anchor: the Store
+        // resolves the target fact and mints its semantic digest here.
+        if a.claim == Claim::Challenge {
+            let target = self
+                .fact(&Subject::Edge(a.subject.id().to_string()), Claim::Verdict)?
+                .ok_or_else(|| anyhow!("challenged edge has no current verdict fact"))?;
+            let payload = Evidence::FactSnapshot {
+                fact_id: target.fact.id.clone(),
+                digest: crate::evidence::fact_snapshot_digest(&target.fact, &target.evidence),
+            };
+            rows.push(EvidenceRow {
+                id: EvidenceRow::id_for(&fact_id, &payload),
+                fact_id: fact_id.clone(),
+                payload,
+                recorded_at: recorded_at.clone(),
+                holds: true,
+                expiry_reason: None,
+            });
+        }
         // loom checks the grounding claim itself: does the locator still name a
         // live symbol in that file? A worker asserting "the behavior lives here"
         // no longer has to be believed — and no longer has to be doubted either.
@@ -873,7 +926,7 @@ impl Store {
             // ratification) land as the caller's own node write for now; the
             // status narrowing that makes them projections-only comes with the
             // side-door closure.
-            Claim::Adjudication | Claim::Observation | Claim::Ratification => {}
+            Claim::Adjudication | Claim::Observation | Claim::Ratification | Claim::Challenge => {}
         }
         Ok(())
     }
@@ -1008,7 +1061,12 @@ impl Store {
     /// survived — the second is the sparing that makes a large repo workable,
     /// and it is worth counting.
     pub fn reverify_all(&self, changed: &BTreeSet<String>) -> Result<Reverified> {
-        let facts = self.all_facts()?;
+        let mut facts = self.all_facts()?;
+        // Snapshot evidence depends on the target verdict's freshly recomputed
+        // strength. Reverify physical anchors first and Challenge snapshots
+        // second so one pass cannot preserve a challenge against a verdict that
+        // is demoted later in that same pass.
+        facts.sort_by_key(|fact| fact.claim == Claim::Challenge);
         let mut out = Reverified::default();
         // One transaction for the whole pass: re-verification touches every
         // fact's evidence rows, verification column, and (on expiry) the edge
@@ -1127,7 +1185,18 @@ impl Store {
                 }
                 checked.push(row);
             }
-            let strength = level(&checked);
+            let strength = if fact.claim == Claim::Challenge
+                && checked
+                    .iter()
+                    .any(|row| matches!(row.payload, Evidence::FactSnapshot { .. }) && !row.holds)
+            {
+                // The other citations prove where the reviewer looked; only
+                // the Store-minted snapshot proves which verdict revision that
+                // attempt reviewed. Once it breaks, the whole challenge is old.
+                Verification::Expired
+            } else {
+                level(&checked)
+            };
             if strength.rank() < fact.verification.rank() {
                 out.demoted += 1;
             } else if !changed.is_empty()
@@ -1258,6 +1327,7 @@ fn describe(row: &EvidenceRow) -> String {
         Evidence::Span(span) => format!("{}:{}-{}", span.file, span.start, span.end),
         Evidence::Journal { r#ref } => format!("journal:{ref}", ref = r#ref),
         Evidence::Claim { .. } => "recorded rationale".to_string(),
+        Evidence::FactSnapshot { fact_id, .. } => format!("fact:{fact_id}"),
     };
     match row.expiry_reason {
         Some(cause) => format!("{} no longer holds ({})", what, cause.as_str()),
@@ -1362,6 +1432,21 @@ impl Store {
             // Prose cannot rot mechanically — and never counts, so nothing turns
             // on it either way.
             Evidence::Claim { .. } => AnchorFate::Holds,
+            Evidence::FactSnapshot { fact_id, digest } => {
+                let current = self.fact_by_id(fact_id).ok().flatten();
+                match current {
+                    Some(view)
+                        if view.fact.claim == Claim::Verdict
+                            && crate::evidence::fact_snapshot_digest(
+                                &view.fact,
+                                &view.evidence,
+                            ) == *digest =>
+                    {
+                        AnchorFate::Holds
+                    }
+                    _ => AnchorFate::Broken(StaleCause::FactChanged),
+                }
+            }
             // A LOCATOR run asserts "this symbol is here", so it expires when
             // the symbol stops resolving — not when an unrelated line in the
             // same file moves. Comparing file hashes would re-open every
@@ -1605,6 +1690,16 @@ fn check_state(claim: Claim, state: &str) -> Result<()> {
             Ok(())
         }
         Claim::Observation => Ok(()),
+        Claim::Challenge => {
+            const OUTCOMES: &[&str] = &["survived", "counterexample", "inconclusive"];
+            if !OUTCOMES.contains(&state) {
+                bail!(
+                    "unknown challenge outcome '{state}' (use {})",
+                    OUTCOMES.join("|")
+                );
+            }
+            Ok(())
+        }
     }
 }
 

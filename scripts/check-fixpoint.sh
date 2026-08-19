@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Verify the Journey-root dogfood fixture can be rebuilt from a fresh v12
-# store.  v1-v11 exports are an intentional hard boundary, never a migration
+# Verify the Journey-root dogfood fixture can be rebuilt from a fresh v13
+# store. Older exports are an intentional hard boundary for this gate, never a migration
 # source.  Runs in a copy of the worktree so neither the live .loom/ nor the
 # source tree's target/ directory is touched.
 #
@@ -53,6 +53,6 @@ for field, value in expected["source_inventory"].items():
     assert inventory[field] == value, (field, inventory[field], value)
 ' "$ROOT/release/snapshot-expectation.json" <<<"$snapshot"
 
-echo "== v12 fresh-graph fixpoint =="
+echo "== v13 fresh-graph fixpoint =="
 "$WORK/scripts/dogfood.sh" --fresh-in-place --check
-echo "fixpoint: OK — a fresh v12 graph completed the structural Journey-root dogfood gate (cold-import integrity only; profiles not executed; not graph-maturity green)"
+echo "fixpoint: OK — a fresh v13 graph completed the structural Journey-root dogfood gate (cold-import integrity only; profiles not executed; not graph-maturity green)"

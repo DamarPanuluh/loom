@@ -296,6 +296,10 @@ pub(crate) fn policy_cmd(
                 println!("{}", serde_json::to_string_pretty(&p)?);
             } else {
                 println!("review_confidence_floor  {}", p.review_confidence_floor);
+                println!(
+                    "adversarial_review_frontier {}",
+                    p.adversarial_review_frontier
+                );
                 let gated = if p.human_gated_roles.is_empty() {
                     "(none)".to_string()
                 } else {
@@ -316,6 +320,19 @@ pub(crate) fn policy_cmd(
                 serde_json::json!({ "review_confidence_floor": value }),
                 "loom status",
                 format!("review confidence floor = {value}"),
+            )
+        }
+        PolicyCmd::SetAdversarialFrontier { value } => {
+            let store = open(graph)?;
+            let mut p = policy::load(&store)?;
+            p.adversarial_review_frontier = value;
+            policy::save(&store, &p)?;
+            pulse::emit_line(
+                &store,
+                json,
+                serde_json::json!({ "adversarial_review_frontier": value }),
+                "loom status",
+                format!("adversarial review frontier = {value}"),
             )
         }
         PolicyCmd::GateAdd { role } => {

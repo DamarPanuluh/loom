@@ -181,7 +181,7 @@ pub(super) fn surface_contract(
             "using a stale manifest whose journey_hash differs from the authored Journey".into(),
         ],
         evidence_clauses: vec![
-            EvidenceClause::CitesSpans { n: 1 },
+            EvidenceClause::CitesAnchor,
             EvidenceClause::Produces {
                 what: "a hash-bound InterfaceSurface with complete operation bindings and an exposed CodeFile".into(),
             },
@@ -1083,6 +1083,62 @@ pub(super) fn reviewer_contract(
         pre_screened_hits: Vec::new(),
         write_back,
         stop_condition: "after recording the verdict, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+/// Adversarial review challenges one exact settled verdict revision without
+/// granting the reviewer authority to rewrite it. A credible counterexample
+/// becomes a Finding; Triage remains the adjudication seam.
+pub(super) fn adversarial_reviewer_contract(
+    edge: &Edge,
+    from_name: &str,
+    to_name: &str,
+    prior_profile: Option<&str>,
+) -> PromptContract {
+    let avoid = prior_profile
+        .map(|profile| format!(" Prefer an executor profile other than '{profile}'."))
+        .unwrap_or_else(|| {
+            " The prior executor profile is unavailable; declare your own profile so independence is auditable.".into()
+        });
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: format!(
+            "Act as a refutation-biased reviewer. Form a concrete falsification hypothesis from the endpoints and code BEFORE reading the prior verdict evidence; then attack boundary cases, negative paths, and hidden assumptions. A failed attack records survived, not proof of perfection. A credible break records counterexample and lets Triage decide.{}",
+            avoid
+        ),
+        why_now: format!(
+            "the current {} claim '{} —{}→ {}' is in the bounded high-risk frontier and has no adversarial attempt against this verdict revision",
+            edge.kind, from_name, edge.kind, to_name
+        ),
+        allowed_actions: vec![
+            "read both endpoints and grounded code before reading the prior verdict evidence".into(),
+            format!("loom edge show {} (read only after writing down your own falsification hypothesis)", edge.id),
+            "run focused read-only checks or tests that exercise the hypothesis".into(),
+            format!("loom challenge record {} <survived|counterexample|inconclusive> --hypothesis '<what would falsify this claim>' --evidence '<what you tried and observed, including file:line or journal:id>' [--impact '<consequence>'] --confidence <0.0-1.0>", edge.id),
+        ],
+        forbidden_actions: vec![
+            "edit source code while reviewing".into(),
+            "replace the challenged edge verdict directly".into(),
+            "read the prior criterion/evidence before forming an independent hypothesis".into(),
+            "treat an inconclusive attempt as either confirmation or refutation".into(),
+            NON_BLOCKING_SMELL_RULE.into(),
+        ],
+        required_evidence: "a substantive falsification hypothesis, a substantive account of the attempt, and at least one live file:line or journal:id citation; counterexample also requires impact".into(),
+        evidence_clauses: vec![
+            EvidenceClause::CitesSpans { n: 1 },
+            EvidenceClause::VerificationAtLeast { level: "cited".into() },
+            EvidenceClause::Prose,
+        ],
+        evidence_template: None,
+        examples: None,
+        pre_screened_hits: Vec::new(),
+        pre_screen: None,
+        write_back: format!(
+            "loom challenge record {} <survived|counterexample|inconclusive> --hypothesis '<falsifiable attack>' --evidence '<attempt + file:line or journal:id>' [--impact '<required for counterexample>'] --confidence <0.0-1.0>",
+            edge.id
+        ),
+        stop_condition: "stop when one current Challenge fact exists for this exact Verdict revision; a counterexample must also have created its untriaged Finding atomically, then return to loom status".into(),
         human_gate: None,
     }
 }

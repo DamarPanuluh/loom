@@ -228,16 +228,34 @@ pub(crate) fn audit_cmd(graph: Option<&Path>, efficacy: bool, json: bool) -> Res
         return Ok(());
     }
     let findings = crate::audit::run(&store)?;
+    let warnings = crate::review::independence_warnings(&store)?;
     if json {
-        println!("{}", serde_json::to_string_pretty(&findings)?);
-    } else if findings.is_empty() {
+        if warnings.is_empty() {
+            println!("{}", serde_json::to_string_pretty(&findings)?);
+        } else {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&serde_json::json!({
+                    "findings": findings,
+                    "warnings": warnings,
+                }))?
+            );
+        }
+    } else if findings.is_empty() && warnings.is_empty() {
         println!("audit clean — every settled claim is anchored and every judgment is journaled");
     } else {
         for f in &findings {
             println!("[{}] {}", f.kind, f.detail);
             println!("  → {}", f.remedy);
         }
-        println!("\n{} audit finding(s)", findings.len());
+        for warning in &warnings {
+            println!("[warning:{}] {}", warning.code, warning.detail);
+        }
+        println!(
+            "\n{} audit finding(s), {} non-blocking warning(s)",
+            findings.len(),
+            warnings.len()
+        );
     }
     if findings.is_empty() {
         Ok(())

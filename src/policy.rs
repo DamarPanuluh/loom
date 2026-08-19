@@ -1,13 +1,13 @@
 //! Evidence policy — the honesty economy as portable configuration.
 //!
-//! Plane: configuration. The two knobs that were hardcoded engine constants —
-//! the review-confidence cutoff and where a human gate sits — travel in the
-//! export as portable meta (same as `thresholds` and `layer_order`), so a
-//! repo's tuned honesty economy survives clone/import. Absence means the code
-//! seed's shipped defaults; a present key is parsed strictly (a typo fails
-//! loudly, never silently re-defaults).
+//! Plane: configuration. The knobs for the review-confidence cutoff, bounded
+//! adversarial frontier, and human-gate placement travel in the export as
+//! portable meta (same as `thresholds` and `layer_order`), so a repo's tuned
+//! honesty economy survives clone/import. Absence means the code seed's shipped
+//! defaults; a present key is parsed strictly (a typo fails loudly, never
+//! silently re-defaults).
 //!
-//! The third leg the intent names, the *acceptable evidence forms*, is already
+//! The remaining leg the intent names, the *acceptable evidence forms*, is already
 //! declared per work lane on [`workitem::PromptContract.required_evidence`]
 //! (populated in [`crate::workitem::contracts`]), not on `crate::truth` axes —
 //! so it needs no constant here. This module carries only the values that were
@@ -30,8 +30,10 @@ pub const INTENT_ORIGINS: &[&str] = &["human", "llm", "drive", "import"];
 /// re-inspection instead of standing as fact. This is the value that used to be
 /// the hardcoded `REVIEW_CONFIDENCE_FLOOR` constant.
 pub const DEFAULT_REVIEW_CONFIDENCE_FLOOR: f64 = 0.7;
+pub const DEFAULT_ADVERSARIAL_REVIEW_FRONTIER: usize = 5;
+pub const MAX_ADVERSARIAL_REVIEW_FRONTIER: usize = 100;
 
-/// Portable evidence policy: the confidence cutoff and human-gate placement,
+/// Portable evidence policy: both Review selectors and human-gate placement,
 /// read from the graph's config at write time.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -39,6 +41,11 @@ pub struct EvidencePolicy {
     /// Verdicts strictly below this confidence route to review rather than
     /// standing as settled truth.
     pub review_confidence_floor: f64,
+    /// Number of highest-risk settled edge claims kept in the adversarial
+    /// frontier. Selection happens before already-reviewed claims are removed,
+    /// so this bounds standing review debt rather than walking the whole graph.
+    /// Zero disables adversarial review.
+    pub adversarial_review_frontier: usize,
     /// Owner lanes whose work packets carry a human gate: the driver must get
     /// human sign-off before that write. Empty (the default) gates no lane, so
     /// the shipped behavior is unchanged until a repo opts a lane in.
@@ -49,6 +56,7 @@ impl Default for EvidencePolicy {
     fn default() -> Self {
         Self {
             review_confidence_floor: DEFAULT_REVIEW_CONFIDENCE_FLOOR,
+            adversarial_review_frontier: DEFAULT_ADVERSARIAL_REVIEW_FRONTIER,
             human_gated_roles: Vec::new(),
         }
     }
@@ -74,6 +82,13 @@ impl EvidencePolicy {
             bail!(
                 "review_confidence_floor must be a finite value in [0.0, 1.0], got {}",
                 self.review_confidence_floor
+            );
+        }
+        if self.adversarial_review_frontier > MAX_ADVERSARIAL_REVIEW_FRONTIER {
+            bail!(
+                "adversarial_review_frontier must be in [0, {}], got {}",
+                MAX_ADVERSARIAL_REVIEW_FRONTIER,
+                self.adversarial_review_frontier
             );
         }
         for r in &self.human_gated_roles {
@@ -118,6 +133,10 @@ mod tests {
     fn absent_config_is_the_seed_default() {
         let p = EvidencePolicy::default();
         assert_eq!(p.review_confidence_floor, DEFAULT_REVIEW_CONFIDENCE_FLOOR);
+        assert_eq!(
+            p.adversarial_review_frontier,
+            DEFAULT_ADVERSARIAL_REVIEW_FRONTIER
+        );
         assert!(p.human_gated_roles.is_empty());
         assert!(!p.gates_role("quality"));
     }
@@ -126,6 +145,7 @@ mod tests {
     fn roundtrips_through_json() {
         let p = EvidencePolicy {
             review_confidence_floor: 0.85,
+            adversarial_review_frontier: 8,
             human_gated_roles: vec!["quality".into()],
         };
         let back: EvidencePolicy =
@@ -146,6 +166,7 @@ mod tests {
         assert!(EvidencePolicy::default().validate().is_ok());
         assert!(EvidencePolicy {
             review_confidence_floor: 0.5,
+            adversarial_review_frontier: 0,
             human_gated_roles: vec!["quality".into(), "validator".into()],
         }
         .validate()
@@ -157,6 +178,7 @@ mod tests {
         for bad in [-1.0, 2.0, f64::NAN, f64::INFINITY] {
             let p = EvidencePolicy {
                 review_confidence_floor: bad,
+                adversarial_review_frontier: 5,
                 human_gated_roles: Vec::new(),
             };
             assert!(p.validate().is_err(), "floor {bad} must be rejected");
@@ -167,8 +189,30 @@ mod tests {
     fn unknown_gated_role_is_rejected() {
         let p = EvidencePolicy {
             review_confidence_floor: 0.7,
+            adversarial_review_frontier: 5,
             human_gated_roles: vec!["wizard".into()],
         };
         assert!(p.validate().is_err());
+    }
+
+    #[test]
+    fn v12_policy_without_frontier_gets_the_v13_default() {
+        let legacy = r#"{"review_confidence_floor":0.8,"human_gated_roles":[]}"#;
+        let parsed: EvidencePolicy = serde_json::from_str(legacy).unwrap();
+        assert_eq!(
+            parsed.adversarial_review_frontier,
+            DEFAULT_ADVERSARIAL_REVIEW_FRONTIER
+        );
+    }
+
+    #[test]
+    fn frontier_is_bounded_but_zero_can_disable_it() {
+        let mut policy = EvidencePolicy {
+            adversarial_review_frontier: 0,
+            ..EvidencePolicy::default()
+        };
+        assert!(policy.validate().is_ok());
+        policy.adversarial_review_frontier = MAX_ADVERSARIAL_REVIEW_FRONTIER + 1;
+        assert!(policy.validate().is_err());
     }
 }
