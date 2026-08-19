@@ -1168,11 +1168,18 @@ fn findings_route_to_triage_until_judged() {
     assert_eq!(judged_excellent.state, RungState::Met);
 }
 
+/// REVERSED: this test used to assert the triaged rung reads `NotApplicable`
+/// on a graph with no active intents, so an untriaged count could not "look
+/// actionable while the compass routes elsewhere". The concern was right; the
+/// mechanism was a lie. `triage_item` and the rung's depth call the SAME
+/// `signal::triage_findings`, so the lane genuinely serves this finding while
+/// the rung claimed its machinery was absent — and `NotApplicable` is
+/// transparent to the gate, so the hidden rung could not be routed to either.
+/// `blocked` is the honest mechanism for "real work, not reachable yet", and
+/// it already applies here. The rung now reports the work AND that seeding
+/// gates it.
 #[test]
-fn excellent_rung_when_not_applicable_hides_untriaged_count() {
-    // A registered codefile produces a finding, but with no active intents the
-    // excellent rung is NotApplicable — it must not advertise an untriaged count
-    // that looks actionable while the compass routes elsewhere (seed).
+fn cold_graph_reports_triage_work_as_blocked_not_as_absent_machinery() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     store
@@ -1187,8 +1194,22 @@ fn excellent_rung_when_not_applicable_hides_untriaged_count() {
         .unwrap();
     let l = ladder(&store).unwrap();
     let excellent = l.rungs.iter().find(|r| r.name == "triaged").unwrap();
-    assert_eq!(excellent.state, RungState::NotApplicable);
-    assert!(!excellent.detail.contains("untriaged"));
+
+    // The lane really does serve this finding — the rung must not deny it.
+    assert!(
+        loom::workitem::next(&store, Some(Lane::Triage))
+            .unwrap()
+            .is_some(),
+        "fixture precondition: the triage lane serves the injected finding"
+    );
+    assert_eq!(excellent.state, RungState::Unmet);
+    assert!(excellent.depth > 0);
+
+    // The original concern, kept and now carried by the right field: the work
+    // is real but unreachable until seeding is done, so it reads blocked and
+    // the compass still routes to seed.
+    assert!(excellent.blocked);
+    assert_eq!(excellent.blocked_by.as_deref(), Some("seeded"));
     assert_eq!(l.phase, "seed");
 }
 

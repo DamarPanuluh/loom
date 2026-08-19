@@ -27958,6 +27958,24 @@
       "updated_at": "2026-08-13T05:06:24.893Z"
     },
     {
+      "id": "e417b6eb84f54a7b198553e272fc00f6",
+      "type": "note",
+      "name": "note:decision",
+      "description": "a cold-graph rung reports real queued work as blocked — instead of reporting it as NotApplicable so the count cannot look actionable (the original ring4 pin) — because triage_item and the rung depth call the same signal::triage_findings, so the lane genuinely serves the work while NotApplicable claimed its machinery was absent — and NotApplicable is transparent to the gate, so the hidden rung could not be routed to either; blocked already means 'real work, not reachable yet' and preserves the original concern without lying",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "because": "triage_item and the rung depth call the same signal::triage_findings, so the lane genuinely serves the work while NotApplicable claimed its machinery was absent — and NotApplicable is transparent to the gate, so the hidden rung could not be routed to either; blocked already means 'real work, not reachable yet' and preserves the original concern without lying",
+        "chose": "a cold-graph rung reports real queued work as blocked",
+        "evidence": "src/maturity.rs:396 NotApplicable now requires depth == 0; tests/ring4.rs cold_graph_reports_triage_work_as_blocked_not_as_absent_machinery asserts the lane serves and the rung is blocked_by seeded",
+        "instead_of": "reporting it as NotApplicable so the count cannot look actionable (the original ring4 pin)",
+        "kind": "decision",
+        "target_id": "683d6457db3690b1d19bec2c6dc47c18"
+      },
+      "created_at": "2026-08-19T03:35:24.155Z",
+      "updated_at": "2026-08-19T03:35:24.155Z"
+    },
+    {
       "id": "e44397f68860e1453d76534d9818721a",
       "type": "note",
       "name": "note:ratify",
