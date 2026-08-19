@@ -8,6 +8,9 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.34.1] - 2026-08-19
+- loom next names the compass gate when it serves something else, and absent machinery no longer hides a non-empty queue
+
 ## [0.34.0] - 2026-08-18
 - advisory role leases for parallel drivers, proof-window audit, and a 65x faster driver loop (journal read once, readiness snapshot shared)
 
