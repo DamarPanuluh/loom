@@ -240,8 +240,13 @@ proptest! {
             match r.state {
                 RungState::Unmet => prop_assert!(r.depth > 0),
                 RungState::Met => prop_assert_eq!(r.depth, 0),
-                // NotApplicable reports absent machinery; Open never completes.
-                RungState::NotApplicable | RungState::Open => {}
+                // Absent machinery implies an empty queue. A lane holding work
+                // has machinery by definition, so it reads Unmet — this arm
+                // used to be unchecked, and a non-empty queue could hide
+                // behind NotApplicable.
+                RungState::NotApplicable => prop_assert_eq!(r.depth, 0),
+                // Deepen re-ranks rather than draining; it never completes.
+                RungState::Open => {}
             }
         }
     }
@@ -843,5 +848,41 @@ fn a_packet_above_the_compass_gate_names_the_gate_and_stays_silent_otherwise() {
     assert!(
         workitem::off_gate(&ladder, Some(&agreeing)).is_none(),
         "the notice must be absent when the served packet IS the compass gate"
+    );
+}
+
+/// `NotApplicable` means "this lane's machinery does not exist yet", so it must
+/// never be worn by a lane holding real queued work. Checking it BEFORE depth
+/// let a non-empty queue read as absent machinery, and because `NotApplicable`
+/// is deliberately transparent to the gate, the hidden rung could not become
+/// the compass gate either — on a graph with no active intents, a broken
+/// doctor was reported as `complete`.
+#[test]
+fn absent_machinery_never_masks_a_non_empty_queue() {
+    // Registered code, no intents yet — the brownfield cold start — plus a
+    // broken graph. Every non-audit rung is blocked by integrity, and audit
+    // itself used to read NotApplicable because `active == 0`.
+    let c = LadderInputs {
+        active: 0,
+        codefiles: 1,
+        unowned_codefiles: 1,
+        doctor_issues: 1,
+        authored_journeys: 1,
+        ..Default::default()
+    };
+    let rungs = build_rungs(&c);
+    for rung in &rungs {
+        if rung.state == RungState::NotApplicable {
+            assert_eq!(
+                rung.depth, 0,
+                "rung '{}' claims absent machinery while holding {} queued item(s)",
+                rung.name, rung.depth
+            );
+        }
+    }
+    let (phase, _, _, _) = compass(&rungs);
+    assert_eq!(
+        phase, "audit",
+        "a graph with integrity issues must route to audit, never report itself finished"
     );
 }

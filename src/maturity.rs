@@ -385,7 +385,15 @@ pub fn build_rungs(c: &LadderInputs) -> Vec<Rung> {
         .iter()
         .map(|&lane| {
             let depth = lane.depth(c);
-            let state = if lane.not_applicable(c) {
+            // `NotApplicable` reports ABSENT MACHINERY, and a lane holding
+            // queued work has demonstrably got machinery — so depth wins.
+            // Checked the other way round, a non-empty queue read as absent:
+            // on a graph with no active intents (the brownfield cold start)
+            // the covered rung hid unowned files, and because NotApplicable is
+            // deliberately transparent to the gate, a broken doctor could not
+            // become the compass gate either and the graph reported itself
+            // `complete`.
+            let state = if lane.not_applicable(c) && depth == 0 {
                 RungState::NotApplicable
             } else if lane == Lane::Deepen {
                 // Never met, never unmet. Risk work re-ranks as the graph

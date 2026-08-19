@@ -30986,12 +30986,12 @@
       "kind": "governs",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "grounded maturity and queue code contains no literal credentials, tokens, or private keys",
-      "confidence": 0.96,
+      "criterion": "no credential, key, or token literals in the grounded code",
+      "confidence": 0.9,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:35:20.094Z",
-      "updated_at": "2026-08-17T10:08:27.155Z"
+      "updated_at": "2026-08-19T03:15:25.044Z"
     },
     {
       "id": "0c4eed0bafb7d475ed92d98535ff20a9",
@@ -34880,12 +34880,12 @@
       "kind": "implements",
       "truth_class": "asserted",
       "status": "passing",
-      "criterion": "'rung, lane, and queue state remain one invariant' is implemented in src/maturity.rs: the locator names definitions that exist in that CodeFile.",
-      "confidence": 0.85,
+      "criterion": "rung state, lane, and queue depth stay one invariant: a lane's state is derived from its own depth, and a non-empty queue is never reported as absent machinery",
+      "confidence": 0.92,
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T16:19:32.008Z",
-      "updated_at": "2026-08-16T11:31:55.695Z"
+      "updated_at": "2026-08-19T03:15:25.011Z"
     },
     {
       "id": "4504e26fcf5407e0507772f786220136",
@@ -37147,13 +37147,13 @@
       "to_id": "d54387b358a615d705c6a53599b2daf6",
       "kind": "governs",
       "truth_class": "asserted",
-      "status": "passing",
-      "criterion": "Rung construction holds no external resource and all temporary collections are RAII-managed.",
-      "confidence": 0.97,
+      "status": "independent",
+      "criterion": "the rule measures explicit resource acquisition/release",
+      "confidence": 0.85,
       "depends_on": [],
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:35:13.055Z",
-      "updated_at": "2026-08-17T10:06:49.415Z"
+      "updated_at": "2026-08-19T03:15:25.070Z"
     },
     {
       "id": "6422b0ed4b4a0a6731c34e37d81e727f",
@@ -56885,12 +56885,12 @@
       "subject_id": "0c4dc3c27f1d5a1b8ade4594425a5cb4",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "grounded maturity and queue code contains no literal credentials, tokens, or private keys",
+      "criterion": "no credential, key, or token literals in the grounded code",
       "verification": "verified",
-      "confidence": 0.96,
+      "confidence": 0.9,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain2-r8",
-      "asserted_at": "2026-08-17T10:08:27.154Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-19T03:15:25.038Z",
       "decision_mode": "individual"
     },
     {
@@ -59315,13 +59315,13 @@
       "subject_kind": "edge",
       "subject_id": "63b00ce664237ee5205e7f6344dd06f7",
       "claim": "verdict",
-      "state": "passing",
-      "criterion": "Rung construction holds no external resource and all temporary collections are RAII-managed.",
+      "state": "independent",
+      "criterion": "the rule measures explicit resource acquisition/release",
       "verification": "cited",
-      "confidence": 0.97,
+      "confidence": 0.85,
       "asserted_by": "llm:quality",
-      "asserted_profile": "drain2-r9",
-      "asserted_at": "2026-08-17T10:06:49.414Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-19T03:15:25.069Z",
       "decision_mode": "individual"
     },
     {
@@ -65882,11 +65882,12 @@
       "subject_id": "44cec90f5dfd697146e663ff503b64f0",
       "claim": "verdict",
       "state": "passing",
-      "criterion": "'rung, lane, and queue state remain one invariant' is implemented in src/maturity.rs: the locator names definitions that exist in that CodeFile.",
+      "criterion": "rung state, lane, and queue depth stay one invariant: a lane's state is derived from its own depth, and a non-empty queue is never reported as absent machinery",
       "verification": "verified",
-      "confidence": 0.85,
+      "confidence": 0.92,
       "asserted_by": "llm:builder",
-      "asserted_at": "2026-08-16T11:31:55.679Z",
+      "asserted_profile": "claude-fable-session",
+      "asserted_at": "2026-08-19T03:15:24.990Z",
       "decision_mode": "individual"
     },
     {
@@ -81170,7 +81171,16 @@
       "recorded_at": "2026-08-14T07:16:40.528Z"
     },
     {
-      "id": "e27de6b967e72940e",
+      "id": "ebbdcd41f386cbf7b",
+      "fact_id": "f0b94834d0cce7e64",
+      "payload": {
+        "kind": "claim",
+        "text": "src/maturity.rs — grounded files of 'rung, lane, and queue state remain one invariant' re-scanned after the repair wave: zero interpolated SQL verbs and shell -c constructions present (pattern scan over every grounded file this session)"
+      },
+      "recorded_at": "2026-08-17T10:19:44.042Z"
+    },
+    {
+      "id": "ec22a7f1c1bb368a1",
       "fact_id": "f0b94834d0cce7e64",
       "payload": {
         "kind": "run",
@@ -81181,22 +81191,13 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "cbfb87de54fb97f6"
+          "src/maturity.rs": "e611fd8e20089a2e"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787072335505",
+        "ran_at": "1787109281665",
         "loom_version": "0.34.0"
-      },
-      "recorded_at": "2026-08-17T10:19:44.042Z"
-    },
-    {
-      "id": "ebbdcd41f386cbf7b",
-      "fact_id": "f0b94834d0cce7e64",
-      "payload": {
-        "kind": "claim",
-        "text": "src/maturity.rs — grounded files of 'rung, lane, and queue state remain one invariant' re-scanned after the repair wave: zero interpolated SQL verbs and shell -c constructions present (pattern scan over every grounded file this session)"
       },
       "recorded_at": "2026-08-17T10:19:44.042Z"
     },
@@ -81460,25 +81461,25 @@
       "recorded_at": "2026-08-15T08:02:44.078Z"
     },
     {
+      "id": "e26a9b4ad4e29bf16",
+      "fact_id": "f0d3f262d5ac34b67",
+      "payload": {
+        "kind": "span",
+        "file": "src/maturity.rs",
+        "start": 459,
+        "end": 459,
+        "hash": "b30d2954076720d9",
+        "symbol": "compass",
+        "symbol_hash": "2bf45a15766286da"
+      },
+      "recorded_at": "2026-08-15T11:37:16.510Z"
+    },
+    {
       "id": "e43deade48ff996f3",
       "fact_id": "f0d3f262d5ac34b67",
       "payload": {
         "kind": "claim",
         "text": "The accepted derivation manifest declares this relationship with the rationale: Selecting a lowest unmet rung requires a consistent invariant connecting rungs, lanes, and queue non-emptiness. Dependent behavior is realized at src/maturity.rs:414 (compass); the behavior it stands on is realized at src/maturity.rs:346 (build_rungs). Dependent criterion: Inspecting work direction selects the lane belonging to the lowest unmet maturity rung and reports that lane as the current compass direction. Depended-on criterion: Every maturity rung maps to exactly one lane, every lane maps back to one rung, and a rung is unmet exactly when its lane has queued work."
-      },
-      "recorded_at": "2026-08-15T11:37:16.510Z"
-    },
-    {
-      "id": "e4bd0b684c4a50396",
-      "fact_id": "f0d3f262d5ac34b67",
-      "payload": {
-        "kind": "span",
-        "file": "src/maturity.rs",
-        "start": 451,
-        "end": 451,
-        "hash": "b30d2954076720d9",
-        "symbol": "compass",
-        "symbol_hash": "2bf45a15766286da"
       },
       "recorded_at": "2026-08-15T11:37:16.510Z"
     },
@@ -90363,7 +90364,16 @@
       "recorded_at": "2026-08-17T07:34:33.425Z"
     },
     {
-      "id": "e7315d97f08f44cb3",
+      "id": "ea9c644adbcf31e9e",
+      "fact_id": "f2ea9902bff5c4084",
+      "payload": {
+        "kind": "claim",
+        "text": "src/maturity.rs — grep for secret/password/token literals is empty; the only literals are rung names, lane wire names, and the 'graph integrity' blocked_by reason"
+      },
+      "recorded_at": "2026-08-19T03:15:25.038Z"
+    },
+    {
+      "id": "ed8280aecc8016e04",
       "fact_id": "f2ea9902bff5c4084",
       "payload": {
         "kind": "run",
@@ -90374,36 +90384,15 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "cbfb87de54fb97f6"
+          "src/maturity.rs": "e611fd8e20089a2e"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787072335736",
+        "ran_at": "1787109325043",
         "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-17T10:08:27.154Z"
-    },
-    {
-      "id": "e91b17a3ee92a1860",
-      "fact_id": "f2ea9902bff5c4084",
-      "payload": {
-        "kind": "span",
-        "file": "src/maturity.rs",
-        "start": 381,
-        "end": 457,
-        "hash": "70ef7370a4bc85c2"
-      },
-      "recorded_at": "2026-08-17T10:08:27.154Z"
-    },
-    {
-      "id": "e943af971c031ae43",
-      "fact_id": "f2ea9902bff5c4084",
-      "payload": {
-        "kind": "claim",
-        "text": "src/maturity.rs:369-445 — rung construction and compass projection use lane state and command labels only; no credential-like literal is present"
-      },
-      "recorded_at": "2026-08-17T10:08:27.154Z"
+      "recorded_at": "2026-08-19T03:15:25.038Z"
     },
     {
       "id": "eb1efd7fcece0ea92",
@@ -95557,7 +95546,7 @@
       "recorded_at": "2026-08-17T10:08:27.160Z"
     },
     {
-      "id": "e3d91db2a6c451118",
+      "id": "ef2417e7834be181b",
       "fact_id": "f3de177650336228a",
       "payload": {
         "kind": "run",
@@ -95568,24 +95557,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "cbfb87de54fb97f6"
+          "src/maturity.rs": "e611fd8e20089a2e"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787072335838",
+        "ran_at": "1787109282727",
         "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:08:27.160Z"
     },
     {
-      "id": "e83c44e8ae047ffe8",
+      "id": "eff6dd84f3db28e5d",
       "fact_id": "f3de177650336228a",
       "payload": {
         "kind": "span",
         "file": "src/maturity.rs",
-        "start": 430,
-        "end": 457,
+        "start": 438,
+        "end": 465,
         "hash": "f74fccc82faa181d"
       },
       "recorded_at": "2026-08-17T10:08:27.160Z"
@@ -96244,26 +96233,26 @@
       "recorded_at": "2026-08-15T13:25:55.598Z"
     },
     {
+      "id": "eb82c4400ebbb541d",
+      "fact_id": "f412f6210f216dad7",
+      "payload": {
+        "kind": "span",
+        "file": "src/maturity.rs",
+        "start": 421,
+        "end": 421,
+        "hash": "a687e7220c311e6c",
+        "symbol": "build_rungs",
+        "symbol_hash": "899a1c3883b76670",
+        "symbol_offset": 30
+      },
+      "recorded_at": "2026-08-16T05:15:31.808Z"
+    },
+    {
       "id": "ef93bc03f64d57381",
       "fact_id": "f412f6210f216dad7",
       "payload": {
         "kind": "claim",
         "text": "src/maturity.rs:376"
-      },
-      "recorded_at": "2026-08-16T05:15:31.808Z"
-    },
-    {
-      "id": "efddafb8c8e02ebd5",
-      "fact_id": "f412f6210f216dad7",
-      "payload": {
-        "kind": "span",
-        "file": "src/maturity.rs",
-        "start": 413,
-        "end": 413,
-        "hash": "a687e7220c311e6c",
-        "symbol": "build_rungs",
-        "symbol_hash": "899a1c3883b76670",
-        "symbol_offset": 30
       },
       "recorded_at": "2026-08-16T05:15:31.808Z"
     },
@@ -98757,27 +98746,27 @@
       "recorded_at": "2026-08-18T09:41:46.557Z"
     },
     {
-      "id": "e82cf68efb983279f",
+      "id": "e553e4f09cd771ae2",
       "fact_id": "f496c34825d931cec",
       "payload": {
         "kind": "claim",
-        "text": "src/maturity.rs:371-415 — build_rungs constructs and mutates an owned Vec<Rung>; its early return transfers the Vec and leaks no handle."
+        "text": "src/maturity.rs:383-441 build_rungs is a pure projection over LadderInputs into Vec<Rung> — it acquires no files, sockets, locks, or handles; the one store-touching path (gather) borrows an already-open Store"
       },
-      "recorded_at": "2026-08-17T10:06:49.414Z"
+      "recorded_at": "2026-08-19T03:15:25.069Z"
     },
     {
-      "id": "ecb19c3774d66d117",
+      "id": "ecb05bd774d561ddb",
       "fact_id": "f496c34825d931cec",
       "payload": {
         "kind": "span",
         "file": "src/maturity.rs",
         "start": 383,
-        "end": 427,
-        "hash": "9505258aeae0bd12",
+        "end": 441,
+        "hash": "bcefa75c6efbac55",
         "symbol": "build_rungs",
-        "symbol_hash": "899a1c3883b76670"
+        "symbol_hash": "1316dbb11ae56a40"
       },
-      "recorded_at": "2026-08-17T10:06:49.414Z"
+      "recorded_at": "2026-08-19T03:15:25.069Z"
     },
     {
       "id": "e7400c6d371dbb10e",
@@ -107198,13 +107187,13 @@
       "recorded_at": "2026-08-15T10:57:06.549Z"
     },
     {
-      "id": "e7146a4737019ad1d",
+      "id": "e89f91994ce7be1d5",
       "fact_id": "f68dfbcd2d396c778",
       "payload": {
         "kind": "span",
         "file": "tests/ring21_lane_ladder.rs",
-        "start": 282,
-        "end": 282,
+        "start": 287,
+        "end": 287,
         "hash": "f679a3adc91e754c",
         "symbol": "the_ladder_is_a_total_bijection_with_lanes",
         "symbol_hash": "a5f54acf7fa1976b"
@@ -115926,7 +115915,7 @@
       "recorded_at": "2026-08-16T06:52:08.098Z"
     },
     {
-      "id": "e32696463e617d1f3",
+      "id": "e3859a3201d38fec4",
       "fact_id": "f845094b90af8ecd4",
       "payload": {
         "kind": "run",
@@ -115937,12 +115926,12 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "cbfb87de54fb97f6"
+          "src/maturity.rs": "e611fd8e20089a2e"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787072336232",
+        "ran_at": "1787109284368",
         "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:22:53.827Z"
@@ -118766,16 +118755,7 @@
       "recorded_at": "2026-08-15T11:37:02.411Z"
     },
     {
-      "id": "e79110aed39a5b593",
-      "fact_id": "f8e118862106917b9",
-      "payload": {
-        "kind": "claim",
-        "text": "build_rungs@src/maturity.rs:346 — locator symbols still defined after split/re-ground; first inspection or span_file_deleted re-verify."
-      },
-      "recorded_at": "2026-08-16T11:31:55.679Z"
-    },
-    {
-      "id": "ec9b00876b79a2c5c",
+      "id": "e83431d1394dea7c1",
       "fact_id": "f8e118862106917b9",
       "payload": {
         "kind": "run",
@@ -118783,19 +118763,42 @@
         "command": "resolve 'build_rungs' in src/maturity.rs",
         "cwd": "",
         "exit_code": 0,
-        "stdout_hash": "9ccdea7b99fb2679",
+        "stdout_hash": "f4261eb6bb83152b",
         "stderr_hash": "cbf29ce484222325",
-        "stdout_excerpt": "function 'build_rungs' in src/maturity.rs (1 match) [899a1c3883b76670]",
+        "stdout_excerpt": "function 'build_rungs' in src/maturity.rs (1 match) [1316dbb11ae56a40]",
         "covered": {
-          "src/maturity.rs": "d7849bcfd58e5258"
+          "src/maturity.rs": "e611fd8e20089a2e"
         },
         "assertions": 1,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1786879915693",
-        "loom_version": "0.33.0"
+        "ran_at": "1787109325006",
+        "loom_version": "0.34.0"
       },
-      "recorded_at": "2026-08-16T11:31:55.679Z"
+      "recorded_at": "2026-08-19T03:15:24.990Z"
+    },
+    {
+      "id": "eb625dd4060be1e04",
+      "fact_id": "f8e118862106917b9",
+      "payload": {
+        "kind": "span",
+        "file": "src/maturity.rs",
+        "start": 383,
+        "end": 383,
+        "hash": "713c991eb321888b",
+        "symbol": "build_rungs",
+        "symbol_hash": "1316dbb11ae56a40"
+      },
+      "recorded_at": "2026-08-19T03:15:24.990Z"
+    },
+    {
+      "id": "ecc5724855810d2b2",
+      "fact_id": "f8e118862106917b9",
+      "payload": {
+        "kind": "claim",
+        "text": "src/maturity.rs:383 build_rungs derives every rung from Lane::depth; :396 NotApplicable now requires depth == 0 so absent machinery can no longer mask queued work; :407 any depth > 0 reads Unmet — pinned by tests/ring21_lane_ladder.rs rung_state_and_queue_depth_never_disagree (NotApplicable arm now asserts depth == 0) and absent_machinery_never_masks_a_non_empty_queue"
+      },
+      "recorded_at": "2026-08-19T03:15:24.990Z"
     },
     {
       "id": "e0d2426a9acd0d030",
@@ -121305,7 +121308,7 @@
       "recorded_at": "2026-08-17T10:19:44.094Z"
     },
     {
-      "id": "e94e67c21a007062b",
+      "id": "ee007a56e90b104ac",
       "fact_id": "f9639420d765097a0",
       "payload": {
         "kind": "run",
@@ -121316,12 +121319,12 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "cbfb87de54fb97f6"
+          "src/maturity.rs": "e611fd8e20089a2e"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787072336298",
+        "ran_at": "1787109284632",
         "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:19:44.094Z"
@@ -136921,7 +136924,7 @@
       "recorded_at": "2026-08-17T10:39:04.645Z"
     },
     {
-      "id": "e917749265b4126a0",
+      "id": "ee91fc76c494f0e73",
       "fact_id": "fd647222ad28e462d",
       "payload": {
         "kind": "run",
@@ -136932,12 +136935,12 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/maturity.rs": "cbfb87de54fb97f6"
+          "src/maturity.rs": "e611fd8e20089a2e"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787072336645",
+        "ran_at": "1787109285849",
         "loom_version": "0.34.0"
       },
       "recorded_at": "2026-08-17T10:39:04.645Z"
@@ -149854,13 +149857,6 @@
       "truth_class": "asserted"
     },
     {
-      "target_id": "0c4dc3c27f1d5a1b8ade4594425a5cb4",
-      "target_kind": "edge",
-      "key": "evidence_spans",
-      "value": "[{\"file\":\"src/maturity.rs\",\"start\":369,\"end\":445,\"hash\":\"70ef7370a4bc85c2\"}]",
-      "truth_class": "asserted"
-    },
-    {
       "target_id": "0c4eed0bafb7d475ed92d98535ff20a9",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -153000,7 +152996,7 @@
       "target_id": "2964fa778f2f69f560f0f091645b63f3",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/workitem/queues.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/workitem/queues.rs\",\"proven_by\":\"journey:divergence-queue:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -154694,7 +154690,7 @@
       "target_id": "3b3152077b47abedb59eedb59f6b67e0",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/workitem/mod.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/workitem/mod.rs\",\"proven_by\":\"journey:next-router:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -155668,6 +155664,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/locator.rs\",\"start\":329,\"end\":329,\"hash\":\"a69c9629801b2a7b\",\"symbol\":\"marker_prefix\",\"symbol_hash\":\"9c40c1282b899f1d\",\"symbol_offset\":1}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "44cec90f5dfd697146e663ff503b64f0",
+      "target_kind": "edge",
+      "key": "evidence_spans",
+      "value": "[{\"file\":\"src/maturity.rs\",\"start\":383,\"end\":383,\"hash\":\"713c991eb321888b\",\"symbol\":\"build_rungs\",\"symbol_hash\":\"1316dbb11ae56a40\"}]",
       "truth_class": "asserted"
     },
     {
@@ -158824,7 +158827,7 @@
       "target_id": "63b00ce664237ee5205e7f6344dd06f7",
       "target_kind": "edge",
       "key": "evidence_spans",
-      "value": "[{\"file\":\"src/maturity.rs\",\"start\":371,\"end\":415,\"hash\":\"9505258aeae0bd12\",\"symbol\":\"build_rungs\",\"symbol_hash\":\"899a1c3883b76670\"}]",
+      "value": "[{\"file\":\"src/maturity.rs\",\"start\":383,\"end\":441,\"hash\":\"bcefa75c6efbac55\",\"symbol\":\"build_rungs\",\"symbol_hash\":\"1316dbb11ae56a40\"}]",
       "truth_class": "asserted"
     },
     {
@@ -159391,7 +159394,7 @@
       "target_id": "683d6457db3690b1d19bec2c6dc47c18",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "cbfb87de54fb97f6",
+      "value": "e611fd8e20089a2e",
       "truth_class": "derived"
     },
     {
@@ -159412,7 +159415,7 @@
       "target_id": "683d6457db3690b1d19bec2c6dc47c18",
       "target_kind": "node",
       "key": "loc",
-      "value": "469",
+      "value": "477",
       "truth_class": "derived"
     },
     {
@@ -159433,7 +159436,7 @@
       "target_id": "683d6457db3690b1d19bec2c6dc47c18",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"4a8c8052a914031b\",\"Rung\":\"0c964800adbcc5ad\",\"RungState\":\"77dbc8bfc634eb93\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"899a1c3883b76670\",\"compass\":\"2bf45a15766286da\",\"depths\":\"e9b2093b0aa5163e\",\"gather\":\"50d02139cb0480a8\",\"ladder\":\"eff82ff6ec22e516\",\"ladder_and_depths\":\"3f7c216942c0d513\",\"ladder_from_inputs\":\"803ad0485e5dc02c\",\"validation_summary\":\"44e66739272e4e0d\"}",
+      "value": "{\"DerivedFloor\":\"3f44a186349a8853\",\"Ladder\":\"4a8c8052a914031b\",\"Rung\":\"0c964800adbcc5ad\",\"RungState\":\"77dbc8bfc634eb93\",\"ValidationSummary\":\"6b96c70fdd4aada2\",\"build_rungs\":\"1316dbb11ae56a40\",\"compass\":\"2bf45a15766286da\",\"depths\":\"e9b2093b0aa5163e\",\"gather\":\"50d02139cb0480a8\",\"ladder\":\"eff82ff6ec22e516\",\"ladder_and_depths\":\"3f7c216942c0d513\",\"ladder_from_inputs\":\"803ad0485e5dc02c\",\"validation_summary\":\"44e66739272e4e0d\"}",
       "truth_class": "derived"
     },
     {
@@ -171032,7 +171035,7 @@
       "target_id": "d54387b358a615d705c6a53599b2daf6",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/maturity.rs\",\"proven_by\":\"journey:compass-projection:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":null,\"proven_by\":\"journey:next-router:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
