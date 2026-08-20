@@ -80,6 +80,22 @@ pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 /// shape or graph vocabulary changes incompatibly.
 pub const SCHEMA_VERSION: u32 = 13;
 
+/// Cargo package version of this binary. Distinct from [`SCHEMA_VERSION`]: two
+/// builds can share this string and still disagree on schema.
+pub const CRATE_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Meta key: crate version of the last write-open. Cannot see same-crate schema
+/// forks by itself; pair with [`WRITER_SCHEMA_KEY`].
+pub const WRITER_VERSION_KEY: &str = "loom_writer_version";
+
+/// Meta key: [`SCHEMA_VERSION`] of the last write-open.
+pub const WRITER_SCHEMA_KEY: &str = "loom_writer_schema";
+
+/// Schema versions below this predate the journey-root cut and cannot be
+/// migrated. Versions in `[JOURNEY_SCHEMA_CUT, SCHEMA_VERSION)` may migrate
+/// (with consent when the crate version did not increase).
+pub const JOURNEY_SCHEMA_CUT: u32 = 12;
+
 /// Directory holding the local graph store, relative to a project root.
 pub const LOOM_DIR: &str = ".loom";
 

@@ -394,22 +394,14 @@ pub(crate) fn open(graph: Option<&Path>) -> Result<Store> {
     Ok(store)
 }
 
-/// The loom version that last wrote this graph, stamped at every write open
-/// and compared at every read open. A driver whose PATH serves an older
-/// binary than the one maintaining the graph gets a plain warning instead of
-/// a trail of inexplicable errors (observed: a stale installed binary
-/// hard-failing on graph content a newer loom wrote). Version-only: two
-/// builds of the same version still drift silently, which this cannot see.
-const WRITER_VERSION_KEY: &str = "loom_writer_version";
-
+/// Crate + schema of the last write-open. Crate-only used to miss same-version
+/// schema forks; the schema stamp is what makes those visible. Compared at
+/// every read open: an older crate warns, a higher writer schema is a hard
+/// refuse in the store before this runs.
 fn stamp_writer_version(store: &Store) {
-    let current = env!("CARGO_PKG_VERSION");
     // Best-effort operational breadcrumb: never fail a real command over it.
-    if let Ok(stamped) = store.get_meta(WRITER_VERSION_KEY) {
-        if stamped.as_deref() != Some(current) {
-            let _ = store.set_meta(WRITER_VERSION_KEY, current);
-        }
-    }
+    let _ = store.set_meta(crate::WRITER_VERSION_KEY, crate::CRATE_VERSION);
+    let _ = store.set_meta(crate::WRITER_SCHEMA_KEY, &crate::SCHEMA_VERSION.to_string());
 }
 
 fn parse_version(value: &str) -> Option<(u64, u64, u64)> {
@@ -418,17 +410,28 @@ fn parse_version(value: &str) -> Option<(u64, u64, u64)> {
 }
 
 fn warn_on_writer_drift(store: &Store) {
-    let current = env!("CARGO_PKG_VERSION");
-    let Ok(Some(stamped)) = store.get_meta(WRITER_VERSION_KEY) else {
-        return;
-    };
-    if let (Some(mine), Some(writer)) = (parse_version(current), parse_version(&stamped)) {
-        if mine < writer {
-            eprintln!(
-                "warning: this loom binary is v{current}, but the graph was last written by \
-                 loom v{stamped} — reads may misinterpret newer state; upgrade or rebuild \
-                 the binary on PATH"
-            );
+    let current = crate::CRATE_VERSION;
+    if let Ok(Some(stamped)) = store.get_meta(crate::WRITER_VERSION_KEY) {
+        if let (Some(mine), Some(writer)) = (parse_version(current), parse_version(&stamped)) {
+            if mine < writer {
+                eprintln!(
+                    "warning: this loom binary is v{current}, but the graph was last written by \
+                     loom v{stamped} — reads may misinterpret newer state; upgrade or rebuild \
+                     the binary on PATH"
+                );
+            }
+        }
+    }
+    if let Ok(Some(raw)) = store.get_meta(crate::WRITER_SCHEMA_KEY) {
+        if let Ok(writer_schema) = raw.parse::<u32>() {
+            if writer_schema > crate::SCHEMA_VERSION {
+                eprintln!(
+                    "warning: this loom understands schema v{}, but the graph was last written at \
+                     schema v{writer_schema} — a same-crate fork is indistinguishable by \
+                     crate version alone; use the build that matches the graph",
+                    crate::SCHEMA_VERSION
+                );
+            }
         }
     }
 }
