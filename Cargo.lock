@@ -973,7 +973,7 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "loom"
-version = "0.34.1"
+version = "0.35.0"
 dependencies = [
  "anyhow",
  "chrono",
