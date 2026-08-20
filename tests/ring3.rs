@@ -77,7 +77,12 @@ fn inv7_fixer_may_reground_implements_but_not_other_builder_facts() {
         "fixer may retarget an implements edge when the repair moved code"
     );
     let hierarchy_err = store
-        .add_edge(EdgeKind::Hierarchy, &intent_id, &other, TruthClass::Asserted)
+        .add_edge(
+            EdgeKind::Hierarchy,
+            &intent_id,
+            &other,
+            TruthClass::Asserted,
+        )
         .expect_err("fixer still cannot write other builder-owned facts");
     assert!(
         hierarchy_err.to_string().contains("lane gate"),
