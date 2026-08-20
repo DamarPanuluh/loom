@@ -1048,13 +1048,13 @@ pub(crate) fn schema_migration_requires_consent(
     if persisted_schema == 0 || persisted_schema >= binary_schema {
         return false;
     }
-    match (
-        parse_crate_version(writer_crate.unwrap_or("")),
-        parse_crate_version(binary_crate),
-    ) {
-        (Some(writer), Some(binary)) if binary > writer => false,
-        _ => true,
-    }
+    !matches!(
+        (
+            parse_crate_version(writer_crate.unwrap_or("")),
+            parse_crate_version(binary_crate),
+        ),
+        (Some(writer), Some(binary)) if binary > writer
+    )
 }
 
 pub(crate) fn ahead_schema_error(
