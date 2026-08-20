@@ -1,6 +1,6 @@
 # loom — Rethink: the lived graph
 
-**Status:** PARTIALLY LANDED — 2026-07-18. Rings 1–2 of §8 are implemented (provenance +
+**Status:** archive / not operator documentation. PARTIALLY LANDED — 2026-07-18. Rings 1–2 of §8 are implemented (provenance +
 ratification + INV-8, the `wanted` rung, `loom next --mode ratify`, grammar served via
 `loom schema`); `design.md` §5/§6 now record the `Wanted` rung and INV-8. Rings 3–5 (journal,
 journey baselines, drive mode) remain design-only.

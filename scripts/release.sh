@@ -71,3 +71,4 @@ echo "== install =="
 cargo install --path . --force
 echo "installed: $("$HOME/.cargo/bin/loom" --version)"
 echo "done: loom $new — remember to review CHANGELOG.md"
+echo "to publish GitHub Release binaries, tag v$new and push it (the workflow publishes on v* tags)"

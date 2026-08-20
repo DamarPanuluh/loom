@@ -1,13 +1,13 @@
 # loom v2 — Design
 
-**Status:** CONCEPT-LOCKED — all §10 forks settled (provisional, reversible). The doc is the
-authoritative v2 architecture; code follows ring by ring. The earlier loom (`../../loom`) is a
-**read-only reference oracle** — consult it for *how* working mechanisms behave (tree-sitter
-extraction, sync ripple edge cases, SQL/locking patterns, saga HTTP execution). We re-derive the
-*code* clean; we never copy it. Carrying v1 code would carry v1's accumulated conventions and
-coupling.
-**Relationship to v1:** greenfield rewrite — the old loom is the read-only reference oracle
-described above; we re-derive clean, never copy.
+**Status:** architecture seed / archive except where named below. The shipped contract is
+the compiled CLI and `docs/commands.md`. Still canonical: §2 (truth-class planes), §4
+(data model forks), §6 (invariants), §9 (build sequencing), §10 (locked decisions).
+
+**Historical status:** CONCEPT-LOCKED — all §10 forks settled (provisional, reversible).
+The earlier loom (`../../loom`) was a **read-only reference oracle** during the greenfield
+rewrite. That rebuild has shipped; do not treat “code follows ring by ring” as current
+sequencing.
 
 ---
 
