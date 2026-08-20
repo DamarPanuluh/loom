@@ -536,7 +536,7 @@ pub(super) fn fixer_contract(
             "loom codefile show <file>".into(),
             "edit code".into(),
             "loom sync".into(),
-            "loom edge implement (re-ground if the fix moved code)".into(),
+            "loom edge implement / loom edge retarget (re-ground if the fix moved code)".into(),
             // The case with no source to repair: the behavior was removed on
             // purpose and the graph still claims it. Without this the packet
             // says "fix the root cause" at a worker who has correctly
@@ -607,7 +607,7 @@ pub(super) fn needed_finding_fix_contract(id: &str, file: Option<&str>) -> Promp
             "read the cited code and the finding's evidence".into(),
             "edit code".into(),
             "loom sync".into(),
-            "loom edge implement (re-ground if the fix moved code)".into(),
+            "loom edge implement / loom edge retarget (re-ground if the fix moved code)".into(),
             FINDING_ADD_ACTION.into(),
         ],
         forbidden_actions: vec![

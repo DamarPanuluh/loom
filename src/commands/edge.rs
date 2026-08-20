@@ -659,6 +659,7 @@ fn edge_remove(store: &Store, edge_id: String, reason: Option<String>, json: boo
 /// whose target symbol moved or was misnamed. Upserts; refuses derived edges.
 fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool) -> Result<()> {
     let e = store.resolve_edge(&edge_id)?;
+    store.require_edge_kind_owner(e.kind)?;
     crate::completeness::require_generic_edge_mutable(store, &e)?;
     if e.truth_class == TruthClass::Derived {
         anyhow::bail!(

@@ -53,6 +53,70 @@ fn inv7_wrong_lane_rejected_right_lane_allowed() {
 }
 
 #[test]
+fn inv7_fixer_may_reground_implements_but_not_other_builder_facts() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent_id = intent(&store, "user can log in");
+    let other = intent(&store, "user can log out");
+    let file_a = codefile(&store, "src/a.rs").id;
+    let file_b = codefile(&store, "src/b.rs").id;
+
+    store.set_agent(Agent::Lane(OwnerRole::Fixer));
+    let edge = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent_id,
+            &file_a,
+            TruthClass::Asserted,
+        )
+        .expect("fixer may create an implements edge to re-ground after a repair");
+    assert!(
+        store
+            .retarget_edge(&edge.id, &file_b, "code moved to the successor file")
+            .is_ok(),
+        "fixer may retarget an implements edge when the repair moved code"
+    );
+    let hierarchy_err = store
+        .add_edge(EdgeKind::Hierarchy, &intent_id, &other, TruthClass::Asserted)
+        .expect_err("fixer still cannot write other builder-owned facts");
+    assert!(
+        hierarchy_err.to_string().contains("lane gate"),
+        "hierarchy refusal must name the lane gate, got: {hierarchy_err}"
+    );
+    let verdict_err = store
+        .record_verdict(
+            &edge.id,
+            InspectionStatus::Passing,
+            "login lives here",
+            "src/a.rs:1",
+            0.9,
+            "llm",
+        )
+        .expect_err("fixer still cannot record the grounding verdict");
+    assert!(
+        verdict_err.to_string().contains("lane gate"),
+        "verdict refusal must name the lane gate, got: {verdict_err}"
+    );
+    store
+        .delete_edge(&edge.id)
+        .expect("fixer may remove a superseded implements edge after re-grounding");
+
+    store.set_agent(Agent::Lane(OwnerRole::Quality));
+    let quality_err = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent_id,
+            &file_a,
+            TruthClass::Asserted,
+        )
+        .expect_err("quality still cannot write implements edges");
+    assert!(
+        quality_err.to_string().contains("lane gate"),
+        "quality refusal must name the lane gate, got: {quality_err}"
+    );
+}
+
+#[test]
 fn inv7_verdict_lane_enforced() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();

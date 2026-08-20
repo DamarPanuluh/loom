@@ -274,7 +274,7 @@ impl Store {
         let edge = self
             .get_edge(id)?
             .ok_or_else(|| anyhow!("no edge '{id}'"))?;
-        self.check_lane(registry::spec(edge.kind).owner)
+        self.require_edge_kind_owner(edge.kind)
     }
 
     pub fn delete_edge(&self, id: &str) -> Result<()> {
