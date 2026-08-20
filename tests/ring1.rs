@@ -961,11 +961,17 @@ fn a_graph_from_the_future_says_upgrade_rather_than_migrate() {
         let store = Store::init(tmp.path(), Some("t"), false).unwrap();
         drop(store);
     }
-    // Stamp the graph as written by a loom newer than this one — beyond any
-    // phantom reclaim list (v7 was an aborted no-op; SCHEMA+10 is a real future).
+    // Unknown writer + future schema: the honest instruction is to upgrade.
+    // Wipe the writer breadcrumb so this case stays distinct from a same-crate
+    // schema fork (see `a_same_crate_schema_fork_does_not_say_upgrade`).
     let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
     conn.pragma_update(None, "user_version", loom::SCHEMA_VERSION + 10)
         .unwrap();
+    conn.execute(
+        "DELETE FROM meta WHERE key IN (?1, ?2)",
+        rusqlite::params![loom::WRITER_VERSION_KEY, loom::WRITER_SCHEMA_KEY],
+    )
+    .unwrap();
     drop(conn);
 
     for open in [
@@ -983,6 +989,50 @@ fn a_graph_from_the_future_says_upgrade_rather_than_migrate() {
         assert!(
             !msg.contains("too high"),
             "never surface the migrator's internal phrasing: {msg}"
+        );
+        assert!(
+            msg.contains("no downgrade"),
+            "the refusal must say the graph cannot be rolled back: {msg}"
+        );
+    }
+}
+
+#[test]
+fn a_same_crate_schema_fork_does_not_say_upgrade() {
+    let tmp = Tmp::new();
+    {
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        drop(store);
+    }
+    let conn = rusqlite::Connection::open(tmp.path().join(".loom/graph.sqlite")).unwrap();
+    conn.pragma_update(None, "user_version", loom::SCHEMA_VERSION + 1)
+        .unwrap();
+    conn.execute(
+        "INSERT INTO meta(key,value) VALUES (?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value=?2",
+        rusqlite::params![
+            loom::WRITER_SCHEMA_KEY,
+            (loom::SCHEMA_VERSION + 1).to_string()
+        ],
+    )
+    .unwrap();
+    drop(conn);
+
+    for open in [
+        Store::open as fn(&std::path::Path) -> loom::Result<Store>,
+        Store::open_read as fn(&std::path::Path) -> loom::Result<Store>,
+    ] {
+        let msg = match open(tmp.path()) {
+            Ok(_) => panic!("a same-crate schema fork must be refused"),
+            Err(e) => format!("{e}"),
+        };
+        assert!(
+            msg.contains("same-version") && msg.contains("will not help"),
+            "the refusal must name the fork, not an upgrade: {msg}"
+        );
+        assert!(
+            !msg.contains("upgrade this binary"),
+            "reinstalling the same crate cannot open this graph: {msg}"
         );
     }
 }

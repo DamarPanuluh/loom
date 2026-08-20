@@ -13,7 +13,10 @@
 
 use crate::model::*;
 use crate::registry;
-use crate::{Result, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION};
+use crate::{
+    Result, CRATE_VERSION, GRAPH_DB, JOURNEY_SCHEMA_CUT, LOOM_DIR, SCHEMA_VERSION,
+    WRITER_SCHEMA_KEY, WRITER_VERSION_KEY,
+};
 use anyhow::{anyhow, bail, Context};
 use rusqlite::{params, Connection, OpenFlags, OptionalExtension};
 use rusqlite_migration::{Migrations, M};
@@ -242,12 +245,14 @@ impl Store {
                 )?;
             }
         }
-        Ok(Store {
+        let store = Store {
             conn,
             root: root.to_path_buf(),
             identity: std::cell::RefCell::new(identity),
             _lock: std::cell::RefCell::new(lock),
-        })
+        };
+        store.stamp_writer_identity();
+        Ok(store)
     }
 
     /// Open an existing graph at `root/.loom/graph.sqlite`.
@@ -279,12 +284,21 @@ impl Store {
         ensure_supported_persisted_schema(&conn)?;
         configure(&conn)?;
         apply_schema_migrations(&mut conn)?;
-        Ok(Store {
+        let store = Store {
             conn,
             root: root.to_path_buf(),
             identity: std::cell::RefCell::new(identity),
             _lock: std::cell::RefCell::new(lock),
-        })
+        };
+        store.stamp_writer_identity();
+        Ok(store)
+    }
+
+    /// Record which crate *and* schema last wrote this graph. Always overwrites
+    /// the schema stamp: two builds can share a crate version and still drift.
+    fn stamp_writer_identity(&self) {
+        let _ = self.set_meta(WRITER_VERSION_KEY, CRATE_VERSION);
+        let _ = self.set_meta(WRITER_SCHEMA_KEY, &SCHEMA_VERSION.to_string());
     }
 
     /// Open an existing graph read-only. Takes a SHARED advisory lock, so many
@@ -939,6 +953,79 @@ fn persisted_meta_schema_version(conn: &Connection) -> Result<Option<u32>> {
 /// version zero with a v12 meta stamp is the old-style current stamp adopted
 /// below. Every genuine v1-v11 graph must be rebuilt under the journey-root
 /// vocabulary rather than translated into a graph that claims new semantics.
+///
+/// Behind-schema graphs at or above [`JOURNEY_SCHEMA_CUT`] are allowed through
+/// so [`apply_schema_migrations`] can raise them — possibly with consent.
+fn meta_opt(conn: &Connection, key: &str) -> Option<String> {
+    conn.query_row("SELECT value FROM meta WHERE key=?1", [key], |row| {
+        row.get::<_, String>(0)
+    })
+    .optional()
+    .ok()
+    .flatten()
+}
+
+fn parse_crate_version(value: &str) -> Option<(u64, u64, u64)> {
+    let mut parts = value.split('.').map(|part| part.parse::<u64>().ok());
+    Some((parts.next()??, parts.next()??, parts.next()??))
+}
+
+/// Auto-migrate only when this binary is a newer *crate* than the last writer.
+/// Same crate version + higher schema is an unreleased-branch leak. Missing or
+/// unparsable writer stamps also require consent: we cannot prove this is a
+/// release upgrade. Fresh DBs (`persisted_schema == 0`) and already-current
+/// graphs do not migrate.
+pub(crate) fn schema_migration_requires_consent(
+    persisted_schema: u32,
+    binary_schema: u32,
+    writer_crate: Option<&str>,
+    binary_crate: &str,
+) -> bool {
+    if persisted_schema == 0 || persisted_schema >= binary_schema {
+        return false;
+    }
+    match (
+        parse_crate_version(writer_crate.unwrap_or("")),
+        parse_crate_version(binary_crate),
+    ) {
+        (Some(writer), Some(binary)) if binary > writer => false,
+        _ => true,
+    }
+}
+
+pub(crate) fn ahead_schema_error(
+    graph_schema: u32,
+    binary_schema: u32,
+    binary_crate: &str,
+    writer_crate: Option<&str>,
+    writer_schema: Option<&str>,
+) -> String {
+    let writer_bits = match (writer_crate, writer_schema) {
+        (Some(c), Some(s)) => format!("Last writer: loom {c} (schema v{s})."),
+        (Some(c), None) => format!("Last writer: loom {c} (writer schema unstamped)."),
+        (None, Some(s)) => format!("Last writer crate unstamped (schema v{s})."),
+        (None, None) => "Last writer: unknown.".to_string(),
+    };
+    let same_crate = writer_crate == Some(binary_crate);
+    if same_crate {
+        format!(
+            "this graph is v{graph_schema}; this loom understands v{binary_schema}. \
+             {writer_bits} This binary is also loom {binary_crate} — a same-version \
+             schema fork, not a newer release. There is no downgrade. \
+             Reinstalling {binary_crate} will not help. Restore a pre-migration \
+             backup, or use the build that understands v{graph_schema}. \
+             The graph is untouched."
+        )
+    } else {
+        format!(
+            "this graph is v{graph_schema}; this loom understands v{binary_schema}. \
+             {writer_bits} It was written by a newer loom — upgrade this binary \
+             (see README) to a build that understands v{graph_schema}. \
+             There is no downgrade. The graph is untouched."
+        )
+    }
+}
+
 fn ensure_supported_persisted_schema(conn: &Connection) -> Result<()> {
     let user_version: u32 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
     let meta_version = persisted_meta_schema_version(conn)?;
@@ -946,7 +1033,7 @@ fn ensure_supported_persisted_schema(conn: &Connection) -> Result<()> {
         .into_iter()
         .flatten()
     {
-        if version < SCHEMA_VERSION {
+        if version < JOURNEY_SCHEMA_CUT {
             bail!(
                 "this graph is v{version}; loom v12 introduced the journey paradigm — re-init \
                  and rebuild (loom bootstrap suggest, author journeys, loom journey derive). \
@@ -954,10 +1041,17 @@ fn ensure_supported_persisted_schema(conn: &Connection) -> Result<()> {
             );
         }
         if version > SCHEMA_VERSION {
+            let writer_crate = meta_opt(conn, WRITER_VERSION_KEY);
+            let writer_schema = meta_opt(conn, WRITER_SCHEMA_KEY);
             bail!(
-                "this graph is v{version}; this loom understands v{SCHEMA_VERSION}. \
-                 It was written by a newer loom — upgrade this binary (see README). \
-                 The graph is untouched."
+                "{}",
+                ahead_schema_error(
+                    version,
+                    SCHEMA_VERSION,
+                    CRATE_VERSION,
+                    writer_crate.as_deref(),
+                    writer_schema.as_deref(),
+                )
             );
         }
     }
@@ -967,6 +1061,38 @@ fn ensure_supported_persisted_schema(conn: &Connection) -> Result<()> {
 fn apply_schema_migrations(conn: &mut Connection) -> Result<()> {
     ensure_supported_persisted_schema(conn)?;
     adopt_legacy_schema_version(conn)?;
+    let from_version: u32 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
+    let writer_crate = meta_opt(conn, WRITER_VERSION_KEY);
+    let requires_consent = schema_migration_requires_consent(
+        from_version,
+        SCHEMA_VERSION,
+        writer_crate.as_deref(),
+        CRATE_VERSION,
+    );
+    let consented = std::env::var("LOOM_SCHEMA_MIGRATE").ok().as_deref() == Some("1");
+    if from_version < SCHEMA_VERSION && from_version != 0 && requires_consent && !consented {
+        bail!(
+            "refusing to migrate graph schema v{from_version} → v{SCHEMA_VERSION}: this binary \
+             is still loom {CRATE_VERSION} (same crate as the last writer, or writer unknown). \
+             An unreleased branch with a higher schema would rewrite the graph in place. \
+             Set LOOM_SCHEMA_MIGRATE=1 to consent, or use a release that bumped the crate \
+             version. The graph is untouched."
+        );
+    }
+    if from_version < SCHEMA_VERSION && from_version != 0 {
+        let writer = writer_crate.as_deref().unwrap_or("unknown");
+        if consented && requires_consent {
+            eprintln!(
+                "loom: migrating graph schema v{from_version} → v{SCHEMA_VERSION} \
+                 (consented via LOOM_SCHEMA_MIGRATE=1; last writer {writer})"
+            );
+        } else {
+            eprintln!(
+                "loom: migrating graph schema v{from_version} → v{SCHEMA_VERSION} \
+                 (last writer loom {writer} → {CRATE_VERSION})"
+            );
+        }
+    }
     schema_migrations()
         .to_latest(conn)
         .context("migrating graph schema")?;
@@ -1022,8 +1148,10 @@ fn adopt_legacy_schema_version(conn: &Connection) -> Result<()> {
         })
         .transpose()?;
 
-    if legacy_schema_version == Some(SCHEMA_VERSION) {
-        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    if let Some(legacy) = legacy_schema_version {
+        if (JOURNEY_SCHEMA_CUT..=SCHEMA_VERSION).contains(&legacy) {
+            conn.pragma_update(None, "user_version", legacy)?;
+        }
     }
     Ok(())
 }
@@ -1777,5 +1905,63 @@ mod tests {
             "a finding that names an unregistered file is orphaned evidence, not a graph crash"
         );
         assert!(store.finding_owner_intents(&finding.id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn same_crate_schema_bump_requires_consent() {
+        assert!(
+            schema_migration_requires_consent(12, 13, Some("0.34.1"), "0.34.1"),
+            "unreleased branch at the same crate version must not silently migrate"
+        );
+        assert!(
+            schema_migration_requires_consent(12, 13, None, "0.34.1"),
+            "missing writer stamp cannot be assumed to be a release upgrade"
+        );
+        assert!(
+            !schema_migration_requires_consent(12, 13, Some("0.34.1"), "0.35.0"),
+            "a crate bump is a real release upgrade"
+        );
+        assert!(
+            !schema_migration_requires_consent(0, 13, None, "0.34.1"),
+            "fresh databases must still run to_latest"
+        );
+        assert!(
+            !schema_migration_requires_consent(12, 12, Some("0.34.1"), "0.34.1"),
+            "already-current graphs do not migrate"
+        );
+    }
+
+    #[test]
+    fn ahead_schema_error_names_the_fork_when_crate_matches() {
+        let fork = ahead_schema_error(13, 12, "0.34.1", Some("0.34.1"), Some("13"));
+        assert!(fork.contains("same-version"), "{fork}");
+        assert!(fork.contains("will not help"), "{fork}");
+        assert!(fork.contains("no downgrade"), "{fork}");
+        assert!(
+            !fork.contains("upgrade this binary"),
+            "same-crate fork must not instruct an impossible upgrade: {fork}"
+        );
+
+        let upgrade = ahead_schema_error(13, 12, "0.34.1", Some("0.35.0"), Some("13"));
+        assert!(
+            upgrade.contains("newer loom") && upgrade.contains("upgrade"),
+            "{upgrade}"
+        );
+        assert!(upgrade.contains("no downgrade"), "{upgrade}");
+    }
+
+    #[test]
+    fn write_open_stamps_writer_crate_and_schema() {
+        let tmp = TmpRoot::new("loom-store-writer-stamp");
+        let store = Store::init(tmp.path(), Some("stamp"), false).unwrap();
+        let expected_schema = SCHEMA_VERSION.to_string();
+        assert_eq!(
+            store.get_meta(WRITER_VERSION_KEY).unwrap().as_deref(),
+            Some(CRATE_VERSION)
+        );
+        assert_eq!(
+            store.get_meta(WRITER_SCHEMA_KEY).unwrap().as_deref(),
+            Some(expected_schema.as_str())
+        );
     }
 }
