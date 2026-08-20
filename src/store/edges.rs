@@ -21,7 +21,11 @@ impl Store {
         to_id: &str,
         truth_class: TruthClass,
     ) -> Result<Edge> {
-        self.check_lane(registry::spec(kind).owner)?;
+        if kind == EdgeKind::Implements {
+            self.check_grounding_write()?;
+        } else {
+            self.check_lane(registry::spec(kind).owner)?;
+        }
         self.validate_edge_endpoints(kind, from_id, to_id, truth_class)?;
         // Asserted-only path: derived edges MUST go through `add_derived_edge`
         // (a deterministic content-addressed id, so wipe+rebuild is byte-
@@ -239,7 +243,7 @@ impl Store {
         if edge.truth_class != TruthClass::Asserted {
             bail!("grounding roles apply only to asserted implements edges");
         }
-        self.check_lane(registry::spec(EdgeKind::Implements).owner)?;
+        self.check_grounding_write()?;
         Ok(edge)
     }
 
@@ -401,7 +405,7 @@ impl Store {
         if old.truth_class != TruthClass::Asserted {
             bail!("cannot rehome a derived edge");
         }
-        self.check_lane(registry::spec(EdgeKind::Implements).owner)?;
+        self.check_grounding_write()?;
         let reason = reason.trim();
         if reason.is_empty() {
             bail!("rehome requires a reason");
@@ -477,7 +481,11 @@ impl Store {
         if e.to_id == new_to {
             bail!("edge '{edge_id}' already targets '{new_to}' — nothing to retarget");
         }
-        self.check_lane(registry::spec(e.kind).owner)?;
+        if e.kind == EdgeKind::Implements {
+            self.check_grounding_write()?;
+        } else {
+            self.check_lane(registry::spec(e.kind).owner)?;
+        }
         self.validate_edge_endpoints(e.kind, &e.from_id, new_to, TruthClass::Asserted)?;
         // make the retarget a silent duplicate: refuse and name it. Resolve
         // supersession before selecting so a failed store lookup cannot turn a

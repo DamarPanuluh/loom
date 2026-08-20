@@ -584,6 +584,29 @@ impl Store {
 
     /// Lane gate: a declared lane may only write edges/verdicts it owns. Solo
     /// drives every lane. `sync` is implicit (derived paths never call this).
+    ///
+    /// Grounding (`implements`) writes are builder-owned, but the fixer
+    /// contract explicitly allows re-grounding after a repair moved code.
+    /// Verdicts on those edges stay on `check_lane` so fixer still cannot
+    /// record the passing claim.
+    fn check_grounding_write(&self) -> Result<()> {
+        match self.agent() {
+            Agent::Solo => Ok(()),
+            Agent::Lane(role)
+                if role.satisfies(registry::OwnerRole::Builder)
+                    || role == registry::OwnerRole::Fixer =>
+            {
+                Ok(())
+            }
+            Agent::Lane(role) => bail!(
+                "lane gate: agent '{}' may not write 'builder'-owned facts",
+                role.as_str()
+            ),
+        }
+    }
+
+    /// Lane gate: a declared lane may only write edges/verdicts it owns. Solo
+    /// drives every lane. `sync` is implicit (derived paths never call this).
     fn check_lane(&self, owner: registry::OwnerRole) -> Result<()> {
         match self.agent() {
             Agent::Solo => Ok(()),
@@ -602,7 +625,11 @@ impl Store {
     /// first mutation, while the surrounding transaction remains the final
     /// atomicity boundary for every later error.
     pub fn require_edge_kind_owner(&self, kind: EdgeKind) -> Result<()> {
-        self.check_lane(registry::spec(kind).owner)
+        if kind == EdgeKind::Implements {
+            self.check_grounding_write()
+        } else {
+            self.check_lane(registry::spec(kind).owner)
+        }
     }
 
     /// Governed research is analysis work; solo remains an unrestricted driver.
