@@ -8,12 +8,12 @@
 
 use super::context::{edge_context, node_context};
 use super::contracts::{
-    analyzer_contract, builder_contract, coverage_contract, derive_contract, elaborator_contract,
-    exemplar_contract, fixer_contract, inbox_triage_contract, journey_proof_contract,
-    journey_proof_contract_for_profile, needed_finding_fix_contract, prove_contract,
-    quality_contract, quality_contract_body, ratify_contract, rectify_contract, research_contract,
-    reviewer_contract, structural_finding_triage_contract, surface_contract, triage_contract,
-    unproven_contract, validator_contract,
+    adversarial_reviewer_contract, analyzer_contract, builder_contract, coverage_contract,
+    derive_contract, elaborator_contract, exemplar_contract, fixer_contract, inbox_triage_contract,
+    journey_proof_contract, journey_proof_contract_for_profile, needed_finding_fix_contract,
+    prove_contract, quality_contract, quality_contract_body, ratify_contract, rectify_contract,
+    research_contract, reviewer_contract, structural_finding_triage_contract, surface_contract,
+    triage_contract, unproven_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
@@ -153,6 +153,7 @@ pub(super) fn build_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "build".into(),
         owner_role: "builder".into(),
         effort: "mid".into(),
@@ -228,6 +229,7 @@ pub(super) fn derive_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "derive".into(),
         owner_role: "builder".into(),
         effort: "high".into(),
@@ -259,6 +261,7 @@ pub(super) fn surface_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "surface".into(),
         owner_role: "builder".into(),
         effort: "high".into(),
@@ -368,6 +371,7 @@ pub(super) fn coverage_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "coverage".into(),
         owner_role: "builder".into(),
         effort: "low".into(),
@@ -437,6 +441,7 @@ fn needed_finding_work(store: &Store, fv: &crate::signal::FindingView) -> Result
     Ok(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "fix".into(),
         owner_role: "fixer".into(),
         effort: "mid".into(),
@@ -542,7 +547,7 @@ fn research_work(store: &Store, task: &Node) -> Result<WorkItem> {
         .map(|n| format!("{} [{}]", n.name, n.id))
         .unwrap_or_else(|| "none".into());
     Ok(WorkItem {
-        packet_id: None, pattern_guidance: None, mode: "analyze".into(), owner_role: "analyzer".into(),
+        packet_id: None, pattern_guidance: None, review: None, mode: "analyze".into(), owner_role: "analyzer".into(),
         effort: "mid".into(), routing_hint: super::hint_judgment(),
         reason: "current external knowledge is missing — research before relying on assumptions".into(),
         target: node_target(task), stale_causes: Vec::new(), prompt_contract: research_contract(task),
@@ -585,6 +590,7 @@ fn unseeded_quality_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "quality".into(),
         owner_role: "quality".into(),
         effort: "low".into(),
@@ -653,6 +659,7 @@ fn unseeded_quality_entry(store: &Store) -> Result<Option<QueueEntry>> {
         routing_hint: Some("seeding".into()),
         cause_class: None,
         owner_role: Some("quality".into()),
+        review: None,
         reason: "quality rung is unseeded — no quality rules exist; seed a pack so boundary expectations can be measured".into(),
         target: Target {
             kind: "graph".into(),
@@ -805,6 +812,7 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "quality".into(),
         owner_role: "quality".into(),
         effort,
@@ -848,6 +856,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
         } => Ok(Some(WorkItem {
             packet_id: None,
             pattern_guidance: None,
+            review: None,
             mode: "validate".into(),
             owner_role: "validator".into(),
             effort: "high".into(),
@@ -886,6 +895,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
         ValidationWorkUnit::JourneyGap(journey) => Ok(Some(WorkItem {
             packet_id: None,
             pattern_guidance: None,
+            review: None,
             mode: "validate".into(),
             owner_role: "validator".into(),
             effort: "high".into(),
@@ -931,6 +941,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
         Ok(Some(WorkItem {
             packet_id: None,
             pattern_guidance: None,
+            review: None,
             mode: "validate".into(),
             owner_role: "validator".into(),
             effort: "mid".into(),
@@ -1081,49 +1092,35 @@ pub(crate) fn unproven_implemented_intents(store: &Store) -> Result<Vec<Node>> {
     Ok(out)
 }
 
-/// Serve the lowest-confidence recorded verdict for independent re-inspection.
-/// Confidence is the coordination channel between capability tiers: a worker
-/// records an honest low-confidence verdict, and this queue routes it to a
-/// stronger reviewer instead of letting it stand as settled truth. Failing
-/// verdicts are excluded — they already route to the fix queue.
-fn review_candidates(store: &Store) -> Result<Vec<(Edge, String)>> {
-    let floor = crate::policy::load(store)?.review_confidence_floor;
-    let mut candidates: Vec<Edge> = store
-        .live_edges_by_status(
-            crate::model::TruthClass::Asserted,
-            &[InspectionStatus::Passing, InspectionStatus::Independent],
-        )?
-        .into_iter()
-        .filter(|e| e.confidence > 0.0 && e.confidence < floor)
-        .collect();
-    candidates.sort_by(|a, b| {
-        a.confidence
-            .partial_cmp(&b.confidence)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| a.id.cmp(&b.id))
-    });
-    Ok(candidates
-        .into_iter()
-        .map(|edge| {
-            let reason = format!(
-                "verdict recorded with confidence {:.2} (< {}) — re-inspect independently",
-                edge.confidence, floor
-            );
-            (edge, reason)
-        })
-        .collect())
-}
-
 pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
-    let Some((edge, reason)) = review_candidates(store)?.into_iter().next() else {
+    let Some(candidate) = crate::review::pending(store)?.into_iter().next() else {
         return Ok(None);
     };
-    // Review runs AS the owning lane: the re-record command is gated by the
-    // edge's owner (governs → quality, validates → validator, …), so the
-    // packet's owner_role must match or the write-back would be rejected
-    // under enforced roles. The reviewer mindset is what makes it a review.
-    let owner = crate::registry::spec(edge.kind).owner.as_str();
-    edge_work(store, &edge, "review", owner, &reason).map(Some)
+    let mut item = edge_work(
+        store,
+        &candidate.edge,
+        "review",
+        &candidate.owner_role,
+        &candidate.reason,
+    )?;
+    item.review = Some(super::ReviewDirective {
+        variant: candidate.variant.as_str().into(),
+        target_verdict_fact_id: candidate.target_verdict_fact_id.clone(),
+        risk_score: candidate.risk_score,
+        prefer_profile_not: candidate.prefer_profile_not.clone(),
+    });
+    if candidate.variant == crate::review::ReviewVariant::Adversarial {
+        item.target.kind = "edge_challenge".into();
+        item.routing_hint = super::hint_judgment();
+        item.prompt_contract = adversarial_reviewer_contract(
+            &candidate.edge,
+            item.target.from.as_deref().unwrap_or(""),
+            item.target.to.as_deref().unwrap_or(""),
+            candidate.prefer_profile_not.as_deref(),
+        );
+        item.next_step = "after recording the challenge, run `loom status`".into();
+    }
+    Ok(Some(item))
 }
 
 /// Serve the most-incomplete user-visible feature intent for elaboration.
@@ -1151,6 +1148,7 @@ pub(super) fn elaborate_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "elaborate".into(),
         owner_role: "builder".into(),
         effort: "high".into(),
@@ -1178,6 +1176,7 @@ pub(super) fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "prove".into(),
         owner_role: "analyzer".into(),
         effort: "high".into(),
@@ -1265,6 +1264,7 @@ pub(super) fn ratify_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "ratify".into(),
         owner_role: "human".into(),
         effort: "low".into(),
@@ -1301,6 +1301,7 @@ pub(super) fn rectify_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "rectify".into(),
         owner_role: "rectify".into(),
         effort: "low".into(),
@@ -1384,6 +1385,7 @@ pub(super) fn triage_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort,
@@ -1419,6 +1421,7 @@ fn inbox_triage_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "triage".into(),
         owner_role: "analyzer".into(),
         effort: "low".into(),
@@ -1508,6 +1511,7 @@ fn edge_work(store: &Store, edge: &Edge, mode: &str, role: &str, reason: &str) -
     Ok(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: mode.into(),
         owner_role: role.into(),
         effort,
@@ -1636,6 +1640,8 @@ pub struct QueueEntry {
     /// batch recorded under any other lane is rejected by INV-7.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owner_role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review: Option<super::ReviewDirective>,
     pub reason: String,
     pub target: Target,
 }
@@ -1666,6 +1672,7 @@ fn edge_entry(store: &Store, edge: &Edge, mode: &str, reason: &str) -> Result<Qu
         routing_hint,
         cause_class: Some(class.into()),
         owner_role: Some(crate::registry::spec(edge.kind).owner.as_str().into()),
+        review: None,
         reason: reason.into(),
         target: Target {
             kind: "edge".into(),
@@ -1701,6 +1708,7 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
         routing_hint,
         cause_class: None,
         owner_role,
+        review: None,
         reason,
         target: node_target(node),
     }
@@ -1759,6 +1767,7 @@ fn unmeasured_pair_entries(store: &Store) -> Result<Vec<QueueEntry>> {
             routing_hint: Some("judgment".into()),
             cause_class: None,
             owner_role: Some("quality".into()),
+            review: None,
             reason: format!(
                 "rule '{}' has never been measured against '{}' — the verdict creates the governs edge",
                 rule.name, intent.name
@@ -1792,6 +1801,7 @@ pub(super) fn deepen_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "deepen".into(),
         owner_role: "validator".into(),
         effort: "mid".into(),
@@ -1883,6 +1893,7 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
     Ok(Some(WorkItem {
         packet_id: None,
         pattern_guidance: None,
+        review: None,
         mode: "audit".into(),
         owner_role: "analyzer".into(),
         effort: "mid".into(),
@@ -2251,8 +2262,19 @@ fn roster_triage(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// `queue_items` was a 297-line match that only dispatched, so every lane's
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_review(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
-    for (edge, reason) in review_candidates(store)? {
-        out.push(edge_entry(store, &edge, "review", &reason)?);
+    for candidate in crate::review::pending(store)? {
+        let mut entry = edge_entry(store, &candidate.edge, "review", &candidate.reason)?;
+        entry.owner_role = Some(candidate.owner_role);
+        entry.review = Some(super::ReviewDirective {
+            variant: candidate.variant.as_str().into(),
+            target_verdict_fact_id: candidate.target_verdict_fact_id,
+            risk_score: candidate.risk_score,
+            prefer_profile_not: candidate.prefer_profile_not,
+        });
+        if candidate.variant == crate::review::ReviewVariant::Adversarial {
+            entry.target.kind = "edge_challenge".into();
+        }
+        out.push(entry);
     }
     Ok(())
 }
@@ -2342,6 +2364,7 @@ fn roster_audit(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
                 routing_hint: Some("judgment".into()),
                 cause_class: None,
                 owner_role: Some("analyzer".into()),
+                review: None,
                 reason: f.detail.clone(),
                 target: Target {
                     kind: "graph".into(),

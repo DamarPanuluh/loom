@@ -117,7 +117,7 @@ impl Export {
                     crate::SCHEMA_VERSION
                 )
             })?;
-        if schema_version < u64::from(crate::SCHEMA_VERSION) {
+        if schema_version < 12 {
             anyhow::bail!(
                 "export schema v{schema_version} is unsupported; loom v12 introduced the journey paradigm — re-init and rebuild (loom bootstrap suggest, author journeys, loom journey derive)"
             );
@@ -367,7 +367,7 @@ mod tests {
         insta::assert_snapshot!(json, @r###"
 {
   "format": 4,
-  "schema_version": 12,
+  "schema_version": 13,
   "graph_id": "g1",
   "name": "demo",
   "observed": false,
@@ -676,9 +676,15 @@ mod tests {
     }
 
     #[test]
-    fn accepts_only_format_four_at_schema_twelve() {
+    fn accepts_format_four_at_schema_twelve_and_thirteen() {
         let base = r#"{"format":4,"schema_version":12,"graph_id":"g","name":"n","observed":false,"nodes":[],"edges":[],"facets":[],"tags":[]}"#;
         assert_eq!(Export::from_json(base).unwrap().format, FORMAT);
+        assert_eq!(
+            Export::from_json(&base.replace("\"schema_version\":12", "\"schema_version\":13"))
+                .unwrap()
+                .schema_version,
+            13
+        );
         assert!(Export::from_json(&base.replace("\"format\":4", "\"format\":3")).is_err());
         assert!(Export::from_json(&base.replace("\"format\":4", "\"format\":5")).is_err());
         assert!(

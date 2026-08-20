@@ -216,7 +216,7 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
         .map(|c| c.open)
         .sum();
     let (ladder, queues) = crate::maturity::ladder_and_depths(&store)?;
-    let roles = crate::rolelease::roster_value(store.root(), &queues);
+    let roles = crate::rolelease::roster_value(&store, &queues)?;
     if json {
         // Serialize the rungs directly so the derived `blocked`/`blocked_by`
         // fields stay in sync with `loom status` and can't drift.
@@ -299,6 +299,18 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
             pulse.low_confidence
         );
     }
+    if pulse.adversarial_review > 0 {
+        println!(
+            "  - challenge {} high-risk current claim(s) [loom next --mode review]",
+            pulse.adversarial_review
+        );
+    }
+    if pulse.review_independence_warnings > 0 {
+        println!(
+            "  - {} review independence warning(s) (non-blocking) [loom challenge list]",
+            pulse.review_independence_warnings
+        );
+    }
     if open_axes > 0 {
         println!(
             "  - grow {open_axes} open completeness axis(es) around user-visible ideas [loom next --mode elaborate]"
@@ -312,7 +324,7 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     // which free role has the most debt behind it.
     if crate::rolelease::holders_line(store.root()).is_some() {
         println!("  roles (advisory leases — claim a free one to drive in parallel):");
-        for line in crate::rolelease::describe(store.root(), &queues) {
+        for line in crate::rolelease::describe(&store, &queues)? {
             println!("    {line}");
         }
     }
@@ -516,9 +528,9 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     crate::truth::TruthAxis::Implementation,
                 ),
                 "analyzer" => (
-                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record needed/justified/rejected/deferred/blocked/duplicate/resolved with a reason. Use resolved only after observing the repair. Serves the review queue too: re-inspect low-confidence verdicts independently before reading the recorded evidence.",
-                    "loom edge explore <a> <b> ground|issue|independent; loom edge verdict <edge_id> ground|issue|independent (non-relates claims); loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate|resolved --reason '…'",
-                    "edit code; verdict from name similarity; inheriting a prior verdict's confidence",
+                    "Read both sides; hypothesis first; record exactly what the code shows. Also triages findings — record needed/justified/rejected/deferred/blocked/duplicate/resolved with a reason. Use resolved only after observing the repair. Serves both Review variants: independently re-inspect low-confidence verdicts, and attack the bounded adversarial frontier before reading its prior evidence.",
+                    "loom edge explore <a> <b> ground|issue|independent; loom edge verdict <edge_id> ground|issue|independent (non-relates claims); loom challenge record <edge_id> survived|counterexample|inconclusive --hypothesis '…' --evidence '… file:line' [--impact '…']; loom finding verdict <id> needed|justified|rejected|deferred|blocked|duplicate|resolved --reason '…'",
+                    "edit code while reviewing; verdict from name similarity; inheriting a prior verdict's confidence; directly rewrite a Verdict after finding a counterexample",
                     crate::truth::TruthAxis::Verdict,
                 ),
                 "fixer" => (

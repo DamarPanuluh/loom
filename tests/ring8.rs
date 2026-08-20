@@ -264,6 +264,13 @@ fn triage_mode_serves_findings_until_verdict_is_recorded() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
     mature_graph_with_codefile(&store, tmp.path());
+    // Isolate Triage precedence from the independently tested adversarial
+    // Review frontier.
+    let policy = loom::policy::EvidencePolicy {
+        adversarial_review_frontier: 0,
+        ..loom::policy::EvidencePolicy::default()
+    };
+    loom::policy::save(&store, &policy).unwrap();
     let finding = derived_finding(&store);
 
     let item = workitem::next(&store, Some(Lane::Triage))

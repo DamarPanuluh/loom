@@ -73,7 +73,7 @@
               "type": "string"
             },
             {
-              "equals": 12,
+              "equals": 13,
               "id": "graph-schema",
               "pointer": "/graph/schema_version",
               "type": "integer"

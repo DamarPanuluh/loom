@@ -327,7 +327,7 @@ fn gather_status_facts(store: &Store) -> Result<StatusFacts> {
 /// gathered facts, so no surface can report a number another surface does not.
 pub(crate) fn status_value(store: &Store) -> Result<serde_json::Value> {
     let facts = gather_status_facts(store)?;
-    let roles = crate::rolelease::roster_value(store.root(), &facts.queues);
+    let roles = crate::rolelease::roster_value(store, &facts.queues)?;
     Ok(serde_json::json!({
         "graph": {
             "name": facts.id.name,
@@ -621,7 +621,7 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<(
             }
         }
         println!(
-            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} open_questions={}",
+            "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} adversarial_review={} inconclusive_challenges={} review_independence_warnings={} open_questions={}",
             pulse.planned,
             pulse.stale,
             pulse.uninspected,
@@ -633,6 +633,9 @@ pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<(
             pulse.needed,
             pulse.inbox,
             pulse.low_confidence,
+            pulse.adversarial_review,
+            pulse.inconclusive_challenges,
+            pulse.review_independence_warnings,
             pulse.open_questions
         );
     }
@@ -783,7 +786,7 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
     }
     let pulse = out.graph_state;
     println!(
-        "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} open_questions={}",
+        "  graph_state: planned={} stale={} uninspected={} findings={} open={} resolved={} untriaged={} stale_findings={} needed={} inbox={} low_confidence={} adversarial_review={} inconclusive_challenges={} review_independence_warnings={} open_questions={}",
         pulse.planned,
         pulse.stale,
         pulse.uninspected,
@@ -795,6 +798,9 @@ pub(crate) fn next_cmd(graph: Option<&Path>, mode: Option<&str>, json: bool) -> 
         pulse.needed,
         pulse.inbox,
         pulse.low_confidence,
+        pulse.adversarial_review,
+        pulse.inconclusive_challenges,
+        pulse.review_independence_warnings,
         pulse.open_questions
     );
     Ok(())

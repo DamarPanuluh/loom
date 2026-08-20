@@ -55,6 +55,7 @@ pub mod ratification;
 pub mod registry;
 pub mod release;
 pub mod research;
+pub mod review;
 pub mod risk;
 pub mod rolelease;
 pub mod runner;
@@ -77,7 +78,7 @@ pub type Result<T, E = anyhow::Error> = std::result::Result<T, E>;
 
 /// The on-disk schema version stamped into every graph. Bumped when the storage
 /// shape or graph vocabulary changes incompatibly.
-pub const SCHEMA_VERSION: u32 = 12;
+pub const SCHEMA_VERSION: u32 = 13;
 
 /// Cargo package version of this binary. Distinct from [`SCHEMA_VERSION`]: two
 /// builds can share this string and still disagree on schema.

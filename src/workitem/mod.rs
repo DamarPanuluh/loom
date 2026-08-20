@@ -131,6 +131,8 @@ pub enum EvidenceClause {
     CitesSpans { n: usize },
     /// A citation into each of these files specifically.
     CitesFiles { files: Vec<String> },
+    /// At least one live source span or append-only journal reference.
+    CitesAnchor,
     /// A run loom itself performed.
     CitesRun,
     /// The proof must grade at least this high once loom has run it.
@@ -153,6 +155,9 @@ impl EvidenceClause {
             }
             EvidenceClause::CitesFiles { files } => {
                 format!("cite a location in each of: {}", files.join(", "))
+            }
+            EvidenceClause::CitesAnchor => {
+                "cite at least one live file:line or journal:id anchor".into()
             }
             EvidenceClause::CitesRun => {
                 "let loom run it — a reported outcome does not count".into()
@@ -236,6 +241,11 @@ pub struct WorkItem {
     /// Live, fail-closed repository guidance for coding packets only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pattern_guidance: Option<crate::pattern::PatternGuidance>,
+    /// Structured review metadata. Absent outside the Review lane; hosts use
+    /// it to distinguish confidence replay from adversarial challenge without
+    /// parsing prompt prose.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub review: Option<ReviewDirective>,
     pub mode: String,
     pub owner_role: String,
     pub effort: String,
@@ -262,6 +272,16 @@ pub struct WorkItem {
     /// it should fill an intent, code, a proof, a journey, a verdict, or an export.
     pub truth_gap: crate::truth::TruthGap,
     pub next_step: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ReviewDirective {
+    pub variant: String,
+    pub target_verdict_fact_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub risk_score: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prefer_profile_not: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -659,6 +679,15 @@ pub struct GraphState {
     /// Recorded verdicts standing below the review confidence floor: honest
     /// uncertainty awaiting independent re-inspection (`loom next --mode review`).
     pub low_confidence: usize,
+    /// High-risk settled claims in the fixed frontier without a current
+    /// adversarial attempt against their exact Verdict revision.
+    pub adversarial_review: usize,
+    /// Current inconclusive attempts. Informational only: they close their
+    /// revision and never create autonomous-loop debt.
+    pub inconclusive_challenges: usize,
+    /// Current challenges whose reviewer independence could not be established
+    /// (same or missing executor profile). Informational and non-blocking.
+    pub review_independence_warnings: usize,
     /// Open product questions raised for the human. These are the human-gated
     /// remainder: batch them into one conversation window instead of interrupting
     /// per question.
@@ -767,7 +796,7 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
         })
         .count();
     let resolved_findings = findings.len() - open_findings;
-    let floor = crate::policy::load(store)?.review_confidence_floor;
+    let review = crate::review::summary(store)?;
     Ok(GraphState {
         planned: store
             .nodes_by_status(NodeType::Intent, &["planned", "needs_change"])?
@@ -800,14 +829,11 @@ pub fn graph_state(store: &Store) -> Result<GraphState> {
             .into_iter()
             .filter(|n| n.status == "open")
             .count(),
-        low_confidence: store
-            .live_edges_by_status(
-                TruthClass::Asserted,
-                &[InspectionStatus::Passing, InspectionStatus::Independent],
-            )?
-            .into_iter()
-            .filter(|e| e.confidence > 0.0 && e.confidence < floor)
-            .count(),
+        low_confidence: review.low_confidence,
+        adversarial_review: review.adversarial_pending,
+        inconclusive_challenges: review.inconclusive,
+        review_independence_warnings: review.same_profile_warnings
+            + review.unknown_profile_warnings,
     })
 }
 
@@ -819,6 +845,7 @@ mod tests {
         WorkItem {
             packet_id: None,
             pattern_guidance: None,
+            review: None,
             mode: mode.into(),
             owner_role: "analyzer".into(),
             effort: "mid".into(),

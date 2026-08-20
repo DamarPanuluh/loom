@@ -254,7 +254,7 @@ fn release_workflow_keeps_tests_as_proof_artifacts_and_hash_binds_semantics() {
         .find("cargo test --all-targets --quiet")
         .expect("dogfood must execute the complete test gate");
     let graph_gate = dogfood
-        .find("== fresh v12 graph ==")
+        .find("== fresh v13 graph ==")
         .expect("dogfood must create the fresh graph after code gates");
     assert!(
         test_gate < graph_gate,
@@ -281,16 +281,24 @@ fn release_workflow_keeps_tests_as_proof_artifacts_and_hash_binds_semantics() {
 }
 
 #[test]
-fn dogfood_next_serves_work_until_clean() {
+fn dogfood_next_serves_adversarial_review_before_optional_deepening() {
     let tmp = Tmp::new();
     let store = build_clean_graph(&tmp);
-    // A clean graph has no required residue. The only remaining packet is the
-    // deliberately-open terminal deepen lane, which is optional strengthening.
+    // A conventionally green graph still has bounded adversarial Review debt;
+    // the optional terminal Deepen lane becomes reachable after that fixed
+    // frontier is challenged.
     let pending = workitem::next(&store, None).unwrap();
     assert_eq!(
         pending.as_ref().map(|item| item.mode.as_str()),
-        Some("deepen"),
-        "clean graph may offer only optional strengthening: {pending:#?}"
+        Some("review"),
+        "a green graph must challenge its bounded risk frontier before optional strengthening: {pending:#?}"
+    );
+    assert_eq!(
+        pending
+            .as_ref()
+            .and_then(|item| item.review.as_ref())
+            .map(|review| review.variant.as_str()),
+        Some("adversarial")
     );
     // Introducing an unrooted planned intent creates required implementation
     // work. Derive only hosts an unrooted intent when a relationship neighbor

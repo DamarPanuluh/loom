@@ -226,15 +226,7 @@ impl LadderInputs {
             }
         }
 
-        let floor = crate::policy::load(store)?.review_confidence_floor;
-        let low_confidence = store
-            .live_edges_by_status(
-                TruthClass::Asserted,
-                &[InspectionStatus::Passing, InspectionStatus::Independent],
-            )?
-            .into_iter()
-            .filter(|e| e.confidence > 0.0 && e.confidence < floor)
-            .count();
+        let review = crate::review::summary(store)?;
 
         // One actionable list feeds both this status projection and the audit
         // queue. Split it only for the human-readable rung detail.
@@ -293,7 +285,8 @@ impl LadderInputs {
             validations,
             unproven_implemented,
             open_journey_proof_smells,
-            low_confidence,
+            low_confidence: review.low_confidence,
+            adversarial_review: review.adversarial_pending,
             triage_findings: crate::signal::triage_findings(store)?.len(),
             inbox_new: store
                 .list_nodes(Some(NodeType::InboxItem), usize::MAX)?

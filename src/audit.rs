@@ -656,6 +656,12 @@ fn unanchored_settled_facts(store: &Store) -> Result<Vec<AuditFinding>> {
         {
             continue;
         }
+        // A Challenge whose target Verdict changed is ordinary Review debt.
+        // Its expired FactSnapshot is exactly the mechanism that requeues it,
+        // not evidence of an imported or side-door unanchored assertion.
+        if fact.claim == Claim::Challenge && fact.subject_kind == TargetKind::Edge {
+            continue;
+        }
         // The one documented dormant reference: an adjudication on a
         // deterministic derived Finding while sync has temporarily wiped that
         // Finding. Its evidence is still present and the same id reattaches on

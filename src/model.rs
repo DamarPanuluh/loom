@@ -284,11 +284,13 @@ str_enum! {
     /// - `Observation` — an observation about a node (finding intake).
     /// - `Adjudication` — a finding verdict: needed / justified / rejected / …
     /// - `Ratification` — wantedness: does the authority want this behavior?
+    /// - `Challenge` — an adversarial attempt against one exact edge-verdict revision.
     Claim {
         Verdict => "verdict",
         Observation => "observation",
         Adjudication => "adjudication",
         Ratification => "ratification",
+        Challenge => "challenge",
     }
 }
 
@@ -338,11 +340,13 @@ str_enum! {
     /// - `Span` — a cited file span, fingerprinted at assert time.
     /// - `Journal` — a `journal:<id>` reference into the append-only journal.
     /// - `Claim` — free prose.
+    /// - `FactSnapshot` — a Store-minted digest of another fact's current basis.
     EvidenceKind {
         Run => "run",
         Span => "span",
         Journal => "journal",
         Claim => "claim",
+        FactSnapshot => "fact_snapshot",
     }
 }
 
@@ -384,6 +388,7 @@ str_enum! {
         RoleChanged => "role_changed",
         Rehomed => "rehomed",
         AnchorMissing => "anchor_missing",
+        FactChanged => "fact_changed",
     }
 }
 
@@ -410,7 +415,8 @@ impl StaleCause {
             | StaleCause::SpanFileDeleted
             | StaleCause::SubjectRedefined
             | StaleCause::RoleChanged
-            | StaleCause::Rehomed => Rework::Reinspect,
+            | StaleCause::Rehomed
+            | StaleCause::FactChanged => Rework::Reinspect,
             StaleCause::RunCoveredFileChanged
             | StaleCause::RunCommandChanged
             // The recorded justification still exists; only the file around it

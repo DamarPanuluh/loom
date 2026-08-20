@@ -125,12 +125,15 @@ are not legal modes; use the gate's `next_command` verbatim.
     "resolved_findings": 0,
     "inbox": 0,
     "open_questions": 0,
-    "low_confidence": 0
+    "low_confidence": 0,
+    "adversarial_review": 0,
+    "inconclusive_challenges": 0,
+    "review_independence_warnings": 0
   }
 }
 ```
 
-`graph_state.low_confidence` is the tier-coordination channel: asserted `passing` / `independent` verdicts with `0 < confidence < 0.7` route to `loom next --mode review` for independent re-inspection.
+`graph_state.low_confidence` is one Review tier-coordination channel: asserted `passing` / `independent` verdicts below the configured confidence floor route to independent re-inspection. `graph_state.adversarial_review` is the second: Loom selects a fixed top-risk frontier of otherwise-green Verdict revisions, then serves only its unchallenged rows. The external LLM driver does not invent a scan loop; it follows the ordinary compass/`loom next` cycle, obeys the packet's hypothesis-first contract, and writes the typed result with `loom challenge record`. A `counterexample` becomes a Finding for Triage and never edits the target Verdict directly.
 
 Real `WorkItem` fields:
 
@@ -140,6 +143,7 @@ WorkItem
   owner_role:      builder | analyzer | fixer | validator | quality | rectify | human
   effort:          low | mid | high
   routing_hint:    mechanical | judgment   # optional; orchestrators map to model tiers
+  review:          { variant, target_verdict_fact_id, risk_score?, prefer_profile_not? } # Review only
   reason:          why this item is next
   target:          { kind, id, name, from?, to? }
   stale_causes:    [] typed stale_cause facets recorded by sync — symbol-scoped where the
@@ -377,7 +381,10 @@ When `loom next --mode quality` serves a `governs` edge or the fallback never-me
     "resolved_findings": 0,
     "inbox": 0,
     "open_questions": 0,
-    "low_confidence": 0
+    "low_confidence": 0,
+    "adversarial_review": 0,
+    "inconclusive_challenges": 0,
+    "review_independence_warnings": 0
   }
 }
 ```

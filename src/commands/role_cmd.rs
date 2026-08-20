@@ -70,13 +70,13 @@ fn list(graph: Option<&Path>, json: bool) -> Result<()> {
         println!(
             "{}",
             serde_json::to_string_pretty(&serde_json::json!({
-                "roles": crate::rolelease::roster_value(store.root(), &queues),
+                "roles": crate::rolelease::roster_value(&store, &queues)?,
             }))?
         );
         return Ok(());
     }
     println!("roles (advisory leases; a lease grants no write authority):");
-    for line in crate::rolelease::describe(store.root(), &queues) {
+    for line in crate::rolelease::describe(&store, &queues)? {
         println!("  {line}");
     }
     println!(

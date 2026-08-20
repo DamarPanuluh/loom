@@ -9,6 +9,16 @@ use loom::workitem;
 mod common;
 use common::*;
 
+/// Queue-order fixtures that are explicitly testing a post-Review rung can
+/// opt out of the independently covered adversarial frontier.
+fn disable_adversarial_review(store: &Store) {
+    let policy = loom::policy::EvidencePolicy {
+        adversarial_review_frontier: 0,
+        ..loom::policy::EvidencePolicy::default()
+    };
+    loom::policy::save(store, &policy).unwrap();
+}
+
 /// Test fixture: seeded intents are wanted by construction — ratify them all
 /// so ladder/compass tests exercise the gate under test, not the ratify gate.
 fn ratify_all(store: &Store) {
@@ -528,6 +538,7 @@ fn stale_edge_routes_to_fix() {
 fn fully_grounded_no_residue_routes_complete() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    disable_adversarial_review(&store);
     let a = store
         .add_node(
             NodeType::Intent,
@@ -1099,6 +1110,7 @@ fn derived_rung_honors_canonical_journey_exemption() {
 fn findings_route_to_triage_until_judged() {
     let tmp = Tmp::new();
     let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    disable_adversarial_review(&store);
     // one implemented intent, grounded + inspected → graph-maturity residue clean
     let i = store
         .add_node(

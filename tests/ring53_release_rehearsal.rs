@@ -21,9 +21,9 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "0aef592bec52e638";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 311;
-const RELEASE_INVENTORY_FILE_COUNT: usize = 311;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "5465c542abeb129e";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 314;
+const RELEASE_INVENTORY_FILE_COUNT: usize = 314;
 const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
 
 #[test]
@@ -2628,7 +2628,7 @@ fn release_surface_manifest(journey_hash: &str) -> Value {
             json!({"id":format!("{phase}-detached"),"pointer":"/workspace/detached","type":"boolean","equals":true}),
             json!({"id":format!("{phase}-empty"),"pointer":"/workspace/initially_empty","type":"boolean","equals":true}),
             json!({"id":format!("{phase}-excludes"),"pointer":"/workspace/source_excludes","type":"json","equals":[".git",".loom","target"]}),
-            json!({"id":format!("{phase}-schema-v12"),"pointer":"/graph/schema_version","type":"integer","equals":12}),
+            json!({"id":format!("{phase}-schema-v13"),"pointer":"/graph/schema_version","type":"integer","equals":13}),
             json!({"id":format!("{phase}-no-legacy-import"),"pointer":"/graph/legacy_imported","type":"boolean","equals":false}),
             json!({"id":format!("{phase}-no-legacy-migration"),"pointer":"/graph/legacy_migrated","type":"boolean","equals":false}),
             json!({"id":format!("{phase}-authority-fails-closed"),"pointer":"/graph/authority_fail_closed","type":"boolean","equals":true}),
@@ -2715,7 +2715,7 @@ fn release_surface_manifest(journey_hash: &str) -> Value {
             "operations":[
                 {
                     "id":"verify-isolated-dogfood",
-                    "summary":"Verify the exact candidate in one detached fresh-v12 graph",
+                    "summary":"Verify the exact candidate in one detached fresh-v13 graph",
                     "argv":["loom","release","rehearse","--phase","isolated-dogfood","--json"],
                     "environment":["CARGO_HOME","RUSTUP_HOME"],
                     "read_only":true,

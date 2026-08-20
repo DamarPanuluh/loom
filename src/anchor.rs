@@ -41,6 +41,9 @@ pub fn is_settling(state: &str) -> bool {
             | "failed"
             | "justified"
             | "rejected"
+            | "survived"
+            | "counterexample"
+            | "inconclusive"
             | "duplicate"
             | "deferred"
             | "resolved"
@@ -113,6 +116,10 @@ pub fn required_for(
              record that asked for it",
         ),
         Claim::Observation => Floor::new(Verification::Claimed, "cite the file:line you observed"),
+        Claim::Challenge => Floor::new(
+            Verification::Cited,
+            "cite where the adversarial attempt looked; Loom also snapshots the challenged verdict",
+        ),
     }
 }
 

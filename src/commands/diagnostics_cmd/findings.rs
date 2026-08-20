@@ -58,12 +58,12 @@ fn finding_add(graph: Option<&Path>, input: FindingAddInput, json: bool) -> Resu
         link,
     } = input;
     match source.as_str() {
-        "code_audit" | "wiki" | "validation" | "llm" => {}
+        "code_audit" | "adversarial_review" | "wiki" | "validation" | "llm" => {}
         "human" | "external" | "support" | "import" => {
             bail!("human/external input belongs in inbox; use loom door or loom inbox add")
         }
         "question" => bail!("product questions belong in loom question add"),
-        other => bail!("unknown finding source '{other}' (use code_audit|wiki|validation|llm)"),
+        other => bail!("unknown finding source '{other}' (use code_audit|adversarial_review|wiki|validation|llm)"),
     }
     for (field, value) in [
         ("text", text.as_str()),

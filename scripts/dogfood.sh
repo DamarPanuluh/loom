@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Exercise Loom against an isolated, journey-root graph.
 #
-# Schema v12 intentionally does not translate the repository's v11 graph:
+# Schema v12 intentionally did not translate the repository's v11 graph:
 # executable legacy journeys cannot supply the human-authored meaning required
 # by Journey roots.  The normal entry point therefore copies the worktree,
 # excluding .loom/, and only ever initializes/imports inside that copy.
 #
 # Usage:
-#   scripts/dogfood.sh          # safe fresh-v12 dogfood gate
+#   scripts/dogfood.sh          # safe fresh-v13 dogfood gate
 #   scripts/dogfood.sh --check  # same gate, suitable for CI/release
 #
 # `--fresh-in-place` is internal: check-fixpoint.sh calls it only after making
@@ -27,11 +27,11 @@ for arg in "$@"; do
       cat <<'EOF'
 usage: scripts/dogfood.sh [--check]
 
-Runs the Journey-root dogfood gate in an isolated fresh v12 worktree.
+Runs the Journey-root dogfood gate in an isolated fresh v13 worktree.
 `--check` is the CI/release form of the same gate.
 
 This gate checks cold-import integrity only. It does not climb the maturity
-ladder, execute Journey proofs, or persist a v12 graph. A passing run is not
+ladder, execute Journey proofs, or persist a v13 graph. A passing run is not
 graph-maturity green.
 EOF
       exit 0
@@ -79,7 +79,7 @@ fi
 
 cd "$ROOT"
 [ ! -e .loom ] || {
-  echo "dogfood: refusing existing .loom/; run the public command so it creates an isolated fresh v12 graph" >&2
+  echo "dogfood: refusing existing .loom/; run the public command so it creates an isolated fresh v13 graph" >&2
   exit 1
 }
 
@@ -90,11 +90,11 @@ cargo test --all-targets --quiet -- --test-threads=1
 cargo build --quiet
 B="$ROOT/target/debug/loom"
 
-echo "== fresh v12 graph =="
-# A v12 export is a reviewed dogfood fixture and may be restored into the
-# fresh store.  v1-v11 exports are deliberately ignored rather than imported:
-# the normal root export is currently v11 and has no valid Journey-root
-# translation.  An absent/old export starts the same honest cold graph.
+echo "== fresh v13 graph =="
+# A v13 export is a reviewed dogfood fixture and may be restored into the
+# fresh store. Older exports are deliberately ignored rather than imported:
+# the release gate proves the exact current schema rather than exercising a
+# migration path. An absent/old export starts the same honest cold graph.
 if [ -f loom.graph.json ]; then
   export_schema="$(python3 - loom.graph.json <<'PY'
 import json
@@ -109,32 +109,32 @@ else
   export_schema="missing"
 fi
 
-if $CHECK && [ "$export_schema" != "12" ]; then
-  echo "dogfood: --check requires a well-formed committed schema-v12 loom.graph.json (got $export_schema)" >&2
+if $CHECK && [ "$export_schema" != "13" ]; then
+  echo "dogfood: --check requires a well-formed committed schema-v13 loom.graph.json (got $export_schema)" >&2
   exit 1
 fi
 
 "$B" init . --name loom-dogfood >/dev/null
-if [ "$export_schema" = "12" ]; then
+if [ "$export_schema" = "13" ]; then
   "$B" import loom.graph.json >/dev/null
-  echo "dogfood: restored the committed v12 dogfood export into a fresh store"
+  echo "dogfood: restored the committed v13 dogfood export into a fresh store"
 else
   case "$export_schema" in
-    1|2|3|4|5|6|7|8|9|10|11)
+    1|2|3|4|5|6|7|8|9|10|11|12)
       echo "dogfood: not importing loom.graph.json (schema v$export_schema is legacy and remains untouched)" >&2
       ;;
     missing)
-      echo "dogfood: no v12 export found; starting a clean Journey-root graph" >&2
+      echo "dogfood: no v13 export found; starting a clean Journey-root graph" >&2
       ;;
     *)
-      echo "dogfood: loom.graph.json is not a usable v12 export ($export_schema); starting a clean Journey-root graph" >&2
+      echo "dogfood: loom.graph.json is not a usable v13 export ($export_schema); starting a clean Journey-root graph" >&2
       ;;
   esac
 fi
 
 schema="$($B status --json | python3 -c 'import json,sys; print(json.load(sys.stdin)["graph"]["schema_version"])')"
-[ "$schema" = "12" ] || {
-  echo "dogfood: expected a fresh schema-v12 graph, got v$schema" >&2
+[ "$schema" = "13" ] || {
+  echo "dogfood: expected a fresh schema-v13 graph, got v$schema" >&2
   exit 1
 }
 

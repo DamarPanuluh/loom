@@ -141,6 +141,11 @@ pub enum Command {
         #[command(subcommand)]
         cmd: EdgeCmd,
     },
+    /// Durable adversarial review attempts against exact edge-verdict revisions.
+    Challenge {
+        #[command(subcommand)]
+        cmd: ChallengeCmd,
+    },
     /// Capture a raw product utterance and route it toward an authored Journey root.
     Door { utterance: String },
     /// Inbox commands (the single free-form input boundary).
@@ -221,8 +226,8 @@ pub enum Command {
         #[command(subcommand)]
         cmd: ThresholdCmd,
     },
-    /// Read or set the evidence policy (review-confidence floor + human-gate
-    /// placement); persists to portable config, absent = shipped defaults.
+    /// Read or set the evidence policy (confidence floor, adversarial frontier,
+    /// and human-gate placement); persists to portable config.
     Policy {
         #[command(subcommand)]
         cmd: PolicyCmd,

@@ -242,7 +242,7 @@ impl Lane {
                     + c.stale_relationships
                     + c.uninspected_relationships
             }
-            Lane::Review => c.low_confidence,
+            Lane::Review => c.low_confidence + c.adversarial_review,
             Lane::Triage => c.triage_findings + c.inbox_new,
             Lane::Prove => c.proposed_hypotheses,
             Lane::Elaborate => c.open_elaborations,
@@ -317,7 +317,10 @@ impl Lane {
                 c.failing_exemplars,
                 c.open_research
             ),
-            Lane::Review => format!("{} verdict(s) below the review floor", c.low_confidence),
+            Lane::Review => format!(
+                "{} verdict(s) below the review floor, {} high-risk claim(s) awaiting adversarial challenge",
+                c.low_confidence, c.adversarial_review
+            ),
             Lane::Triage => format!(
                 "{} unjudged/stale finding(s), {} new inbox item(s)",
                 c.triage_findings, c.inbox_new
@@ -410,6 +413,7 @@ pub struct LadderInputs {
     pub unproven_implemented: usize,
     pub open_journey_proof_smells: usize,
     pub low_confidence: usize,
+    pub adversarial_review: usize,
     pub triage_findings: usize,
     pub inbox_new: usize,
     pub proposed_hypotheses: usize,

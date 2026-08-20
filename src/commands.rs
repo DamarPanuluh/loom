@@ -21,6 +21,7 @@ mod apply_cmd;
 mod audit_cmd;
 mod bootstrap_cmd;
 mod capture_cmd;
+mod challenge_cmd;
 mod checkpoint_cmd;
 mod codefile_cmd;
 mod context_cmd;
@@ -162,6 +163,7 @@ pub fn run(cli: Cli) -> Result<()> {
             }
         },
         Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd, cli.json),
+        Command::Challenge { cmd } => challenge_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Door { utterance } => misc_cmd::door(cli.graph.as_deref(), &utterance, cli.json),
         Command::Inbox { cmd } => misc_cmd::inbox(cli.graph.as_deref(), cmd, cli.json),
         Command::Question { cmd } => misc_cmd::question(cli.graph.as_deref(), cmd, cli.json),

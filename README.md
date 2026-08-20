@@ -203,7 +203,7 @@ Every lane owns exactly one maturity rung, and a rung is unmet **iff** its lane'
 | validate | `proven` | implemented behavior with no passing proof |
 | quality | `measured` | rules never measured against the code |
 | analyze | `inspected` | relationship claims nobody has judged |
-| review | `reviewed` | verdicts recorded below the confidence floor |
+| review | `reviewed` | verdicts recorded below the confidence floor; `loom challenge record` snapshots a green Verdict revision, and a counterexample becomes a Finding |
 | triage | `triaged` | findings awaiting a durable decision |
 | prove | `investigated` | hypotheses nobody has tested |
 | elaborate | `elaborated` | user-visible ideas only half-described |
@@ -243,6 +243,6 @@ MIT. See the `license` field in `Cargo.toml`.
 
 ## Status
 
-Pre-1.0. The on-disk graph is schema v12+ (Journey-root). Older SQLite graphs and exports are refused; there is no compatibility migration, because translating executable proof specs into authored meaning would fabricate product judgment. Rebuild with `loom init`, register code, use `loom bootstrap suggest` for repository clues, author `loom.journey/v1` roots, then `loom journey derive` and obtain the required human decisions.
+Pre-1.0. The on-disk graph is schema v13 (Journey-root plus adversarial-review Challenge facts). Older SQLite graphs and exports below v12 are refused; v12 graphs migrate on a write-open from a newer crate (or with `LOOM_SCHEMA_MIGRATE=1` for a same-crate bump). Rebuild pre-v12 graphs with `loom init`, register code, use `loom bootstrap suggest` for repository clues, author `loom.journey/v1` roots, then `loom journey derive` and obtain the required human decisions.
 
 Open work is tracked in the graph itself: `loom status --json` is the honest map.

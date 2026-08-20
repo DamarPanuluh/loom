@@ -501,6 +501,10 @@
       "mode": "regular"
     },
     {
+      "path": "src/commands/challenge_cmd.rs",
+      "mode": "regular"
+    },
+    {
       "path": "src/commands/checkpoint_cmd.rs",
       "mode": "regular"
     },
@@ -854,6 +858,10 @@
     },
     {
       "path": "src/research.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/review.rs",
       "mode": "regular"
     },
     {
@@ -1262,6 +1270,10 @@
     },
     {
       "path": "tests/ring63_proof_window_audit.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring64_adversarial_review.rs",
       "mode": "regular"
     },
     {

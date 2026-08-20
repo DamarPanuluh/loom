@@ -524,6 +524,38 @@ pub enum EdgeCmd {
 }
 
 #[derive(Subcommand, Debug)]
+pub enum ChallengeCmd {
+    /// Record one adversarial attempt against a pending high-risk edge claim.
+    Record {
+        edge: String,
+        /// survived | counterexample | inconclusive
+        outcome: String,
+        /// The concrete condition or attack expected to falsify the claim.
+        #[arg(long)]
+        hypothesis: String,
+        /// What was attempted and observed, including file:line or journal:id.
+        #[arg(long)]
+        evidence: String,
+        /// Consequence if the counterexample holds; required for counterexample.
+        #[arg(long)]
+        impact: Option<String>,
+        #[arg(long, default_value_t = 0.8)]
+        confidence: f64,
+    },
+    /// Show the current challenge for one edge.
+    Show { edge: String },
+    /// List current and historical challenge facts.
+    List {
+        #[arg(long)]
+        state: Option<String>,
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+        #[arg(long, default_value_t = 0)]
+        offset: usize,
+    },
+}
+
+#[derive(Subcommand, Debug)]
 pub enum InboxCmd {
     /// Capture raw input.
     Add {
@@ -1348,6 +1380,9 @@ pub enum PolicyCmd {
         /// The new floor: verdicts strictly below it route to review.
         value: f64,
     },
+    /// Set the bounded adversarial-review frontier. Zero disables it; the
+    /// shipped default is five and the maximum is one hundred.
+    SetAdversarialFrontier { value: usize },
     /// Add an owner lane to the human-gated set (builder | analyzer | fixer |
     /// validator | quality).
     GateAdd {

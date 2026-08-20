@@ -78,7 +78,7 @@
               "type": "string"
             },
             {
-              "equals": "0aef592bec52e638",
+              "equals": "5465c542abeb129e",
               "id": "isolated_dogfood-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string"
@@ -202,8 +202,8 @@
               "type": "json"
             },
             {
-              "equals": 12,
-              "id": "isolated_dogfood-schema-v12",
+              "equals": 13,
+              "id": "isolated_dogfood-schema-v13",
               "pointer": "/graph/schema_version",
               "type": "integer"
             },
@@ -448,7 +448,7 @@
           "format": "json"
         },
         "read_only": true,
-        "summary": "Verify the exact candidate in one detached fresh-v12 graph"
+        "summary": "Verify the exact candidate in one detached fresh-v13 graph"
       },
       {
         "arguments": [],
@@ -498,7 +498,7 @@
               "type": "string"
             },
             {
-              "equals": "0aef592bec52e638",
+              "equals": "5465c542abeb129e",
               "id": "fresh_fixpoint-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string"
@@ -622,8 +622,8 @@
               "type": "json"
             },
             {
-              "equals": 12,
-              "id": "fresh_fixpoint-schema-v12",
+              "equals": 13,
+              "id": "fresh_fixpoint-schema-v13",
               "pointer": "/graph/schema_version",
               "type": "integer"
             },
@@ -954,7 +954,7 @@
               "type": "string"
             },
             {
-              "equals": "0aef592bec52e638",
+              "equals": "5465c542abeb129e",
               "id": "gated_preparation-inventory-hash",
               "pointer": "/source_inventory/manifest_hash",
               "type": "string"
@@ -1078,8 +1078,8 @@
               "type": "json"
             },
             {
-              "equals": 12,
-              "id": "gated_preparation-schema-v12",
+              "equals": 13,
+              "id": "gated_preparation-schema-v13",
               "pointer": "/graph/schema_version",
               "type": "integer"
             },
