@@ -1,6 +1,6 @@
 # loom v2 — Build Plan
 
-Status: canonical, with the MVP rings (1–7) **shipped** and the sequencing continued past this plan: rings 8–12 (findings triage, review queue + work packets, sensors + Definition-of-Complete, grounding roles, apply-batch + federation — see the addendum at the end and `CHANGELOG.md`) landed after ring 7, and most of "Milestone 2" shipped with them. The ring definitions below are kept as the record of what each ring was required to prove; `commands.md` and the compiled `--help` describe the current surface.
+**Status:** archive. Historical record of MVP ring sequencing. Rings 1–7 **shipped** and the sequencing continued past this plan: rings 8–12 (findings triage, review queue + work packets, sensors + Definition-of-Complete, grounding roles, apply-batch + federation — see the addendum at the end and `CHANGELOG.md`) landed after ring 7, and most of "Milestone 2" shipped with them. The ring definitions below are kept as the record of what each ring was required to prove; `commands.md` and the compiled `--help` describe the current surface.
 
 ---
 

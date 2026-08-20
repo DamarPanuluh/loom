@@ -1,6 +1,6 @@
 # loom v2 terminology
 
-Status: canonical draft. This document promotes stable language from `docs/scratchpad.md` into terminology the code, CLI, prompt contracts, and future docs should use. Prefer these terms in new design docs. Conversation aliases are listed so they can be translated rather than copied forward.
+Status: canonical draft. Prefer these terms in the CLI, prompt contracts, and living docs. Conversation aliases are listed so they can be translated rather than copied forward. `docs/scratchpad.md` is archive, not the source of new terms.
 
 ## Purpose
 

@@ -929,8 +929,8 @@ fn ensure_supported_persisted_schema(conn: &Connection) -> Result<()> {
         if version > SCHEMA_VERSION {
             bail!(
                 "this graph is v{version}; this loom understands v{SCHEMA_VERSION}. \
-                 It was written by a newer loom — upgrade this one \
-                 (`cargo install --path .`). The graph is untouched."
+                 It was written by a newer loom — upgrade this binary (see README). \
+                 The graph is untouched."
             );
         }
     }

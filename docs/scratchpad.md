@@ -1,6 +1,8 @@
 # loom v2 scratchpad consolidation
 
-This file is the staging area before writing the real docs. It intentionally consolidates `design.md` plus working discussion notes so design ideas are not lost while the model is still moving.
+**Status:** archive. Not current operator documentation and not the design inbox. Kept as a working log so history is not lost. The shipped contract is the compiled CLI plus `docs/README.md`.
+
+This file consolidates `design.md` plus working discussion notes from the rebuild.
 
 ---
 
