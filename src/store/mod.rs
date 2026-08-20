@@ -1625,6 +1625,10 @@ mod tests {
             .conn
             .execute("UPDATE meta SET value='12' WHERE key='schema_version'", [])
             .unwrap();
+        // Simulate a real release upgrade (crate 0.34.0 → 0.34.1), not a
+        // same-crate feature-branch leak. Same-crate 12→13 is refused below.
+        store.set_meta(WRITER_VERSION_KEY, "0.34.0").unwrap();
+        store.set_meta(WRITER_SCHEMA_KEY, "12").unwrap();
         drop(store);
 
         let read_error = match Store::open_read(tmp.path()) {
@@ -1671,6 +1675,36 @@ mod tests {
             })
             .unwrap();
         assert_eq!(fk_issues, 0);
+    }
+
+    #[test]
+    fn v12_store_refuses_same_crate_migrate_without_consent() {
+        let tmp = TmpRoot::new("loom-store-v12-same-crate-consent");
+        let store = Store::init(tmp.path(), Some("v12-consent"), false).unwrap();
+        store
+            .conn
+            .pragma_update(None, "user_version", 12u32)
+            .unwrap();
+        store
+            .conn
+            .execute("UPDATE meta SET value='12' WHERE key='schema_version'", [])
+            .unwrap();
+        drop(store);
+
+        let error = match Store::open(tmp.path()) {
+            Ok(_) => panic!("same-crate 12→13 must not migrate in place"),
+            Err(error) => error.to_string(),
+        };
+        assert!(
+            error.contains("LOOM_SCHEMA_MIGRATE"),
+            "refusal must name the consent flag: {error}"
+        );
+        let conn = Connection::open(tmp.path().join(LOOM_DIR).join(GRAPH_DB)).unwrap();
+        assert_eq!(
+            sqlite_user_version(&conn),
+            12,
+            "refused migration must leave the graph untouched"
+        );
     }
 
     #[test]
