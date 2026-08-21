@@ -8,6 +8,9 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.35.1] - 2026-08-21
+- route needed findings to the lane that can write the named repair
+
 ## [0.35.0] - 2026-08-21
 - schema v13 adversarial review: Challenge facts, and v12 graphs migrate on this crate bump
 

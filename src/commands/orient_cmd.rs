@@ -534,7 +534,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     crate::truth::TruthAxis::Verdict,
                 ),
                 "fixer" => (
-                    "Use Loom first to understand the stale/failing criterion, linked entities, likely files, and prior evidence; then inspect relevant code before repairing the root cause. The fix lane serves both failing claims and findings judged `needed` — `loom next --mode fix` deals them; a repaired needed finding reopens through its adjudication stamp and triage records the resolved verdict. Do not record verdicts yourself.",
+                    "Use Loom first to understand the stale/failing criterion, linked entities, likely files, and prior evidence; then inspect relevant code before repairing the root cause. The fix lane serves failing claims and `needed` findings whose named repair is a code edit. Proof-rerun needed findings go to validate; undeclared-coupling needed findings go to analyze. A repaired needed finding reopens through its adjudication stamp and triage records the resolved verdict. Do not record verdicts yourself.",
                     "loom status; loom next --all; loom edge show <edge_id>; loom intent show <linked intent>; loom codefile show <file>; edit code; loom sync; loom edge implement / loom edge retarget (re-ground if the fix moved code); loom finding list --state needed",
                     "suppress the symptom; record the passing verdict from the fixer hat",
                     crate::truth::TruthAxis::Implementation,

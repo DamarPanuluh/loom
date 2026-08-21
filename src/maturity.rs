@@ -253,6 +253,18 @@ impl LadderInputs {
             None
         };
 
+        let needed = crate::signal::needed_findings(store)?;
+        let mut needed_findings = 0;
+        let mut needed_proof_findings = 0;
+        let mut needed_coupling_findings = 0;
+        for fv in &needed {
+            match crate::workitem::needed_finding_repair_lane(&fv.node) {
+                crate::lane::Lane::Validate => needed_proof_findings += 1,
+                crate::lane::Lane::Analyze => needed_coupling_findings += 1,
+                _ => needed_findings += 1,
+            }
+        }
+
         Ok(LadderInputs {
             observed: identity.observed,
             authored_journeys,
@@ -267,7 +279,9 @@ impl LadderInputs {
             ungrounded: crate::workitem::ungrounded_implemented_intents(store)?.len(),
             unowned_codefiles: crate::coverage::unowned_codefiles(store)?.len(),
             failing,
-            needed_findings: crate::signal::needed_findings(store)?.len(),
+            needed_findings,
+            needed_proof_findings,
+            needed_coupling_findings,
             derive_gaps,
             surface_gaps,
             failing_exemplars,

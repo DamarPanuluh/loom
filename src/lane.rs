@@ -216,10 +216,9 @@ impl Lane {
         match self {
             Lane::Seed => usize::from(c.authored_journeys == 0),
             // Repair demand has two doors: a failing claim, and a finding a
-            // triager already adjudicated `needed`. Both are routed work; a
-            // `needed` verdict nobody serves is a decision that silently
-            // expires (observed 2026-08-17: 30 needed architecture findings
-            // with no autonomous repair lane).
+            // triager already adjudicated `needed` whose named repair is a
+            // code edit. Proof-rerun and undeclared-coupling `needed`
+            // findings write other lanes' facts and are counted there.
             Lane::Fix => c.failing + c.needed_findings,
             Lane::Derive => c.derive_gaps,
             Lane::Build => c.planned + c.ungrounded,
@@ -229,7 +228,7 @@ impl Lane {
             // serves an implemented intent that has no registered proof at all;
             // before the unification the compass pointed here and the lane
             // returned nothing.
-            Lane::Validate => c.validation_work_units,
+            Lane::Validate => c.validation_work_units + c.needed_proof_findings,
             Lane::Quality => {
                 c.stale_governs
                     + c.uninspected_governs
@@ -241,6 +240,7 @@ impl Lane {
                     + c.open_research
                     + c.stale_relationships
                     + c.uninspected_relationships
+                    + c.needed_coupling_findings
             }
             Lane::Review => c.low_confidence + c.adversarial_review,
             Lane::Triage => c.triage_findings + c.inbox_new,
@@ -260,7 +260,7 @@ impl Lane {
         match self {
             Lane::Seed => format!("{} authored journey(s)", c.authored_journeys),
             Lane::Fix => format!(
-                "{} failing claim(s), {} adjudicated-needed finding(s)",
+                "{} failing claim(s), {} adjudicated-needed code-repair finding(s)",
                 c.failing, c.needed_findings
             ),
             Lane::Derive => format!(
@@ -278,7 +278,8 @@ impl Lane {
             Lane::Coverage => format!("{} unowned codefile(s)", c.unowned_codefiles),
             Lane::Validate => format!(
                 "{} registered: {} passed, {} failed, {} blocked, {} not_run, \
-                 {} unproven implemented intent(s), {} unrun/stale proof edge(s){}",
+                 {} unproven implemented intent(s), {} unrun/stale proof edge(s), \
+                 {} needed proof finding(s){}",
                 c.validations.registered,
                 c.validations.passed,
                 c.validations.failed,
@@ -286,6 +287,7 @@ impl Lane {
                 c.validations.not_run,
                 c.unproven_implemented,
                 c.stale_validates + c.uninspected_validates,
+                c.needed_proof_findings,
                 if c.open_journey_proof_smells > 0 {
                     format!(", {} journey proof gap(s)", c.open_journey_proof_smells)
                 } else {
@@ -311,11 +313,13 @@ impl Lane {
             }
             Lane::Analyze => format!(
                 "{} stale, {} uninspected relationship claim(s), \
-                 {} failing exemplar(s), {} open research question(s)",
+                 {} failing exemplar(s), {} open research question(s), \
+                 {} needed coupling finding(s)",
                 c.stale_relationships,
                 c.uninspected_relationships,
                 c.failing_exemplars,
-                c.open_research
+                c.open_research,
+                c.needed_coupling_findings
             ),
             Lane::Review => format!(
                 "{} verdict(s) below the review floor, {} high-risk claim(s) awaiting adversarial challenge",
@@ -386,9 +390,14 @@ pub struct LadderInputs {
     pub ungrounded: usize,
     pub unowned_codefiles: usize,
     pub failing: usize,
-    /// Findings adjudicated `needed` and not stale — the fix lane's second
-    /// intake beside failing claims.
+    /// Findings adjudicated `needed` whose named repair is a code edit —
+    /// the fix lane's second intake beside failing claims. Proof-rerun and
+    /// undeclared-coupling `needed` findings are counted on validate/analyze.
     pub needed_findings: usize,
+    /// `needed` findings whose named repair is a journey/validation proof run.
+    pub needed_proof_findings: usize,
+    /// `needed` findings whose named repair is recording a `relates` edge.
+    pub needed_coupling_findings: usize,
     pub derive_gaps: usize,
     pub surface_gaps: usize,
     pub failing_exemplars: usize,

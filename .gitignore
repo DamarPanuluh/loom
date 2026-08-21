@@ -1,5 +1,6 @@
 /target
 .loom/
+.cursor/
 .reasonix/
 .qoder/
 .claude/settings.local.json

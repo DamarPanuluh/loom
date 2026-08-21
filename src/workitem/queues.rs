@@ -10,15 +10,17 @@ use super::context::{edge_context, node_context};
 use super::contracts::{
     adversarial_reviewer_contract, analyzer_contract, builder_contract, coverage_contract,
     derive_contract, elaborator_contract, exemplar_contract, fixer_contract, inbox_triage_contract,
-    journey_proof_contract, journey_proof_contract_for_profile, needed_finding_fix_contract,
-    prove_contract, quality_contract, quality_contract_body, ratify_contract, rectify_contract,
-    research_contract, reviewer_contract, structural_finding_triage_contract, surface_contract,
-    triage_contract, unproven_contract, validator_contract,
+    journey_proof_contract, journey_proof_contract_for_profile, needed_finding_analyze_contract,
+    needed_finding_fix_contract, needed_finding_validate_contract, prove_contract,
+    quality_contract, quality_contract_body, ratify_contract, rectify_contract, research_contract,
+    reviewer_contract, structural_finding_triage_contract, surface_contract, triage_contract,
+    unproven_contract, validator_contract,
 };
 use super::{
     axis_for_role, cause_class, effort_for, node_target, rank_lifecycle, LinkedEntity,
     SuggestedRead, Target, TraversalContext, WorkItem,
 };
+use crate::lane::Lane;
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType, TargetKind};
 use crate::store::Store;
 use crate::Result;
@@ -417,50 +419,115 @@ pub(super) fn fix_item(store: &Store) -> Result<Option<WorkItem>> {
             "failing verdict — repair at root cause",
         )?));
     }
-    // Second intake: findings a triager adjudicated `needed` — a routed
-    // demand for a repair that previously no lane served (the fixer guide
-    // said "consult loom finding list --state needed" but the router never
-    // dealt the work). Failing claims outrank them: a red claim misleads
-    // every reader, a needed finding only waits.
-    if let Some(fv) = crate::signal::needed_findings(store)?.into_iter().next() {
+    // Second intake: findings a triager adjudicated `needed` whose named
+    // repair is a code edit. Proof-rerun and undeclared-coupling findings
+    // write other lanes' facts, so they are served there — a packet that
+    // names a write its owner_role cannot execute is the INV-7 rejection
+    // a drain worker hit on 2026-08-21.
+    if let Some(fv) = needed_findings_for(store, Lane::Fix)?.into_iter().next() {
         return Ok(Some(needed_finding_work(store, &fv)?));
     }
     Ok(None)
 }
 
-/// A fix packet for a finding adjudicated `needed`. The repair loop closes
-/// through existing machinery: the fixer edits the cited code and syncs; the
-/// content-hash stamp on the open adjudication then goes stale, the finding
-/// re-enters triage, and the analyzer records `resolved` from the observed
-/// repair — so this packet carries no adjudication authority at all.
+/// Lane that can perform the named repair of a `needed` finding.
+///
+/// The serve path, the roster, and the ladder depth all go through this
+/// predicate so a packet never names a write its `owner_role` cannot execute
+/// (`analyze_serves` is the same pattern for compiler-owned proof edges).
+pub(crate) fn needed_finding_repair_lane(node: &Node) -> Lane {
+    match finding_kind_name(node) {
+        "proof_too_shallow_for_intent" | "missing_journey_proof" | "shared_proof_command" => {
+            Lane::Validate
+        }
+        "undeclared_coupling" => Lane::Analyze,
+        _ => Lane::Fix,
+    }
+}
+
+fn needed_findings_for(store: &Store, lane: Lane) -> Result<Vec<crate::signal::FindingView>> {
+    Ok(crate::signal::needed_findings(store)?
+        .into_iter()
+        .filter(|fv| needed_finding_repair_lane(&fv.node) == lane)
+        .collect())
+}
+
+fn push_needed_finding_entries(store: &Store, lane: Lane, out: &mut Vec<QueueEntry>) -> Result<()> {
+    let effort = if lane == Lane::Validate {
+        "high"
+    } else {
+        "mid"
+    };
+    for fv in needed_findings_for(store, lane)? {
+        out.push(node_entry(
+            lane.as_str(),
+            effort,
+            &fv.node,
+            format!(
+                "adjudicated needed — repair at root cause: {}",
+                fv.reason.trim()
+            ),
+        ));
+    }
+    Ok(())
+}
+
+/// A `needed` finding packet on the lane that owns the named repair.
+/// The repair loop still closes through existing machinery: the write (code
+/// edit, proof run, or relates edge) plus sync; the detector drops or stales
+/// the finding; triage records `resolved` if it remains.
 fn needed_finding_work(store: &Store, fv: &crate::signal::FindingView) -> Result<WorkItem> {
+    let id = crate::model::short(&fv.node.id);
+    let lane = needed_finding_repair_lane(&fv.node);
     let reason = format!(
         "adjudicated needed — repair at root cause: {}",
         fv.reason.trim()
     );
+    let (mode, owner_role, effort, contract, truth_gap, context_note, next_step) = match lane {
+        Lane::Validate => (
+            "validate",
+            "validator",
+            "high",
+            needed_finding_validate_contract(id),
+            crate::truth::TruthAxis::Proof.gap(),
+            "Compile and run the current Journey proof profile (or register and run a validation). Do not edit code to make the proof pass.",
+            "after the proof run, return to loom status — the detector drops this finding when an S3-or-stronger proof holds",
+        ),
+        Lane::Analyze => (
+            "analyze",
+            "analyzer",
+            "mid",
+            needed_finding_analyze_contract(id),
+            crate::truth::TruthAxis::Verdict.gap(),
+            "Record the missing relationship between the owning intents; do not edit production code.",
+            "after recording the relates edge and syncing, return to loom status",
+        ),
+        _ => (
+            "fix",
+            "fixer",
+            "mid",
+            needed_finding_fix_contract(id, fv.node.body.get("file").and_then(|v| v.as_str())),
+            crate::truth::TruthAxis::Implementation.gap(),
+            "Read the finding's evidence and the cited code before repairing; the triager's reason says what to do, the evidence says where.",
+            "after the repair + sync, return to loom status — the reopened finding routes to triage for its resolved verdict",
+        ),
+    };
     Ok(WorkItem {
         packet_id: None,
         pattern_guidance: None,
         review: None,
-        mode: "fix".into(),
-        owner_role: "fixer".into(),
-        effort: "mid".into(),
+        mode: mode.into(),
+        owner_role: owner_role.into(),
+        effort: effort.into(),
         routing_hint: super::hint_judgment(),
         reason,
         target: node_target(&fv.node),
         stale_causes: Vec::new(),
-        prompt_contract: needed_finding_fix_contract(
-            crate::model::short(&fv.node.id),
-            fv.node.body.get("file").and_then(|v| v.as_str()),
-        ),
-        context: node_context(
-            store,
-            &fv.node,
-            "Read the finding's evidence and the cited code before repairing; the triager's reason says what to do, the evidence says where.",
-        )?,
+        prompt_contract: contract,
+        context: node_context(store, &fv.node, context_note)?,
         scorecard: None,
-        truth_gap: crate::truth::TruthAxis::Implementation.gap(),
-        next_step: "after the repair + sync, return to loom status — the reopened finding routes to triage for its resolved verdict".into(),
+        truth_gap,
+        next_step: next_step.into(),
     })
 }
 
@@ -520,6 +587,12 @@ pub(super) fn analyze_item(store: &Store) -> Result<Option<WorkItem>> {
             owner,
             "uninspected claim — inspect the code and record a verdict",
         )?));
+    }
+    if let Some(fv) = needed_findings_for(store, Lane::Analyze)?
+        .into_iter()
+        .next()
+    {
+        return Ok(Some(needed_finding_work(store, &fv)?));
     }
     Ok(None)
 }
@@ -847,10 +920,8 @@ fn unmeasured_pair_item(store: &Store) -> Result<Option<WorkItem>> {
 }
 
 pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
-    let Some(unit) = validation_work_units(store)?.into_iter().next() else {
-        return Ok(None);
-    };
-    match unit {
+    if let Some(unit) = validation_work_units(store)?.into_iter().next() {
+        return match unit {
         ValidationWorkUnit::JourneyValidation {
             journey, profile, ..
         } => Ok(Some(WorkItem {
@@ -960,7 +1031,15 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
             next_step: "after the proof runs, run `loom status`".into(),
             }))
         }
+        };
     }
+    if let Some(fv) = needed_findings_for(store, Lane::Validate)?
+        .into_iter()
+        .next()
+    {
+        return Ok(Some(needed_finding_work(store, &fv)?));
+    }
+    Ok(None)
 }
 
 /// One exact unit of Validate work. Compiler-created validations are keyed by
@@ -1199,15 +1278,18 @@ pub(super) fn prove_item(store: &Store) -> Result<Option<WorkItem>> {
     }))
 }
 
+fn finding_kind_name(node: &crate::model::Node) -> &str {
+    node.body
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or(node.status.as_str())
+}
+
 /// Structural detectors (size/complexity) need cohesion judgment — never a
 /// mechanical "length is intentional" closeout. Smells and inbox stay on the
 /// generic triage contract; only these kinds get the cohesion checklist.
 fn is_structural_size_finding(node: &crate::model::Node) -> bool {
-    let kind = node
-        .body
-        .get("kind")
-        .and_then(|v| v.as_str())
-        .unwrap_or(node.status.as_str());
+    let kind = finding_kind_name(node);
     matches!(
         kind,
         "oversized_file"
@@ -1697,7 +1779,10 @@ fn node_entry(mode: &str, effort: &str, node: &Node, reason: String) -> QueueEnt
     // Node rows: the mode's serving lane (mirrors each *_item's owner_role).
     let owner_role = match mode {
         "derive" | "build" | "surface" | "coverage" | "elaborate" => Some("builder".into()),
-        "triage" | "prove" => Some("analyzer".into()),
+        "triage" | "prove" | "analyze" => Some("analyzer".into()),
+        "fix" => Some("fixer".into()),
+        "validate" => Some("validator".into()),
+        "quality" => Some("quality".into()),
         "rectify" => Some("rectify".into()),
         "ratify" => Some("human".into()),
         _ => None,
@@ -2001,17 +2086,7 @@ fn roster_fix(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
             "failing verdict — repair at root cause",
         )?);
     }
-    for fv in crate::signal::needed_findings(store)? {
-        out.push(node_entry(
-            "fix",
-            "mid",
-            &fv.node,
-            format!(
-                "adjudicated needed — repair at root cause: {}",
-                fv.reason.trim()
-            ),
-        ));
-    }
+    push_needed_finding_entries(store, Lane::Fix, out)?;
     Ok(())
 }
 
@@ -2065,6 +2140,7 @@ fn roster_analyze(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
             "uninspected claim — inspect the code and record a verdict",
         )?);
     }
+    push_needed_finding_entries(store, Lane::Analyze, out)?;
     Ok(())
 }
 
@@ -2118,6 +2194,7 @@ fn roster_validate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
             }
         }
     }
+    push_needed_finding_entries(store, Lane::Validate, out)?;
     Ok(())
 }
 

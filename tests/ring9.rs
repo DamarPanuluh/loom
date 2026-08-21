@@ -1829,3 +1829,105 @@ fn guide_json_intake_uses_hardcut_entry_points() {
         assert!(closeout.iter().any(|command| command == required));
     }
 }
+
+fn needed_finding(store: &Store, kind: &str, name: &str, reason: &str) -> loom::model::Node {
+    let finding = store
+        .add_derived_node(
+            NodeType::Finding,
+            &format!("{kind}:repro"),
+            name,
+            "detector remedy",
+            kind,
+            serde_json::json!({ "kind": kind, "category": "smell", "identity": format!("{kind}:repro") }),
+        )
+        .unwrap();
+    store
+        .record_finding_verdict(&finding.id, "needed", reason, "")
+        .unwrap();
+    finding
+}
+
+/// Reproduction: a `needed` finding whose named repair writes another lane's
+/// facts must not be served as fixer work. This test records what the router
+/// currently does for three kinds so the misroute is visible in runtime logs.
+#[test]
+fn needed_finding_packets_name_a_writable_owner() {
+    let mut observed = Vec::new();
+    for (kind, reason, expected_role) in [
+        (
+            "proof_too_shallow_for_intent",
+            "Compile and run the current rakan.erase-an-end-user proof profile",
+            "validator",
+        ),
+        (
+            "undeclared_coupling",
+            "record a relates edge between the owning intents",
+            "analyzer",
+        ),
+        (
+            "oversized_file",
+            "split src/x.rs along the named seam",
+            "fixer",
+        ),
+    ] {
+        let tmp = Tmp::new();
+        let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+        needed_finding(&store, kind, kind, reason);
+
+        let _ = workitem::queue_items(&store, Lane::Fix).unwrap();
+        let fix = workitem::next(&store, Some(Lane::Fix)).unwrap();
+        let validate = workitem::next(&store, Some(Lane::Validate)).unwrap();
+        let analyze = workitem::next(&store, Some(Lane::Analyze)).unwrap();
+        let served_role = fix
+            .as_ref()
+            .map(|item| item.owner_role.as_str())
+            .or_else(|| validate.as_ref().map(|item| item.owner_role.as_str()))
+            .or_else(|| analyze.as_ref().map(|item| item.owner_role.as_str()))
+            .unwrap_or("none")
+            .to_string();
+        observed.push((
+            kind,
+            expected_role,
+            served_role,
+            fix.as_ref().map(|i| (i.mode.clone(), i.owner_role.clone())),
+            validate
+                .as_ref()
+                .map(|i| (i.mode.clone(), i.owner_role.clone())),
+            analyze
+                .as_ref()
+                .map(|i| (i.mode.clone(), i.owner_role.clone())),
+        ));
+        if expected_role == "validator" {
+            let item = validate.expect("needed proof finding must be served by validate");
+            assert_eq!(item.prompt_contract.role, "validator");
+            assert!(
+                item.prompt_contract
+                    .allowed_actions
+                    .iter()
+                    .any(|a| a.contains("journey compile") || a.contains("journey run")),
+                "validator packet must allow journey compile/run"
+            );
+            assert!(fix.is_none(), "needed proof finding must not occupy fix");
+        }
+        if expected_role == "analyzer" {
+            let item = analyze.expect("needed coupling finding must be served by analyze");
+            assert_eq!(item.prompt_contract.role, "analyzer");
+            assert!(
+                item.prompt_contract
+                    .allowed_actions
+                    .iter()
+                    .any(|a| a.contains("edge relate")),
+                "analyzer packet must allow edge relate"
+            );
+            assert!(fix.is_none(), "needed coupling finding must not occupy fix");
+        }
+    }
+    let mismatches: Vec<_> = observed
+        .iter()
+        .filter(|(_, expected, served, _, _, _)| served != expected)
+        .collect();
+    assert!(
+        mismatches.is_empty(),
+        "needed findings must be served by the lane that can write the named repair: {mismatches:?}"
+    );
+}

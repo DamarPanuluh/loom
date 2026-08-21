@@ -14,6 +14,7 @@ use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 pub(crate) use queues::analyze_serves;
+pub(crate) use queues::needed_finding_repair_lane;
 pub(crate) use queues::ungrounded_implemented_intents;
 pub(crate) use queues::unmeasured_quality_pairs;
 pub(crate) use queues::unproven_implemented_intents;
@@ -474,7 +475,14 @@ pub(crate) fn closure_problem(item: &WorkItem) -> Option<String> {
     // code; audit re-reads the record), not a write keyed by the target id —
     // their uniform closeout names the runnable command without a target
     // argument. Graph-wide subjects have no target id to accept.
-    if STATE_CLOSED.contains(&item.mode.as_str()) || item.target.kind == "graph" {
+    // Needed-finding packets on validate/analyze are the same shape: the
+    // graph write is keyed by a journey or intent pair, then sync/the
+    // detector drops the finding. The finding id is the packet subject, not
+    // the write key.
+    if STATE_CLOSED.contains(&item.mode.as_str())
+        || item.target.kind == "graph"
+        || (item.target.kind == "finding" && matches!(item.mode.as_str(), "validate" | "analyze"))
+    {
         return None;
     }
     // The closure command must accept the packet's own target. Commands carry
@@ -956,6 +964,26 @@ mod tests {
             "fix per the remedy, then loom audit --json",
         );
         assert_eq!(closure_problem(&it), None);
+    }
+
+    #[test]
+    fn needed_finding_validate_and_analyze_close_without_naming_the_finding() {
+        let validate = item(
+            "validate",
+            "finding",
+            "abc123def456",
+            "proof_too_shallow_for_intent",
+            "loom journey compile <journey> --profile proof; loom journey run <journey> --profile proof",
+        );
+        assert_eq!(closure_problem(&validate), None);
+        let analyze = item(
+            "analyze",
+            "finding",
+            "abc123def456",
+            "undeclared_coupling",
+            "loom edge relate relates <intent-a> <intent-b>; loom sync",
+        );
+        assert_eq!(closure_problem(&analyze), None);
     }
 
     #[test]

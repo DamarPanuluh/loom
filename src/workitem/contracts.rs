@@ -631,6 +631,90 @@ pub(super) fn needed_finding_fix_contract(id: &str, file: Option<&str>) -> Promp
     }
 }
 
+/// A `needed` finding whose named repair writes validator-owned facts
+/// (`journey compile/run`, `validation add/run`). Served on the validate lane
+/// so the packet's owner can actually perform the write.
+pub(super) fn needed_finding_validate_contract(id: &str) -> PromptContract {
+    PromptContract {
+        role: "validator".into(),
+        mindset: "A triager already judged this finding `needed`: the named repair is a proof \
+                  run, not a code edit. Compile and run the current Journey proof profile (or \
+                  register and run a validation if no Journey exists). Do not edit code to make \
+                  the proof pass. After a passing S3-or-stronger run, return to status — the \
+                  detector drops the finding when the proof holds."
+            .into(),
+        why_now: "an adjudicated-needed proof-depth finding is validate work; serving it to fixer \
+                  names a write the lane gate refuses"
+            .into(),
+        allowed_actions: vec![
+            format!("loom finding list --state needed"),
+            "loom journey compile <journey> --profile proof".into(),
+            "loom journey run <journey> --profile proof".into(),
+            "loom validation add --name '<what it proves>' --type test --command '<cmd>' --intent <intent> then loom validation run <name>".into(),
+            FINDING_ADD_ACTION.into(),
+        ],
+        forbidden_actions: vec![
+            "editing source code to make the proof pass".into(),
+            format!(
+                "loom finding verdict {id} resolved — the detector drops this finding when the proof holds; do not self-adjudicate"
+            ),
+            NON_BLOCKING_SMELL_RULE.into(),
+        ],
+        evidence_clauses: vec![
+            EvidenceClause::CitesRun,
+            EvidenceClause::ProofStrengthAtLeast { grade: "S3".into() },
+        ],
+        required_evidence: "the proof run Loom performed, including exit status/output".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screen: None,
+        pre_screened_hits: Vec::new(),
+        write_back: "loom journey compile <journey> --profile proof; loom journey run <journey> --profile proof".into(),
+        stop_condition: "stop when the named intent has a passing S3-or-stronger journey proof, or when Loom records the honest failure; then return to loom status".into(),
+        human_gate: None,
+    }
+}
+
+/// A `needed` finding whose named repair writes analyzer-owned facts
+/// (`relates`). Served on the analyze lane so the packet's owner can record
+/// the missing relationship.
+pub(super) fn needed_finding_analyze_contract(id: &str) -> PromptContract {
+    PromptContract {
+        role: "analyzer".into(),
+        mindset: "A triager already judged this finding `needed`: the named repair is recording \
+                  the missing relationship, not editing production code. Read the owning intents, \
+                  then record a `relates` edge (or explore an existing pair). After the write, \
+                  sync so the detector can drop the coupling smell."
+            .into(),
+        why_now: "an adjudicated-needed undeclared-coupling finding is analyze work; serving it \
+                  to fixer names a write the lane gate refuses"
+            .into(),
+        allowed_actions: vec![
+            format!("loom finding list --state needed"),
+            "loom edge relate relates <intent-a> <intent-b>".into(),
+            "loom edge explore <intent-a> <intent-b> ground --criterion '…' --evidence 'file:line — …' --confidence <0.0-1.0>".into(),
+            "loom sync".into(),
+            FINDING_ADD_ACTION.into(),
+        ],
+        forbidden_actions: vec![
+            "edit code".into(),
+            format!(
+                "loom finding verdict {id} resolved — sync drops the smell once the relationship exists; do not self-adjudicate"
+            ),
+            NON_BLOCKING_SMELL_RULE.into(),
+        ],
+        evidence_clauses: vec![EvidenceClause::CitesSpans { n: 1 }],
+        required_evidence: "the owning intents read, the relates edge recorded (or an honest independent verdict on explore)".into(),
+        evidence_template: None,
+        examples: None,
+        pre_screen: None,
+        pre_screened_hits: Vec::new(),
+        write_back: "loom edge relate relates <intent-a> <intent-b>; loom sync".into(),
+        stop_condition: "after recording the relationship and syncing, return to loom status".into(),
+        human_gate: None,
+    }
+}
+
 pub(super) fn quality_contract(
     store: &Store,
     edge: &Edge,
