@@ -8,6 +8,9 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.35.4] - 2026-08-22
+- publish the apply batch contract: loom apply --schema, schema --json apply_batch, MCP fragment schema from one derived ApplyTx source; parse failures teach the shape
+
 ## [0.35.3] - 2026-08-21
 - route not-compile-ready journeys back to the derive/build lanes instead of serving them to validate forever (finding 77eaab45)
 
