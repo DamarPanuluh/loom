@@ -56,7 +56,7 @@ pub(crate) use context_cmd::served_context;
 pub(crate) use diagnostics_cmd::impact_report;
 // The honest way to make a proof true: let loom run it. Public so callers other
 // than the CLI — absorb, fixtures — take the same path rather than a seam.
-pub(crate) use apply_cmd::apply_value;
+pub use apply_cmd::{apply_value, batch_schema};
 pub(crate) use proof_cmd::observe_run;
 pub use proof_cmd::{observe_validation, prove_intent};
 pub(crate) use status_cmd::{next_output, status_value};
@@ -117,7 +117,19 @@ pub fn run(cli: Cli) -> Result<()> {
             file,
             repair_orphans,
         } => status_cmd::import(cli.graph.as_deref(), &file, repair_orphans, cli.json),
-        Command::Apply { file } => apply_cmd::apply(cli.graph.as_deref(), &file, cli.json),
+        Command::Apply { file, schema } => {
+            if schema {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&apply_cmd::batch_schema())?
+                );
+                return Ok(());
+            }
+            let Some(file) = file else {
+                bail!("loom apply needs a batch file (or --schema to print the envelope)");
+            };
+            apply_cmd::apply(cli.graph.as_deref(), &file, cli.json)
+        }
         Command::Sync { quiet, rebuild } => {
             status_cmd::sync_cmd(cli.graph.as_deref(), cli.json, quiet, rebuild)
         }

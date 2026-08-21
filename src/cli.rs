@@ -92,7 +92,13 @@ pub enum Command {
     /// and intent tags in a single transaction. Collapses the per-mutation call
     /// storm of a work session into one call; any rejected item rolls the whole
     /// batch back.
-    Apply { file: PathBuf },
+    Apply {
+        /// Batch file (JSON, or YAML for .yaml/.yml). Omit with --schema.
+        file: Option<PathBuf>,
+        /// Print the JSON Schema of the batch envelope instead of applying.
+        #[arg(long)]
+        schema: bool,
+    },
     /// Recompute the structural plane and ripple staleness.
     Sync {
         /// Suppress successful sync output (for git hooks).

@@ -704,6 +704,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
                 "finding_verdicts": ["needed", "justified", "rejected", "deferred", "blocked", "duplicate", "resolved"],
                 "find_where_keys": FIND_WHERE_KEYS,
                 "grammar": grammar_json(),
+                "apply_batch": crate::commands::batch_schema(),
             }))?
         );
         return Ok(());

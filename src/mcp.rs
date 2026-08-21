@@ -290,17 +290,43 @@ fn tools() -> Vec<Tool> {
             description:
                 "Apply a batch of graph writes atomically: intents, groundings, relationships,                  verdicts, adjudications, vocabulary, tags. Every item goes through the same                  gates as its CLI equivalent — a batch cannot accept what a single write would                  refuse — and any failure rolls back the whole batch.",
             schema: || {
-                json!({
+                let mut fragment = crate::commands::batch_schema();
+                // The tool argument is the batch itself; the envelope schema
+                // is the fragment's, so no second hand-maintained copy exists.
+                if let Some(obj) = fragment.as_object_mut() {
+                    obj.remove("$id");
+                }
+                // JSON-pointer refs (`#/$defs/X`) resolve from the ROOT of the
+                // schema document the client was handed (the inputSchema), so
+                // the derived `$defs` must be hoisted up there or every ref
+                // dangles. The fragment keeps only its concrete body.
+                let mut schema = json!({
                     "type": "object",
                     "properties": {
                         "fragment": {
-                            "type": "object",
-                            "description": "The apply fragment, same shape as the file `loom apply` reads."
+                            "description": "The apply batch: intents, groundings, relationships, verdicts, rule_verdicts, adjudications, vocab, tags — applied atomically.",
                         }
                     },
                     "required": ["fragment"],
                     "additionalProperties": false
-                })
+                });
+                if let Some(obj) = fragment.as_object_mut() {
+                    let frag_prop = schema["properties"]["fragment"]
+                        .as_object_mut()
+                        .expect("just built");
+                    for (k, v) in obj.iter() {
+                        if k == "$defs" || k == "description" {
+                            continue;
+                        }
+                        frag_prop.insert(k.clone(), v.clone());
+                    }
+                    if let Some(defs) = obj.remove("$defs") {
+                        schema.as_object_mut()
+                            .expect("just built")
+                            .insert("$defs".to_string(), defs);
+                    }
+                }
+                schema
             },
             call: |graph, args| {
                 let fragment = args

@@ -229,7 +229,15 @@ Declare that a local intent depends on an upstream (federated) intent. Creates a
 
 ```text
 loom apply <file> [--json]
+loom apply --schema
 ```
+
+`--schema` prints the JSON Schema of the batch envelope (derived from the same
+types the parser enforces, so it cannot drift) and exits without touching the
+graph. The same schema is published as the `apply_batch` key of `loom schema
+--json` and as the `fragment` property of the MCP `loom_apply` tool. A parse
+failure prints a one-line skeleton of the expected top-level keys alongside the
+serde error.
 
 Applies one atomic batch of mutations from a JSON (default) or YAML (`.yaml`/`.yml`) file, collapsing the per-mutation call storm of a work session (intent add ×N, edge implement ×N, edge verdict ×N, edge relate) into a single call. Every mutation goes through the same write boundary the individual commands use — the intent gates (symbol-name rejection, level/lifecycle/visibility/aspect), the edge-kind registry and lane gate, and the evidence gates (INV-4/6) plus the asserted/derived wall (INV-5) — so a batch can never accept what the per-verb command would reject. The whole batch is one transaction: any rejected item rolls every prior mutation in the batch back (the two-phase-import discipline), and output is emitted only after commit. Like `sync`, a tracked+drifted `loom.graph.json` is refreshed as a byproduct.
 
@@ -251,6 +259,13 @@ Sections (all optional, applied in dependency order — `vocab` first, then `int
 ```
 
 `verdict` verbs match `loom edge verdict`: `ground` | `issue` | `independent`. Groundings and relationships are find-or-create (idempotent — an existing edge is reused, never duplicated); intent creation is create-only (re-declaring an existing name is rejected, and the atomic rollback leaves the graph unchanged). A re-recorded identical verdict is a boundary-level no-op, so re-applying an unchanged batch does not churn exported timestamps.
+
+The JSON result is the batch report: per-section counts (`intents_added`,
+`groundings`, `relationships`, `verdicts`, `rule_verdicts`, `adjudications`,
+`vocab`, `tags`) plus `intent_ids` — a `{created intent name -> id}` map so a
+follow-up write need not re-resolve ids. Groundings/relationships/verdicts
+address intents by name, and `reexported` reports whether the tracked export
+was refreshed as a byproduct.
 
 **Mechanical reconfirm:** when `loom next --mode analyze --all` shows `routing_hint: mechanical` / `cause_class: cheap`, an orchestrator may batch-reaffirm those edges through `verdicts[]` (reuse the prior criterion; cite intact evidence) instead of opening each full packet. Judgment items stay one-at-a-time via `loom next`.
 

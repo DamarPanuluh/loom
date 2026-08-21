@@ -467,7 +467,12 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
                     "partitioning": "The master partitions targets and hands each sub-driver an explicit disjoint slice; sub-drivers never race `loom next` for packets.",
                     "pacing": "Judgment writes stay under 10 per profile-minute PER sub-driver; a profile that writes faster is flagged as judgment compression.",
                     "proofs": "Proof execution stays serial: the harness lock admits one executor, so exactly one sub-driver runs validations/journeys at a time (a second exits 75 — take other work, never reinterpret as a verdict).",
-                    "contention": "Exit 75 anywhere is infrastructure: graph-lock refusals retry briefly; role contention picks another role; harness contention takes a different packet."
+                    "contention": "Exit 75 anywhere is infrastructure: graph-lock refusals retry briefly; role contention picks another role; harness contention takes a different packet.",
+                    "batch_writes": {
+                        "what": "loom apply <file> commits one atomic batch of graph writes (intents, groundings, relationships, verdicts, rule_verdicts, adjudications, vocab, tags); any rejected item rolls back the whole batch. Use it for mechanical residue (routing_hint == mechanical / cause_class == cheap), never for judgment items.",
+                        "envelope_schema": "loom apply --schema (also published as the apply_batch key of loom schema --json)",
+                        "result": "per-section counts plus intent_ids {created intent name -> id} so follow-up writes need not re-resolve ids"
+                    },
                 },
                 "truth_axes": truth_axis_matrix(),
             }))?
@@ -510,6 +515,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             println!("  partition: the master hands each sub-driver an explicit disjoint target slice; sub-drivers never race `loom next`");
             println!("  pacing:    under 10 judgment writes per profile-minute per sub-driver — faster reads as judgment compression");
             println!("  proofs:    the harness lock admits ONE proof executor; a second exits 75 — take other work, never read 75 as a verdict");
+            println!("  batch:     loom apply <file> commits mechanical residue atomically — envelope schema: loom apply --schema");
             println!(
                 "Integration monitoring topic (not an agent identity): loom guide --role monitor"
             );

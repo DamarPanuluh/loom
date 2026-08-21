@@ -322,6 +322,134 @@ fn an_in_band_batch_is_gated_like_any_other_write() {
     );
 }
 
+/// The published `loom_apply` inputSchema must describe the real batch shape —
+/// not an opaque object a caller can only learn by failing. It must carry the
+/// eight sections, refuse unknown fields, and be self-contained: schemars
+/// emits `#/$defs/X` pointers, which resolve from the ROOT of the schema
+/// document the client was handed (`inputSchema`), so the test walks every
+/// `$ref` and resolves it from there — a `$defs` parked anywhere else is a
+/// dangling reference and fails here.
+#[test]
+fn loom_apply_input_schema_publishes_the_batch_shape() {
+    let response = loom::mcp::handle(
+        None,
+        &json!({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}),
+    )
+    .expect("tools/list is a request");
+    let tool = response["result"]["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["name"] == "loom_apply")
+        .expect("loom_apply is served");
+    let input_schema = &tool["inputSchema"];
+    let fragment = &input_schema["properties"]["fragment"];
+
+    for section in [
+        "intents",
+        "groundings",
+        "relationships",
+        "verdicts",
+        "rule_verdicts",
+        "adjudications",
+        "vocab",
+        "tags",
+    ] {
+        assert!(
+            fragment["properties"].get(section).is_some(),
+            "the schema must name section `{section}`: {fragment}"
+        );
+    }
+    assert_eq!(
+        fragment["additionalProperties"], false,
+        "the parser denies unknown fields; the schema must say so: {fragment}"
+    );
+
+    // Every $ref must resolve against the inputSchema ROOT. A pointer that
+    // cannot be walked is a schema a client cannot follow.
+    fn collect_refs(value: &Value, refs: &mut Vec<String>) {
+        match value {
+            Value::Object(map) => {
+                if let Some(r) = map.get("$ref").and_then(Value::as_str) {
+                    refs.push(r.to_string());
+                }
+                for v in map.values() {
+                    collect_refs(v, refs);
+                }
+            }
+            Value::Array(items) => items.iter().for_each(|v| collect_refs(v, refs)),
+            _ => {}
+        }
+    }
+    let mut refs = Vec::new();
+    collect_refs(input_schema, &mut refs);
+    assert!(
+        !refs.is_empty(),
+        "schemars emits $ref pointers; finding none means the derivation changed \
+         shape and this walk proves nothing — assert the inlined bodies instead"
+    );
+    for r in &refs {
+        assert!(
+            r.starts_with("#/"),
+            "only document-local pointers are resolvable by a tools/list client: {r}"
+        );
+        let mut cur = input_schema;
+        for seg in r[2..].split('/') {
+            let seg = seg.replace("~1", "/").replace("~0", "~");
+            cur = cur
+                .get(&seg)
+                .unwrap_or_else(|| panic!("$ref `{r}` dangles at segment `{seg}`"));
+        }
+    }
+
+    // The item schemas must be concrete. `items` is a `$ref`, so resolve it
+    // through the same root walk the client would do, then read the body.
+    let intent_item_ref = fragment["properties"]["intents"]["items"]["$ref"]
+        .as_str()
+        .expect("intents.items is a $ref to the shared spec");
+    let intent_item = input_schema
+        .pointer(intent_item_ref.trim_start_matches('#'))
+        .expect("the walk above proved every $ref resolves");
+    let required: Vec<&str> = intent_item["required"]
+        .as_array()
+        .map(|a| a.iter().map(|v| v.as_str().unwrap()).collect())
+        .unwrap_or_default();
+    assert_eq!(
+        required,
+        vec!["name"],
+        "an intent needs only a name: {intent_item}"
+    );
+}
+
+/// A fragment accepted by `handle` validates against the published schema's
+/// declared sections and the result reports created ids — the wire contract
+/// an agent reads from tools/list is the one the call actually honors.
+#[test]
+fn loom_apply_result_reports_created_intent_ids() {
+    let tmp = Tmp::new();
+    let store = seeded(&tmp);
+    drop(store);
+
+    let v = call(
+        tmp.path(),
+        "loom_apply",
+        json!({"fragment":{
+            "intents":[{"name":"payment can be captured","description":"capturing settles the charge"}],
+            "vocab":[{"term":"payments","why":"money flows"}],
+            "tags":[{"intent":"payment can be captured","terms":["payments"]}]
+        }}),
+    );
+    assert_eq!(v["intents_added"], 1, "{v}");
+    let id = v["intent_ids"]["payment can be captured"]
+        .as_str()
+        .expect("created intents report their ids");
+    let store = Store::open(tmp.path()).unwrap();
+    let node = store
+        .resolve_node("payment can be captured", Some(NodeType::Intent))
+        .unwrap();
+    assert_eq!(node.id, id, "the reported id resolves the created node");
+}
+
 // ---------------------------------------------------------------------------
 // The transport loop itself.
 //

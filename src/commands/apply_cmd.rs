@@ -25,6 +25,7 @@ use crate::model::{EdgeKind, GroundingRole, NodeType, TruthClass};
 use crate::store::Store;
 use crate::{workitem, Result};
 use anyhow::{anyhow, Context};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -45,7 +46,7 @@ fn default_confidence() -> f64 {
 /// first, then intents, then groundings/relationships/verdicts/adjudications,
 /// and tags last — so a later section can reference an intent or term (by name)
 /// that an earlier section in the same batch created.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ApplyTx {
     #[serde(default)]
@@ -67,7 +68,7 @@ struct ApplyTx {
 }
 
 /// Mirrors `loom intent add` (same defaults: level=feature, lifecycle=planned).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct IntentSpec {
     name: String,
@@ -92,7 +93,7 @@ struct IntentSpec {
 /// duplicated. `locator`/`role` are applied only when the edge is newly created
 /// (role changes on a settled edge must go through `loom edge set-role`, which
 /// ripples); `verdict`, if present, records a verdict on the edge.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct GroundingSpec {
     intent: String,
@@ -108,7 +109,7 @@ struct GroundingSpec {
 /// A relationship edge between two intents (`kind`: hierarchy | requires |
 /// scenario-of | variant-of | triggers | sequence | relates). Idempotent; an
 /// optional `verdict` mirrors `loom edge explore`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct RelationSpec {
     kind: String,
@@ -121,7 +122,7 @@ struct RelationSpec {
 /// A verdict on an existing edge, addressed by id or unique id-prefix. Declares
 /// its fields directly (not a flattened `VerdictBody`, which `deny_unknown_fields`
 /// forbids) so a typo'd key is a clear error, not a silent drop.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct VerdictSpec {
     edge: String,
@@ -138,7 +139,7 @@ struct VerdictSpec {
 /// the `ground | issue | independent` verb; the evidence gate is enforced by
 /// `record_verdict`, so a placeholder criterion/evidence on a ground/issue is
 /// rejected there — and rolls the whole batch back.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 struct VerdictBody {
     verdict: String,
     #[serde(default)]
@@ -154,7 +155,7 @@ struct VerdictBody {
 /// `loom finding verdict`: the same expanded verdict gate and substantive
 /// reason check run in `adjudicate_finding`, so a batch can never accept what
 /// the CLI would reject. The finding must already exist.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct AdjudicationSpec {
     finding: String,
@@ -168,7 +169,7 @@ struct AdjudicationSpec {
 
 /// A vocabulary term to register (idempotent), mirroring `loom vocab add`.
 /// `why` is the optional term description.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct VocabSpec {
     term: String,
@@ -180,7 +181,7 @@ struct VocabSpec {
 /// `loom intent tag add`. The same gate (term must be registered) runs in
 /// `tag_intent`; list the term in a `vocab` entry earlier in the same batch to
 /// register and apply it in one call — the "arm the duplicate detector" flow.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct TagSpec {
     intent: String,
@@ -192,7 +193,7 @@ struct TagSpec {
 /// store-level prescreen hit gate, so a batch can never accept what the CLI
 /// would reject. This is the door coordinated sub-drivers submit a measured
 /// slice through in one lock acquisition instead of one call per pair.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct RuleVerdictSpec {
     rule: String,
@@ -203,6 +204,40 @@ struct RuleVerdictSpec {
     evidence: String,
     #[serde(default = "default_confidence")]
     confidence: f64,
+}
+
+/// The JSON Schema for one apply batch, derived from `ApplyTx` itself — the
+/// single source of truth feeding `loom apply --schema`, the `apply_batch`
+/// section of `loom schema --json`, and the MCP `loom_apply` fragment
+/// property. Because it is generated from the same types serde parses, it can
+/// never drift from what a batch file is actually validated against.
+pub fn batch_schema() -> serde_json::Value {
+    let mut schema = schemars::schema_for!(ApplyTx).to_value();
+    schema["$id"] = serde_json::json!("https://loom.dev/schemas/apply-batch/v1");
+    schema["description"] = serde_json::json!(
+        "One atomic batch of graph mutations. Sections are optional and applied in \
+         dependency order (vocab, intents, groundings, relationships, verdicts, \
+         rule_verdicts, adjudications, tags), so a later section may reference an \
+         intent or term an earlier section created. Any rejected item rolls back \
+         the whole batch. The JSON result reports per-section counts plus \
+         intent_ids: {created intent name -> id} so follow-up writes need not \
+         re-resolve ids."
+    );
+    schema
+}
+
+/// The one-screen skeleton printed alongside a parse failure, so a driver that
+/// guessed the envelope wrong learns the shape from the error itself instead of
+/// probing. Field-level detail lives in `loom apply --schema`.
+fn skeleton_hint() -> &'static str {
+    "expected top-level keys (all optional): intents[{name, description, level, \
+     lifecycle, visibility, layer, aspect, allow_symbol_name}], \
+     groundings[{intent, codefile, locator, role, verdict}], \
+     relationships[{kind, from, to, verdict}], \
+     verdicts[{edge, verdict, criterion, evidence, confidence}], \
+     rule_verdicts[{rule, intent, outcome, criterion, evidence, confidence}], \
+     adjudications[{finding, verdict, reason, evidence}], \
+     vocab[{term, why}], tags[{intent, terms}] — full field schema: loom apply --schema"
 }
 
 /// What a batch did. Emitted as the JSON result; `intent_ids` hands the agent
@@ -225,12 +260,16 @@ struct ApplyReport {
 /// The shared core: the CLI reads a file, the MCP tool receives a JSON object,
 /// and both land here — so a batch delivered in-band goes through exactly the
 /// same gates, in exactly the same transaction, as one from disk.
-pub(crate) fn apply_value(
+pub fn apply_value(
     graph: Option<&Path>,
     fragment: &serde_json::Value,
 ) -> Result<serde_json::Value> {
-    let spec: ApplyTx = serde_json::from_value(fragment.clone())
-        .context("parsing apply batch (keys: intents/groundings/relationships/verdicts/adjudications/vocab/tags)")?;
+    let spec: ApplyTx = serde_json::from_value(fragment.clone()).with_context(|| {
+        format!(
+            "parsing apply batch (keys: intents/groundings/relationships/verdicts/adjudications/vocab/tags)\n{}",
+            skeleton_hint()
+        )
+    })?;
     let store = open(graph)?;
     let report = {
         let tx = store.begin()?;
@@ -531,14 +570,16 @@ fn read_apply(path: &Path) -> Result<ApplyTx> {
     match path.extension().and_then(|e| e.to_str()) {
         Some("yaml") | Some("yml") => serde_norway::from_str(&text).with_context(|| {
             format!(
-                "parsing apply batch {} (YAML: keys intents/groundings/relationships/verdicts/adjudications/vocab/tags)",
-                path.display()
+                "parsing apply batch {} (YAML)\n{}",
+                path.display(),
+                skeleton_hint()
             )
         }),
         _ => serde_json::from_str(&text).with_context(|| {
             format!(
-                "parsing apply batch {} (JSON: keys intents/groundings/relationships/verdicts/adjudications/vocab/tags)",
-                path.display()
+                "parsing apply batch {} (JSON)\n{}",
+                path.display(),
+                skeleton_hint()
             )
         }),
     }

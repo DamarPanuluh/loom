@@ -72,7 +72,8 @@ fn apply_batch(root: &std::path::Path, file: &std::path::Path) -> anyhow::Result
         graph: Some(root.to_path_buf()),
         json: false,
         command: Some(Command::Apply {
-            file: file.to_path_buf(),
+            file: Some(file.to_path_buf()),
+            schema: false,
         }),
     })
 }
@@ -1623,4 +1624,98 @@ fn doctor_flags_validation_names_ending_in_excised_proof() {
         issues.iter().any(|i| i.kind == "malformed_validation_name"),
         "doctor must flag a name ending in '  proof': {issues:?}"
     );
+}
+
+// =========================================================================
+// The batch contract is published, not probe-discovered.
+// =========================================================================
+
+/// `loom apply --schema` prints the JSON Schema of the envelope: all eight
+/// sections present, unknown fields denied — derived from the same types the
+/// parser enforces.
+#[test]
+fn apply_schema_flag_publishes_the_batch_envelope() {
+    let tmp = Tmp::new();
+    Store::init(tmp.path(), Some("t"), false).unwrap();
+
+    // Capture stdout by dispatching with json mode through the real handler.
+    // The schema is a pure function; assert its shape via the library entry
+    // the CLI prints (same value both paths).
+    let schema = loom::commands::batch_schema();
+    for section in [
+        "intents",
+        "groundings",
+        "relationships",
+        "verdicts",
+        "rule_verdicts",
+        "adjudications",
+        "vocab",
+        "tags",
+    ] {
+        assert!(
+            schema["properties"].get(section).is_some(),
+            "the published envelope must name `{section}`"
+        );
+    }
+    assert_eq!(schema["additionalProperties"], false);
+}
+
+/// A malformed batch file fails with the skeleton hint naming every top-level
+/// key and pointing at `--schema` — the error itself teaches the shape, so a
+/// driver never has to guess-and-retry to learn it.
+#[test]
+fn a_parse_failure_prints_the_skeleton_hint() {
+    let tmp = Tmp::new();
+    Store::init(tmp.path(), Some("t"), false).unwrap();
+    tmp.write("bad.json", r#"{"intentz": []}"#);
+
+    let err = apply_batch(tmp.path(), &tmp.path().join("bad.json"))
+        .expect_err("an unknown field must be refused");
+    let rendered = format!("{err:#}");
+    for expected in [
+        "intents[{name",
+        "groundings[{intent",
+        "adjudications[{finding",
+        "loom apply --schema",
+        "unknown field `intentz`",
+    ] {
+        assert!(
+            rendered.contains(expected),
+            "the refusal must teach the shape (`{expected}` missing): {rendered}"
+        );
+    }
+}
+
+/// The JSON result reports per-section counts plus `intent_ids`, so a follow-up
+/// write addresses the created intent without re-resolving anything.
+#[test]
+fn an_applied_batch_reports_created_intent_ids() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    seed_codefile(&store, "src/a.rs");
+    drop(store);
+
+    let report = loom::commands::apply_value(
+        Some(tmp.path()),
+        &json!({
+            "intents": [
+                { "name": "payment can be captured", "description": "capturing settles the charge" }
+            ],
+            "groundings": [
+                { "intent": "payment can be captured", "codefile": "src/a.rs", "role": "realizes" }
+            ]
+        }),
+    )
+    .expect("a well-formed batch applies");
+
+    assert_eq!(report["intents_added"], 1, "{report}");
+    assert_eq!(report["groundings"], 1, "{report}");
+    let id = report["intent_ids"]["payment can be captured"]
+        .as_str()
+        .expect("created intents report their ids");
+    let store = Store::open(tmp.path()).unwrap();
+    let node = store
+        .resolve_node("payment can be captured", Some(NodeType::Intent))
+        .unwrap();
+    assert_eq!(node.id, id, "the reported id resolves the created node");
 }
