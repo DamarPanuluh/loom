@@ -310,10 +310,8 @@ impl LadderInputs {
             proposed_hypotheses: store
                 .nodes_by_status(NodeType::Hypothesis, &["proposed"])?
                 .len(),
-            open_elaborations: crate::completeness::all_scorecards_with(store, &journey_readiness)?
-                .iter()
-                .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
-                .count(),
+            open_elaborations: crate::completeness::elaboration_queue(store, &journey_readiness)?
+                .len(),
             rectifiable_divergences: crate::divergence::rectifiable_count(store)?,
             divergences: crate::divergence::human_blocking_count(store)?,
             audit_findings,

@@ -1208,14 +1208,11 @@ pub(super) fn review_item(store: &Store) -> Result<Option<WorkItem>> {
 /// product questions. This queue routes exactly that gap: each open axis is
 /// closed by an artifact, a recorded waiver, or a question to the human.
 pub(super) fn elaborate_item(store: &Store) -> Result<Option<WorkItem>> {
-    let cards = crate::completeness::all_scorecards(store)?;
-    let Some(card) = cards
+    let readiness = crate::completeness::all_journey_readiness(store)?;
+    let Some((intent, card)) = crate::completeness::elaboration_queue(store, &readiness)?
         .into_iter()
-        .find(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
+        .next()
     else {
-        return Ok(None);
-    };
-    let Some(intent) = store.get_node(&card.intent_id)? else {
         return Ok(None);
     };
     let open_names: Vec<&str> = card.open_axes().map(|a| a.axis.as_str()).collect();
@@ -2360,13 +2357,8 @@ fn roster_review(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
 /// `queue_items` was a 297-line match that only dispatched, so every lane's
 /// enumeration lived inside one symbol loom scored at complexity 32.
 fn roster_elaborate(store: &Store, out: &mut Vec<QueueEntry>) -> Result<()> {
-    for card in crate::completeness::all_scorecards(store)?
-        .into_iter()
-        .filter(|c| c.open > 0 && c.visibility.as_deref() == Some("user_visible"))
-    {
-        let Some(intent) = store.get_node(&card.intent_id)? else {
-            continue;
-        };
+    let readiness = crate::completeness::all_journey_readiness(store)?;
+    for (intent, card) in crate::completeness::elaboration_queue(store, &readiness)? {
         let open_names: Vec<&str> = card.open_axes().map(|a| a.axis.as_str()).collect();
         let reason = format!(
             "user-visible idea with {} open completeness axis(es): {}",

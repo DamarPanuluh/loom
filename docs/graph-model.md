@@ -105,7 +105,7 @@ Fields:
 id
 name
 description
-lifecycle:     planned | implemented | needs_change | deprecated
+lifecycle:     planned | implemented | needs_change | blocked | deprecated
 visibility:    user_visible | internal | untriaged
 aspect:        capability | happy | sad | fallback | edge_case | invariant
 layer:         (architecture layer — project-defined)
@@ -627,7 +627,7 @@ InspectionStatus =
   needs_reverification | blocked
 
 IntentLifecycle =
-  planned | implemented | needs_change | deprecated
+  planned | implemented | needs_change | blocked | deprecated
 
 ValidationType =
   test | assertion | benchmark | manual_check | journey | scenario | contract

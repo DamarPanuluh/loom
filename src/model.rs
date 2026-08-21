@@ -189,6 +189,7 @@ str_enum! {
         Planned => "planned",
         Implemented => "implemented",
         NeedsChange => "needs_change",
+        Blocked => "blocked",
         Deprecated => "deprecated",
     }
 }

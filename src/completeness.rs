@@ -870,6 +870,29 @@ pub fn all_scorecards_with(
     Ok(cards)
 }
 
+/// User-visible incomplete feature intents that are still implementation-active.
+/// A `blocked` intent stays in the graph (wanted, parked on a recorded external
+/// hold) but is not elaborated until it returns to `planned` / `needs_change`.
+pub fn elaboration_queue(
+    store: &Store,
+    readiness: &[JourneyReadiness],
+) -> Result<Vec<(Node, Scorecard)>> {
+    let mut out = Vec::new();
+    for card in all_scorecards_with(store, readiness)? {
+        if card.open == 0 || card.visibility.as_deref() != Some("user_visible") {
+            continue;
+        }
+        let Some(intent) = store.get_node(&card.intent_id)? else {
+            continue;
+        };
+        if intent.status == "blocked" {
+            continue;
+        }
+        out.push((intent, card));
+    }
+    Ok(out)
+}
+
 /// If the axis is open but waived, the waiver wins (with its reason).
 fn apply_waiver(store: &Store, intent: &Node, axis: AxisState) -> Result<AxisState> {
     if axis.state != "open" {

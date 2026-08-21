@@ -345,7 +345,7 @@ Definition-of-Complete scorecard: per-intent axes met/open/waived. Omit the key 
 loom intent add --name "<name>"
   [--description "<desc>"]
   [--level system|component|feature|cross_cutting]
-  [--lifecycle planned|implemented|needs_change]
+  [--lifecycle planned|implemented|needs_change|blocked]
   [--visibility user_visible|internal]
   [--layer <layer>]
   [--aspect happy|sad|fallback|edge_case]
@@ -364,12 +364,12 @@ loom intent update <intent> --reason "<why>"
   [--level system|component|feature|cross_cutting]
   [--visibility user_visible|internal]
   [--aspect happy|sad|fallback|edge_case]
-  [--lifecycle planned|implemented|needs_change]
+  [--lifecycle planned|implemented|needs_change|blocked]
   [--rectify escalated|clear]
   [--json]
 ```
 
-`update` is the single mutation verb. The ripple rule lives in the fields, not in command choice: a `--description` change is a redefinition and ripples one hop (passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers are cleared so waived axes re-open, and old wording is preserved in decision notes); `--reword` is same meaning, clearer words, no ripple. `--name`, `--level`, `--visibility`, `--aspect`, and `--lifecycle` never ripple. `--rectify escalated` moves a discovered behavior to human ratify. On a live duplicate-intent item, `--rectify clear` records that pair as distinct against the content hash of both descriptions; unrelated writes do not resurrect it, while changing either description reopens the comparison. With no duplicate pair, `clear` removes the discovery escalation. Every update records `--reason`.
+`update` is the single mutation verb. The ripple rule lives in the fields, not in command choice: a `--description` change is a redefinition and ripples one hop (passing/independent edges become `needs_reverification`, linked validations reset, completeness waivers are cleared so waived axes re-open, and old wording is preserved in decision notes); `--reword` is same meaning, clearer words, no ripple. `--name`, `--level`, `--visibility`, `--aspect`, and `--lifecycle` never ripple. `--lifecycle blocked` parks wanted work whose implementation cannot proceed until a recorded external prerequisite is met (it leaves the build queue; resume with `--lifecycle planned`). `--rectify escalated` moves a discovered behavior to human ratify. On a live duplicate-intent item, `--rectify clear` records that pair as distinct against the content hash of both descriptions; unrelated writes do not resurrect it, while changing either description reopens the comparison. With no duplicate pair, `clear` removes the discovery escalation. Every update records `--reason`.
 
 ```text
 loom intent ratify <intent> --evidence "<why wanted>" [--human-decision "<exact human answer>"] [--json]

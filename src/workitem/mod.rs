@@ -987,6 +987,18 @@ mod tests {
     }
 
     #[test]
+    fn blocked_lifecycle_write_back_closes_on_the_intent() {
+        let it = item(
+            "build",
+            "intent",
+            "37dbea57dfcfe4bb445a6107571a007d",
+            "rakan-launch",
+            "loom edge implement 'rakan-launch' <codefile> --locator <symbol>; loom intent update 'rakan-launch' --lifecycle implemented --reason '<what was built>'   (or, when a current external prerequisite forbids code: loom intent update 'rakan-launch' --lifecycle blocked --reason '<the prerequisite>')",
+        );
+        assert_eq!(closure_problem(&it), None);
+    }
+
+    #[test]
     fn an_intent_proof_contract_never_invents_a_legacy_journey() {
         let intent = crate::model::Node {
             id: "abc123def4567890".into(),

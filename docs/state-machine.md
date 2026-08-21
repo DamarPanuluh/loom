@@ -247,7 +247,7 @@ Initial state:
   No validations
 
 First queues:
-  build (realize planned intents in code)
+  build (realize planned / needs_change intents in code; `blocked` parks wanted work whose implementation cannot proceed)
   validate (add/run proofs as code is written)
   quality (seed relevant rules)
 ```

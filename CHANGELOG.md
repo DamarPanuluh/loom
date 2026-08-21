@@ -8,6 +8,9 @@ is breaking. (`SCHEMA_VERSION` in `src/lib.rs` separately versions the on-disk g
 Bump with `scripts/release.sh <patch|minor|major> "<summary>"` — never hand-edit the
 version.
 
+## [0.35.2] - 2026-08-21
+- let externally gated intents leave the build queue via --lifecycle blocked
+
 ## [0.35.1] - 2026-08-21
 - route needed findings to the lane that can write the named repair
 

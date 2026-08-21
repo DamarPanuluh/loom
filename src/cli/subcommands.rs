@@ -130,7 +130,7 @@ pub enum IntentCmd {
         /// system | component | feature | cross_cutting
         #[arg(long, default_value = "feature")]
         level: String,
-        /// planned | implemented | needs_change
+        /// planned | implemented | needs_change | blocked
         #[arg(long, default_value = "planned")]
         lifecycle: String,
         /// user_visible | internal
@@ -245,7 +245,7 @@ pub enum IntentCmd {
         /// happy | sad | fallback | edge_case
         #[arg(long)]
         aspect: Option<String>,
-        /// planned | implemented | needs_change
+        /// planned | implemented | needs_change | blocked
         #[arg(long)]
         lifecycle: Option<String>,
         /// Rectify-lane handoff: `escalated` moves a discovered behavior to

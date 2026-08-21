@@ -248,10 +248,13 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
             "loom sync".into(),
             FINDING_ADD_ACTION.into(),
             format!("only when a current external fact blocks implementation: loom task add '<bounded question>' --kind research --why-external '<why current external knowledge is needed>' --preferred-source '<authoritative source guidance>' --target {name}"),
+            format!("when research is exhausted and a current external prerequisite still forbids writing code: loom intent update {name} --lifecycle blocked --reason '<the concrete external prerequisite>'"),
         ],
         forbidden_actions: vec![
             "loom rule verdict passing (quality lane)".into(),
             "loom validation verdict passed (validator lane)".into(),
+            "marking the intent implemented without realizing code and a locator".into(),
+            "retiring the intent because implementation is waiting on an external prerequisite — retire means the behavior is no longer wanted; use --lifecycle blocked".into(),
             NON_BLOCKING_SMELL_RULE.into(),
         ],
         evidence_clauses: vec![
@@ -260,15 +263,15 @@ pub(super) fn builder_contract(intent: &Node) -> PromptContract {
                 level: "cited".into(),
             },
         ],
-        required_evidence: "Loom context checked, relevant code inspected, code written, locator confirmed, sync clean".into(),
+        required_evidence: "Loom context checked, relevant code inspected, then either code written and locator confirmed, or a blocked lifecycle recorded with a concrete external prerequisite — never silence and never invented wantedness".into(),
         evidence_template: None,
         examples: None,
         pre_screen: None,
         pre_screened_hits: Vec::new(),
         write_back: format!(
-            "loom edge implement {name} <codefile> --locator <symbol>; loom intent update {name} --lifecycle implemented --reason '<what was built>'"
+            "loom edge implement {name} <codefile> --locator <symbol>; loom intent update {name} --lifecycle implemented --reason '<what was built>'   (or, when a current external prerequisite forbids code: loom intent update {name} --lifecycle blocked --reason '<the prerequisite>')"
         ),
-        stop_condition: "after grounding + sync, return to loom status".into(),
+        stop_condition: "after grounding + sync, or after recording --lifecycle blocked, return to loom status".into(),
         human_gate: None,
     }
 }

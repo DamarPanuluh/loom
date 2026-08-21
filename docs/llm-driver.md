@@ -428,6 +428,7 @@ mindset:
 allowed:
   edit code
   loom intent update <intent> --lifecycle implemented --reason '…'
+  loom intent update <intent> --lifecycle blocked --reason '…' (external prerequisite forbids code)
   loom edge implement --role realizes|consumes|configures|verifies
   loom validation add (stub only)
   loom journey derive <journey> (read-only)
@@ -450,6 +451,7 @@ forbidden:
 
 evidence required:
   code written, locator confirmed, sync clean
+  — or a blocked lifecycle recorded with a concrete external prerequisite
 ```
 
 ### analyzer

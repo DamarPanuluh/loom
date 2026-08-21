@@ -523,7 +523,7 @@ pub(crate) fn guide(role: Option<&str>, json: bool) -> Result<()> {
             let (mindset, allowed, forbidden, axis) = match r {
                 "builder" => (
                     "Use Loom first to understand why, likely files/entities, and prior evidence; then inspect relevant code before editing. Functions are locators, not intents.",
-                    "loom status; loom next --all; loom intent show <intent>; loom codefile list; loom codefile show <file>; edit code; loom edge implement; loom intent update <intent> --lifecycle implemented --reason '…'; loom sync",
+                    "loom status; loom next --all; loom intent show <intent>; loom codefile list; loom codefile show <file>; edit code; loom edge implement; loom intent update <intent> --lifecycle implemented --reason '…'; loom intent update <intent> --lifecycle blocked --reason '…'; loom sync",
                     "loom rule verdict passing; loom validation verdict passed",
                     crate::truth::TruthAxis::Implementation,
                 ),

@@ -886,3 +886,58 @@ fn absent_machinery_never_masks_a_non_empty_queue() {
         "a graph with integrity issues must route to audit, never report itself finished"
     );
 }
+
+#[test]
+fn blocked_lifecycle_leaves_the_build_queue_with_an_honest_write() {
+    // A planned intent whose implementation is gated on a current external
+    // prerequisite is still wanted — it is not deprecated — but it is not
+    // build work. The packet must name --lifecycle blocked so a driver can
+    // park it; once parked, build serves nothing.
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "rakan-launch",
+            "pre-external-launch surface, gated on the first external tenant, not on code",
+            "planned",
+            serde_json::json!({}),
+        )
+        .unwrap();
+
+    let served = workitem::next(&store, Some(Lane::Build))
+        .unwrap()
+        .expect("a planned intent is build work");
+    assert_eq!(served.target.id, intent.id);
+    assert!(
+        served
+            .prompt_contract
+            .allowed_actions
+            .iter()
+            .any(|a| a.contains("--lifecycle blocked")),
+        "build packet must allow parking on an external hold: {:?}",
+        served.prompt_contract.allowed_actions
+    );
+    assert!(
+        served
+            .prompt_contract
+            .write_back
+            .contains("--lifecycle blocked"),
+        "write_back must name blocked as a close: {}",
+        served.prompt_contract.write_back
+    );
+
+    store
+        .update_node(&intent.id, None, None, Some("blocked"))
+        .unwrap();
+    assert!(
+        workitem::next(&store, Some(Lane::Build)).unwrap().is_none(),
+        "a blocked intent must leave the build queue"
+    );
+    let depths = loom::maturity::depths(&store).unwrap();
+    assert_eq!(
+        depths.get(Lane::Build),
+        0,
+        "compass build depth must match the empty queue"
+    );
+}

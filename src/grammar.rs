@@ -14,10 +14,18 @@ pub const ASPECTS: &[&str] = &["happy", "sad", "fallback", "edge_case"];
 pub const VISIBILITIES: &[&str] = &["user_visible", "internal"];
 
 /// Lifecycle states accepted when creating or updating an active intent.
-pub const ACTIVE_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change"];
+/// `blocked` is wanted work whose implementation cannot proceed until a
+/// recorded external prerequisite is met; it is not `deprecated`.
+pub const ACTIVE_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change", "blocked"];
 
 /// Every intent lifecycle, including the retired state accepted by readers.
-pub const ALL_LIFECYCLES: &[&str] = &["planned", "implemented", "needs_change", "deprecated"];
+pub const ALL_LIFECYCLES: &[&str] = &[
+    "planned",
+    "implemented",
+    "needs_change",
+    "blocked",
+    "deprecated",
+];
 
 /// Ratification states. A missing facet reads as `unratified` (INV-8).
 /// The states a HUMAN may assert. `de_facto` is absent on purpose: it is

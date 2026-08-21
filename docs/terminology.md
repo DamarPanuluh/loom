@@ -749,6 +749,8 @@ A previously asserted fact became stale because a dependency changed.
 
 Work or proof cannot proceed due to an explicit prerequisite. Must include reason.
 
+On an Intent, `blocked` is a lifecycle: the behavior is still wanted, but implementation cannot proceed until a recorded external prerequisite is met (a tenant exhibit list, a contract, a human-collected fact). It is not `deprecated` (the behavior remains wanted) and it is not build work — the build queue serves `planned` / `needs_change` / ungrounded-`implemented` only. Resume with `--lifecycle planned` when the prerequisite is met.
+
 ### planned
 
 Behavior exists in the graph as intended work but is not yet implemented.
