@@ -666,6 +666,23 @@ pub fn journey_derive_gaps_with(
                 detail: detail.clone(),
             });
         }
+        // A derived Journey whose technical Intents are not ratified is
+        // waiting on the human gate behind `derive-accept`, not on more
+        // derivation prep — so it stays Derive-lane work with a distinct
+        // kind. Without this row the compile refusal ("derivation acceptance
+        // is pending") named no served queue at all.
+        if journey.derived && !journey.derivations_ratified {
+            out.push(JourneyDeriveGap {
+                journey_id: journey.journey_id.clone(),
+                kind: "derivation_acceptance_pending".into(),
+                subject_id: journey.journey_id.clone(),
+                subject_name: journey.journey_name.clone(),
+                detail: format!(
+                    "Journey '{}' has accepted mappings awaiting human ratification via derive-accept",
+                    journey.journey_name
+                ),
+            });
+        }
     }
 
     // An unrooted Intent is assigned to a Journey only when a relationship

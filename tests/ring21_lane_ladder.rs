@@ -941,3 +941,163 @@ fn blocked_lifecycle_leaves_the_build_queue_with_an_honest_write() {
         "compass build depth must match the empty queue"
     );
 }
+
+/// Hand-build the compiler-owned proof topology for the lane-fixture Journey
+/// (the same closure `journey compile` writes) WITHOUT running it: an
+/// uninspected Proves edge out of a compiler-shaped Validation is exactly what
+/// `validation_work_units` routes to the validate lane.
+fn attach_unrun_compiler_owned_proof(store: &Store, intent_id: &str) {
+    let journey = store
+        .list_nodes(Some(NodeType::Journey), usize::MAX)
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    let journey_hash = journey
+        .body
+        .get("semantic_hash")
+        .and_then(|v| v.as_str())
+        .unwrap()
+        .to_string();
+    let validation = store
+        .add_node(
+            NodeType::Validation,
+            "journey:lane-fixture:proof",
+            "compiled Journey proof",
+            "not_run",
+            serde_json::json!({
+                "type": "journey",
+                "command": "loom journey run lane-fixture --profile proof",
+                "profile": "proof",
+                "journey_hash": journey_hash,
+                "compiler_version": loom::journey::JOURNEY_COMPILER_VERSION
+            }),
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Proves,
+            &validation.id,
+            &journey.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .add_edge(
+            EdgeKind::Validates,
+            &validation.id,
+            intent_id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+}
+
+fn ratify_fixture_intents(store: &Store) {
+    for n in workitem::unratified_intents(store).unwrap() {
+        store
+            .ratify_intent(&n.id, "test fixture: wanted", "test fixture")
+            .unwrap();
+    }
+}
+
+/// Regression for finding 77eaab45. A compiler-owned Validation whose Journey
+/// derivation has NOT been accepted by a human used to be served forever by
+/// the validate lane: its only write_back is `loom journey run`, whose compile
+/// step refuses with "derivation is absent or stale" / "acceptance is
+/// pending", no verdict door accepts the packet, and nothing routes the
+/// journey back to the human-gated derive queue — an autonomous loop re-serves
+/// it forever. The router must leave it for Derive until acceptance lands.
+#[test]
+fn validate_never_serves_a_journey_whose_derivation_is_not_accepted() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "intent-under-test",
+            "the behavior the fixture journey derives",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    let cf = codefile(&store, "src/fixture.rs");
+    let g = store
+        .add_edge(
+            EdgeKind::Implements,
+            &intent.id,
+            &cf.id,
+            TruthClass::Asserted,
+        )
+        .unwrap();
+    store
+        .record_verdict(
+            &g.id,
+            InspectionStatus::Passing,
+            "grounded",
+            "src/fixture.rs:1",
+            0.9,
+            "llm",
+        )
+        .unwrap();
+    satisfy_journey_root_prerequisites(&store, true);
+    attach_unrun_compiler_owned_proof(&store, &intent.id);
+
+    // Precondition of the bug: the derivation exists but was never accepted.
+    let readiness = loom::completeness::all_journey_readiness(&store).unwrap();
+    let fixture = readiness
+        .iter()
+        .find(|r| r.journey_name == "lane-fixture")
+        .unwrap();
+    assert!(fixture.derived, "fixture must be derived");
+    assert!(!fixture.derivations_ratified, "acceptance must be pending");
+
+    let units = loom::workitem::validation_work_units(&store).unwrap();
+    assert!(
+        !units.iter().any(|u| matches!(
+            u,
+            loom::workitem::ValidationWorkUnit::JourneyValidation { .. }
+                | loom::workitem::ValidationWorkUnit::JourneyGap(_)
+        )),
+        "an unaccepted derivation must not become validate-lane work: {units:?}"
+    );
+
+    // The same graph shape still serves once the human gate closes.
+    ratify_fixture_intents(&store);
+    let units = loom::workitem::validation_work_units(&store).unwrap();
+    assert!(
+        units.iter().any(|u| matches!(
+            u,
+            loom::workitem::ValidationWorkUnit::JourneyValidation { .. }
+        )),
+        "after derive-accept the dedicated proof run IS validate work"
+    );
+}
+
+/// The unaccepted journey must be REACHABLE, not dropped: the derive queue
+/// names it as awaiting the human's derive-accept answer, so an autonomous
+/// loop hands it back to its host instead of stalling on a served-forever
+/// packet.
+#[test]
+fn pending_derivation_acceptance_is_served_by_the_derive_lane() {
+    let tmp = Tmp::new();
+    let store = Store::init(tmp.path(), Some("t"), false).unwrap();
+    let intent = store
+        .add_node(
+            NodeType::Intent,
+            "intent-under-test",
+            "the behavior the fixture journey derives",
+            "implemented",
+            serde_json::json!({}),
+        )
+        .unwrap();
+    satisfy_journey_root_prerequisites(&store, false);
+    let _ = intent;
+
+    let gaps = loom::completeness::journey_derive_gaps(&store).unwrap();
+    let pending: Vec<_> = gaps
+        .iter()
+        .filter(|g| g.kind == "derivation_acceptance_pending")
+        .collect();
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].subject_name, "lane-fixture");
+}

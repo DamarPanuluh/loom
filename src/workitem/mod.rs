@@ -19,13 +19,13 @@ pub(crate) use queues::ungrounded_implemented_intents;
 pub(crate) use queues::unmeasured_quality_pairs;
 pub(crate) use queues::unproven_implemented_intents;
 pub use queues::unratified_intents;
-pub(crate) use queues::validation_work_units;
 use queues::{
     analyze_item, audit_item, build_item, coverage_item, deepen_item, derive_item, elaborate_item,
     fix_item, prove_item, quality_item, ratify_item, rectify_item, review_item, surface_item,
     triage_item, validate_item,
 };
 pub use queues::{queue_items, QueueEntry};
+pub use queues::{validation_work_units, ValidationWorkUnit};
 use serde::Serialize;
 
 /// The role/mindset contract the LLM adopts for one work item.

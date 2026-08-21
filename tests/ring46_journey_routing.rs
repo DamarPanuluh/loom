@@ -771,8 +771,12 @@ fn passed_proof_with_uninspected_calls(
     let journey = authored_journey(store, root, "flow");
     let target = intent(store, "compiled behavior", "implemented");
     let (surface, _) = add_surface(store, &journey);
-    codefile(store, "src/flow_cli.rs");
-
+    // Compile-readiness fixture: the journey's derivation must be accepted
+    // (ratified) and its derived intent implemented-and-grounded — exactly
+    // what `journey compile` requires — so the validate lane may serve this
+    // proof run at all.
+    derive(store, &journey, &target, &["choose", "confirm"]);
+    ratify_and_ground(store, &target, "src/flow_cli.rs");
     let validation = store
         .add_node(
             NodeType::Validation,

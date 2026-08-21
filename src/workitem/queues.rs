@@ -1046,7 +1046,7 @@ pub(super) fn validate_item(store: &Store) -> Result<Option<WorkItem>> {
 /// their Validation id and retain the profile that must be run; their several
 /// `Validates` edges are evidence closure, not several queue items.
 #[derive(Debug, Clone)]
-pub(crate) enum ValidationWorkUnit {
+pub enum ValidationWorkUnit {
     JourneyValidation {
         validation_id: String,
         journey: Node,
@@ -1058,8 +1058,7 @@ pub(crate) enum ValidationWorkUnit {
 }
 
 /// The single profile-bearing Validate roster consumed by lane depth, the
-/// lightweight roster, and singular packet selection.
-pub(crate) fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkUnit>> {
+pub fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkUnit>> {
     // The whole compiler-owned closure is scanned, not `validates` alone: an
     // uninspected or staled `calls`/`proves`/`exercises` edge is proof work
     // whose only door is `journey run`, and the analyze lane refuses to serve
@@ -1086,10 +1085,34 @@ pub(crate) fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkU
     let mut compiled = std::collections::BTreeMap::new();
     let mut generic_unrun = Vec::new();
     let mut generic_stale = Vec::new();
+    // ONE readiness walk for the whole function: the compiler-owned gate
+    // below and `journey_proof_gaps` read the same snapshot, so a per-edge
+    // re-walk cannot stack the CPU-minutes finding 6825299d already paid for.
+    let readiness_by_journey: std::collections::BTreeMap<String, _> =
+        crate::completeness::all_journey_readiness(store)?
+            .into_iter()
+            .map(|readiness| (readiness.journey_id.clone(), readiness))
+            .collect();
     for edge in closure {
         if let Some((journey, profile)) =
             crate::completeness::compiler_owned_proof_edge(store, &edge)?
         {
+            // A Journey that is not compile-ready cannot run, so its packet's
+            // only write_back (`journey run` → compile) refuses — the exact
+            // deadlock of finding 77eaab45: served forever by this lane,
+            // closable by no one. The gate mirrors ALL THREE `compile_source`
+            // stage bails (derivation present-and-current, its acceptance
+            // ratified, the derived intents implemented) so this lane serves a
+            // packet only when `journey run` can actually close it; anything
+            // earlier routes back to Derive/Build via the stage predicates.
+            let ready = readiness_by_journey
+                .get(&journey.id)
+                .is_some_and(|readiness| {
+                    readiness.derived && readiness.derivations_ratified && readiness.implemented
+                });
+            if !ready {
+                continue;
+            }
             compiled
                 .entry(edge.from_id.clone())
                 .or_insert((journey, profile));
@@ -1128,7 +1151,7 @@ pub(crate) fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkU
             .into_iter()
             .map(ValidationWorkUnit::GenericEdge),
     );
-    for readiness in journey_proof_gaps(store)? {
+    for readiness in journey_proof_gaps_with(&readiness_by_journey) {
         if routed_journeys.contains(&readiness.journey_id) {
             continue;
         }
@@ -1142,6 +1165,33 @@ pub(crate) fn validation_work_units(store: &Store) -> Result<Vec<ValidationWorkU
             .map(ValidationWorkUnit::UnprovenIntent),
     );
     Ok(units)
+}
+
+/// Journeys that are surfaced but not yet proven: the proof stage of the
+/// readiness ladder, entered only after every earlier stage holds. Gating on
+/// `derived && derivations_ratified && implemented` keeps this lane from
+/// serving a Journey whose `journey compile` would refuse (finding 77eaab45:
+/// an unaccepted derivation was served to an autonomous validate lane in a
+/// loop no packet could close); those Journeys stay Derive/Build work until
+/// their earlier stages close. Takes the already-gathered readiness snapshot
+/// keyed by journey id so the caller never walks readiness twice.
+pub(crate) fn journey_proof_gaps_with(
+    readiness_by_journey: &std::collections::BTreeMap<
+        String,
+        crate::completeness::JourneyReadiness,
+    >,
+) -> Vec<crate::completeness::JourneyReadiness> {
+    readiness_by_journey
+        .values()
+        .filter(|journey| {
+            journey.surfaced
+                && journey.derived
+                && journey.derivations_ratified
+                && journey.implemented
+                && (!journey.compiled || !journey.proven)
+        })
+        .cloned()
+        .collect()
 }
 
 /// Implemented LEAF intents with no passing `validates` edge. Hierarchy parents
@@ -1989,15 +2039,6 @@ pub(super) fn audit_item(store: &Store) -> Result<Option<WorkItem>> {
         truth_gap: crate::truth::TruthAxis::Signal.gap(),
         next_step: f.remedy.clone(),
     }))
-}
-
-pub(crate) fn journey_proof_gaps(
-    store: &Store,
-) -> Result<Vec<crate::completeness::JourneyReadiness>> {
-    Ok(crate::completeness::all_journey_readiness(store)?
-        .into_iter()
-        .filter(|journey| journey.surfaced && (!journey.compiled || !journey.proven))
-        .collect())
 }
 
 /// The first thing the `sound` rung is counting, whatever kind it is.
