@@ -748,7 +748,7 @@ fn upsert_diagnostic(
         "{}:{} {}",
         diagnostic.file,
         diagnostic.line,
-        truncate_chars(&diagnostic.msg, TITLE_MSG_LIMIT)
+        crate::text::ellipsize(&diagnostic.msg, TITLE_MSG_LIMIT)
     );
     let det_key = diagnostic_det_key(adapter, diagnostic);
     let node = store.add_derived_node(
@@ -803,18 +803,6 @@ fn adapter_finding_ids(store: &Store, adapter_name: &str) -> Result<BTreeSet<Str
         }
     }
     Ok(ids)
-}
-
-fn truncate_chars(value: &str, limit: usize) -> String {
-    let mut out = String::new();
-    for (idx, ch) in value.chars().enumerate() {
-        if idx == limit {
-            out.push('…');
-            return out;
-        }
-        out.push(ch);
-    }
-    out
 }
 
 #[cfg(test)]

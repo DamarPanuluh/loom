@@ -66,6 +66,7 @@ pub mod statistics;
 pub mod store;
 pub mod subprocess;
 pub mod sync;
+pub mod text;
 pub mod thresholds;
 pub mod travel;
 pub mod truth;

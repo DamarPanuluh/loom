@@ -342,8 +342,8 @@ pub enum Command {
     Impact {
         /// A symbol name, or a registered codefile path.
         target: String,
-        /// How many call hops to walk back (default 3).
-        #[arg(long, default_value_t = 3)]
+        /// How many call hops to walk back.
+        #[arg(long, default_value_t = crate::callgraph::DEFAULT_IMPACT_DEPTH)]
         depth: usize,
     },
     /// Record a decision as a REVERSAL: what was chosen, what was rejected,
@@ -377,7 +377,7 @@ pub enum Command {
         target: Option<String>,
         /// Seconds to wait before giving up. A timeout is recorded as blocked,
         /// never as a failure — loom refuses to guess which it was.
-        #[arg(long, default_value_t = 900)]
+        #[arg(long, default_value_t = crate::runner::DEFAULT_OBSERVE_TIMEOUT_SECS)]
         timeout: u64,
         /// The command, after `--`.
         #[arg(last = true, required = true, num_args = 1..)]

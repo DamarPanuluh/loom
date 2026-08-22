@@ -6,8 +6,8 @@
 //! a [`ProofRunner`] via [`runner_for`]; adding a new proof mechanism is adding a
 //! runner, not editing the recorder in `commands::proof_cmd`.
 
-use crate::commands::truncate;
 use crate::model::{Node, ValidationType};
+use crate::text::ellipsize;
 use crate::subprocess::Captured;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -88,7 +88,7 @@ impl CommandExecutionPlan {
                     format!(
                         "`{}` exit {code}; output: {}",
                         self.command,
-                        truncate(excerpt, 300)
+                        ellipsize(excerpt.trim(), 300)
                     )
                 };
                 ProofOutcome::Failed {

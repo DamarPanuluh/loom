@@ -509,6 +509,57 @@ pub(crate) fn status(graph: Option<&Path>, json: bool) -> Result<()> {
     }
     Ok(())
 }
+/// `loom next` — route `(mode, all, full)` to the one view it names.
+///
+/// The three flags do not combine freely: `--full` mints full packets, which
+/// only the unscoped `--all --json` closeout does, so every other combination
+/// naming it is a caller asking for something loom does not serve. That rule
+/// belongs here, beside the three views it governs, rather than in the
+/// dispatcher — the dispatcher's job is to name a handler, and a rule about
+/// what `next` means is not a routing decision.
+pub(crate) fn next_dispatch(
+    graph: Option<&Path>,
+    mode: Option<crate::cli::ModeArg>,
+    all: bool,
+    full: bool,
+    json: bool,
+) -> Result<()> {
+    match (mode, all) {
+        // `--mode <m> --all`: the full roster of that one queue (depth view).
+        (Some(m), true) => {
+            if full {
+                anyhow::bail!(
+                    "--full applies to `loom next --all --json` (unscoped closeout), not \
+                     `--mode <m> --all` (lightweight roster; work the top with \
+                     `loom next --mode {}`)",
+                    m.as_str()
+                );
+            }
+            queue_list(graph, m.as_str(), json)
+        }
+        // `--all` alone: the closeout — top item of every queue.
+        (_, true) => {
+            if full && !json {
+                anyhow::bail!(
+                    "--full requires --json (`loom next --all --full --json`); without \
+                     --json the closeout is a text roster and must not mint packets"
+                );
+            }
+            next_all(graph, json, full)
+        }
+        // Default: the single next work item (full packet).
+        (m, false) => {
+            if full {
+                anyhow::bail!(
+                    "--full applies to `loom next --all --json` (singular next is already a \
+                     full packet)"
+                );
+            }
+            next_cmd(graph, m.map(crate::cli::ModeArg::as_str), json)
+        }
+    }
+}
+
 pub(crate) fn next_all(graph: Option<&Path>, json: bool, full: bool) -> Result<()> {
     let store = open_read(graph)?;
     let (ladder, counts) = crate::maturity::ladder_and_depths(&store)?;

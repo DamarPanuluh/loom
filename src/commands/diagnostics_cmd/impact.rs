@@ -9,6 +9,16 @@ pub(crate) fn impact_report(
     target: &str,
     depth: usize,
 ) -> Result<serde_json::Value> {
+    // Enforced here rather than in each surface's argument parser: `loom
+    // impact` and the `loom_impact` MCP tool both land on this function, so a
+    // bound checked here cannot hold on one surface and lapse on the other.
+    if depth == 0 || depth > crate::callgraph::MAX_IMPACT_DEPTH {
+        anyhow::bail!(
+            "depth={depth} is outside max_impact_depth=1..={} — a wider walk \
+             reports most of the crate instead of a blast radius",
+            crate::callgraph::MAX_IMPACT_DEPTH
+        );
+    }
     let cg = crate::callgraph::build(store)?;
     let anchor = if crate::locator::is_anchor_locator(target) {
         Some(crate::locator::resolve_anchor(store, target)?)

@@ -18,6 +18,21 @@ use crate::store::Store;
 use crate::Result;
 use anyhow::Context;
 use serde::Serialize;
+
+/// Call hops an impact walk goes back when the caller does not say.
+///
+/// Declared here, beside the walk, and consumed by every surface that offers
+/// the choice — `loom impact --depth` and the `loom_impact` MCP tool — so the
+/// two cannot answer the same question from different defaults.
+pub const DEFAULT_IMPACT_DEPTH: usize = 3;
+
+/// Most call hops an impact walk will go back.
+///
+/// Past this the answer stops being a blast radius and becomes "most of the
+/// crate", which no reader can act on. Enforced once inside `impact_report`,
+/// which both surfaces call, so the bound cannot hold on one surface and not
+/// the other. Surfaced by `loom limits`.
+pub const MAX_IMPACT_DEPTH: usize = 10;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::Path;
 

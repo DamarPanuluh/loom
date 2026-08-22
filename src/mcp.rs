@@ -160,9 +160,12 @@ fn tools() -> Vec<Tool> {
                         "target": { "type": "string", "description": "A symbol name or a registered codefile path." },
                         "depth": {
                             "type": "integer",
-                            "description": "Call hops to walk back (default 3).",
+                            "description": format!(
+                                "Call hops to walk back (default {}).",
+                                crate::callgraph::DEFAULT_IMPACT_DEPTH
+                            ),
                             "minimum": 1,
-                            "maximum": 10
+                            "maximum": crate::callgraph::MAX_IMPACT_DEPTH
                         }
                     },
                     "required": ["target"],
@@ -174,7 +177,10 @@ fn tools() -> Vec<Tool> {
                     .get("target")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| anyhow::anyhow!("`target` is required"))?;
-                let depth = args.get("depth").and_then(|v| v.as_u64()).unwrap_or(3) as usize;
+                let depth = args
+                    .get("depth")
+                    .and_then(|v| v.as_u64())
+                    .map_or(crate::callgraph::DEFAULT_IMPACT_DEPTH, |d| d as usize);
                 let store = crate::commands::open_read(graph)?;
                 crate::commands::impact_report(&store, target, depth)
             },
@@ -199,7 +205,11 @@ fn tools() -> Vec<Tool> {
                         },
                         "timeout": {
                             "type": "integer",
-                            "description": "Seconds before giving up (default 900). A timeout records as blocked, never as a failure."
+                            "description": format!(
+                                "Seconds before giving up (default {}). A timeout records as \
+                                 blocked, never as a failure.",
+                                crate::runner::DEFAULT_OBSERVE_TIMEOUT_SECS
+                            )
                         }
                     },
                     "required": ["command"],
@@ -222,7 +232,10 @@ fn tools() -> Vec<Tool> {
                     anyhow::bail!("`command` must be a non-empty argv array");
                 }
                 let target = args.get("for_behavior").and_then(|v| v.as_str());
-                let timeout = args.get("timeout").and_then(|v| v.as_u64()).unwrap_or(900);
+                let timeout = args
+                    .get("timeout")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(crate::runner::DEFAULT_OBSERVE_TIMEOUT_SECS);
                 crate::commands::observe_run(graph, target, timeout, &command)
             },
         },
@@ -408,6 +421,20 @@ pub fn serve<R: BufRead, W: Write>(
 /// This is a client adapter around [`serve`], not a second request dispatcher:
 /// request classification, tool execution, session continuity, and response
 /// ordering therefore remain owned by the same loop as `loom mcp serve`.
+/// `loom mcp transcript` — replay an authored transcript and print the report.
+///
+/// The `--json` requirement lives here, not in the dispatcher: a transcript
+/// report IS a JSON document, so refusing the text form is a fact about this
+/// command rather than a routing decision.
+pub fn transcript_cmd(graph: Option<&Path>, requests_json: &str, json: bool) -> Result<()> {
+    if !json {
+        anyhow::bail!("`loom mcp transcript` requires --json");
+    }
+    let report = transcript(graph, requests_json)?;
+    println!("{}", serde_json::to_string_pretty(&report)?);
+    Ok(())
+}
+
 pub fn transcript(graph: Option<&Path>, requests_json: &str) -> Result<Value> {
     let value: Value =
         serde_json::from_str(requests_json).context("--requests-json must be valid JSON")?;

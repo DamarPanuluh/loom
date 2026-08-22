@@ -118,17 +118,7 @@ pub fn run(cli: Cli) -> Result<()> {
             repair_orphans,
         } => status_cmd::import(cli.graph.as_deref(), &file, repair_orphans, cli.json),
         Command::Apply { file, schema } => {
-            if schema {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&apply_cmd::batch_schema())?
-                );
-                return Ok(());
-            }
-            let Some(file) = file else {
-                bail!("loom apply needs a batch file (or --schema to print the envelope)");
-            };
-            apply_cmd::apply(cli.graph.as_deref(), &file, cli.json)
+            apply_cmd::dispatch(cli.graph.as_deref(), file, schema, cli.json)
         }
         Command::Sync { quiet, rebuild } => {
             status_cmd::sync_cmd(cli.graph.as_deref(), cli.json, quiet, rebuild)
@@ -139,41 +129,9 @@ pub fn run(cli: Cli) -> Result<()> {
             mode.map(crate::cli::GraphModeArg::is_observed),
             cli.json,
         ),
-        Command::Next { mode, all, full } => match (mode, all) {
-            // `--mode <m> --all`: the full roster of that one queue (depth view).
-            (Some(m), true) => {
-                if full {
-                    bail!(
-                        "--full applies to `loom next --all --json` (unscoped closeout), not \
-                         `--mode <m> --all` (lightweight roster; work the top with \
-                         `loom next --mode {}`)",
-                        m.as_str()
-                    );
-                }
-                status_cmd::queue_list(cli.graph.as_deref(), m.as_str(), cli.json)
-            }
-            // `--all` alone: the closeout — top item of every queue.
-            (_, true) => {
-                if full && !cli.json {
-                    bail!(
-                        "--full requires --json (`loom next --all --full --json`); without \
-                         --json the closeout is a text roster and must not mint packets"
-                    );
-                }
-                status_cmd::next_all(cli.graph.as_deref(), cli.json, full)
-            }
-            // Default: the single next work item (full packet).
-            (m, false) => {
-                if full {
-                    bail!("--full applies to `loom next --all --json` (singular next is already a full packet)");
-                }
-                status_cmd::next_cmd(
-                    cli.graph.as_deref(),
-                    m.map(crate::cli::ModeArg::as_str),
-                    cli.json,
-                )
-            }
-        },
+        Command::Next { mode, all, full } => {
+            status_cmd::next_dispatch(cli.graph.as_deref(), mode, all, full, cli.json)
+        }
         Command::Edge { cmd } => edge::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Challenge { cmd } => challenge_cmd::dispatch(cli.graph.as_deref(), cmd, cli.json),
         Command::Door { utterance } => misc_cmd::door(cli.graph.as_deref(), &utterance, cli.json),
@@ -268,12 +226,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Mcp { cmd } => match cmd {
             crate::cli::McpCmd::Serve => crate::mcp::serve_stdio(cli.graph.as_deref()),
             crate::cli::McpCmd::Transcript { requests_json } => {
-                if !cli.json {
-                    bail!("`loom mcp transcript` requires --json");
-                }
-                let report = crate::mcp::transcript(cli.graph.as_deref(), &requests_json)?;
-                println!("{}", serde_json::to_string_pretty(&report)?);
-                Ok(())
+                crate::mcp::transcript_cmd(cli.graph.as_deref(), &requests_json, cli.json)
             }
         },
         Command::Wiki { cmd } => wiki::dispatch(cli.graph.as_deref(), cmd, cli.json),
@@ -605,16 +558,6 @@ pub(crate) fn verdict_status(verdict: &str) -> Result<InspectionStatus> {
         "issue" => Ok(InspectionStatus::Failing),
         "independent" => Ok(InspectionStatus::Independent),
         other => bail!("unknown verdict '{other}' (use ground|issue|independent)"),
-    }
-}
-
-pub(crate) fn truncate(s: &str, max: usize) -> String {
-    let s = s.trim();
-    if s.chars().count() <= max {
-        s.to_string()
-    } else {
-        let t: String = s.chars().take(max).collect();
-        format!("{t}…")
     }
 }
 

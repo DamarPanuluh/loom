@@ -1007,3 +1007,144 @@ fn initialize_refuses_an_unsupported_client_protocol_version() {
     );
     assert!(rejected.get("result").is_none());
 }
+
+// --- Argument-contract parity -------------------------------------------
+//
+// Contract 1 says a tool and its CLI twin cannot diverge. That was proved for
+// the ANSWER (same function, same numbers) but not for the QUESTION: the
+// default depth and timeout were typed once into the clap declaration and
+// again into the hand-written JSON Schema, including in prose the schema shows
+// a driver. Two hand-maintained copies of one contract drift silently, so the
+// values now come from one constant and these tests hold the surfaces to it.
+
+/// The default a clap argument declares, as the string clap would apply.
+fn clap_default(subcommand: &str, arg: &str) -> String {
+    use clap::CommandFactory;
+    let command = loom::cli::Cli::command();
+    let sub = command
+        .find_subcommand(subcommand)
+        .unwrap_or_else(|| panic!("`loom {subcommand}` exists"));
+    let argument = sub
+        .get_arguments()
+        .find(|a| a.get_id() == arg)
+        .unwrap_or_else(|| panic!("`loom {subcommand}` declares `{arg}`"));
+    let values = argument.get_default_values();
+    assert_eq!(
+        values.len(),
+        1,
+        "`loom {subcommand} --{arg}` must declare exactly one default"
+    );
+    values[0].to_string_lossy().to_string()
+}
+
+/// The published inputSchema for one tool, as a driver receives it.
+fn tool_schema(name: &str) -> Value {
+    let listed = loom::mcp::handle(
+        None,
+        &json!({"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}),
+    )
+    .expect("tools/list is a request");
+    listed["result"]["tools"]
+        .as_array()
+        .expect("tools is an array")
+        .iter()
+        .find(|t| t["name"] == name)
+        .unwrap_or_else(|| panic!("{name} is published"))["inputSchema"]
+        .clone()
+}
+
+#[test]
+fn impact_depth_is_one_contract_on_both_surfaces() {
+    let schema = tool_schema("loom_impact");
+    let depth = &schema["properties"]["depth"];
+
+    assert_eq!(
+        clap_default("impact", "depth"),
+        loom::callgraph::DEFAULT_IMPACT_DEPTH.to_string(),
+        "`loom impact --depth` must default to the shared constant"
+    );
+    assert_eq!(
+        depth["maximum"].as_u64().expect("depth declares a maximum"),
+        loom::callgraph::MAX_IMPACT_DEPTH as u64,
+        "the tool schema's ceiling must be the enforced limit"
+    );
+    assert_eq!(
+        depth["minimum"].as_u64().expect("depth declares a minimum"),
+        1,
+        "a zero-hop impact walk answers nothing"
+    );
+
+    // The prose a driver reads is part of the contract: a description still
+    // saying "default 3" after the constant moved is the same divergence,
+    // just harder to catch.
+    let described = depth["description"].as_str().expect("depth is described");
+    assert!(
+        described.contains(&format!("default {}", loom::callgraph::DEFAULT_IMPACT_DEPTH)),
+        "the tool description must state the real default: {described}"
+    );
+}
+
+#[test]
+fn observe_timeout_is_one_contract_on_both_surfaces() {
+    let schema = tool_schema("loom_observe");
+    let timeout = &schema["properties"]["timeout"];
+
+    assert_eq!(
+        clap_default("observe", "timeout"),
+        loom::runner::DEFAULT_OBSERVE_TIMEOUT_SECS.to_string(),
+        "`loom observe --timeout` must default to the shared constant"
+    );
+    let described = timeout["description"]
+        .as_str()
+        .expect("timeout is described");
+    assert!(
+        described.contains(&format!(
+            "default {}",
+            loom::runner::DEFAULT_OBSERVE_TIMEOUT_SECS
+        )),
+        "the tool description must state the real default: {described}"
+    );
+}
+
+/// The depth ceiling is enforced inside the function both surfaces call, not
+/// in either argument parser — so the tool cannot accept a walk the CLI would
+/// refuse. Proved through the tool path, which has no parser bound of its own.
+#[test]
+fn the_impact_ceiling_is_enforced_behind_both_surfaces() {
+    let tmp = Tmp::new();
+    drop(seeded(&tmp));
+    let over = loom::callgraph::MAX_IMPACT_DEPTH as u64 + 1;
+
+    let response = loom::mcp::handle(
+        Some(tmp.path()),
+        &json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "loom_impact",
+                "arguments": { "target": "add_item", "depth": over }
+            }
+        }),
+    )
+    .expect("tools/call is a request");
+
+    let rendered = serde_json::to_string(&response).unwrap();
+    assert!(
+        rendered.contains("max_impact_depth"),
+        "an over-deep walk must name the limit that refused it: {rendered}"
+    );
+}
+
+/// Every enforced limit must be listed by `loom limits`; a bound a caller can
+/// hit but not discover is the drift this registry exists to prevent.
+#[test]
+fn the_new_bounds_are_discoverable_through_loom_limits() {
+    let named: Vec<&str> = loom::limits::all().iter().map(|l| l.name).collect();
+    for expected in ["max_impact_depth", "observe_timeout_secs"] {
+        assert!(
+            named.contains(&expected),
+            "`loom limits` must list {expected}: {named:?}"
+        );
+    }
+}

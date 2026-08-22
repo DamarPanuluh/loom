@@ -28,6 +28,14 @@ pub(crate) const EXCERPT_BYTES: usize = 8192;
 /// Default wall-clock limit for an observed command.
 pub const DEFAULT_TIMEOUT_SECS: u64 = 300;
 
+/// Default wall-clock limit for a command run through `loom observe`.
+///
+/// Longer than [`DEFAULT_TIMEOUT_SECS`] because an observed run is usually the
+/// caller's whole test command, not one validation step. Consumed by both
+/// surfaces that offer the choice — `loom observe --timeout` and the
+/// `loom_observe` MCP tool — so neither can drift to its own default.
+pub const DEFAULT_OBSERVE_TIMEOUT_SECS: u64 = 900;
+
 /// Most hits one quality-rule pre-screen keeps. Surfaced by `loom limits`;
 /// a scan past the cap is a rule that needs narrower patterns, not more room.
 pub(crate) const PRESCREEN_HIT_CAP: usize = 200;

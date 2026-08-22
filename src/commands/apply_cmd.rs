@@ -291,6 +291,28 @@ pub fn apply_value(
     Ok(payload)
 }
 
+/// `loom apply` — print the batch envelope, or apply one batch file.
+///
+/// The choice between those two lives here rather than in the dispatcher: the
+/// rule that `--schema` replaces the file argument (and that neither one means
+/// nothing to do) is part of what `apply` IS, and a dispatcher that knows it is
+/// a dispatcher that has to be edited when it changes.
+pub(crate) fn dispatch(
+    graph: Option<&Path>,
+    file: Option<std::path::PathBuf>,
+    schema: bool,
+    json: bool,
+) -> Result<()> {
+    if schema {
+        println!("{}", serde_json::to_string_pretty(&batch_schema())?);
+        return Ok(());
+    }
+    let Some(file) = file else {
+        anyhow::bail!("loom apply needs a batch file (or --schema to print the envelope)");
+    };
+    apply(graph, &file, json)
+}
+
 pub(crate) fn apply(graph: Option<&Path>, file: &Path, json: bool) -> Result<()> {
     let spec = read_apply(file)?;
     let store = open(graph)?;

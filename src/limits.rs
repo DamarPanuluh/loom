@@ -30,6 +30,20 @@ pub fn all() -> Vec<Limit> {
             remedy: "per validation: body key `timeout_seconds`",
         },
         Limit {
+            name: "observe_timeout_secs",
+            value: crate::runner::DEFAULT_OBSERVE_TIMEOUT_SECS,
+            unit: "seconds",
+            scope: "commands run through `loom observe` and the loom_observe MCP tool",
+            remedy: "raise it for this run: `--timeout` / the `timeout` argument",
+        },
+        Limit {
+            name: "max_impact_depth",
+            value: crate::callgraph::MAX_IMPACT_DEPTH as u64,
+            unit: "call hops",
+            scope: "impact walks from `loom impact` and the loom_impact MCP tool",
+            remedy: "fixed — a wider walk reports most of the crate, not a blast radius",
+        },
+        Limit {
             name: "scan_timeout_secs",
             value: crate::scan::SCAN_TIMEOUT_SECS,
             unit: "seconds",

@@ -5,6 +5,7 @@
 //! No derived truth and no verdicts are written from this module.
 
 use super::*;
+use crate::text::ellipsize;
 
 const DOOR_CAPABILITY: &str = "Your idea does not need to be a complete specification. Loom helps shape it into an authored Journey root, then derives technical Intents and a real CLI surface while asking one plain-language product question at a time when your judgment is needed.";
 
@@ -17,7 +18,7 @@ pub(crate) fn door(graph: Option<&Path>, utterance: &str, json: bool) -> Result<
     let store = open(graph)?;
     let item = store.add_node(
         NodeType::InboxItem,
-        &truncate(utterance, 60),
+        &ellipsize(utterance.trim(), 60),
         utterance,
         "new",
         serde_json::json!({ "source": "human" }),
@@ -227,7 +228,7 @@ pub(crate) fn inbox(graph: Option<&Path>, cmd: InboxCmd, json: bool) -> Result<(
             }
             let item = store.add_node(
                 NodeType::InboxItem,
-                &truncate(&text, 60),
+                &ellipsize(text.trim(), 60),
                 &text,
                 "new",
                 body,
@@ -394,7 +395,7 @@ pub(crate) fn question(graph: Option<&Path>, cmd: QuestionCmd, json: bool) -> Re
             let tx = store.begin()?;
             let question = store.add_node(
                 NodeType::Question,
-                &truncate(&text, 60),
+                &ellipsize(text.trim(), 60),
                 &text,
                 "open",
                 body,
