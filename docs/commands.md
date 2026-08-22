@@ -27,7 +27,7 @@ loom session [--json]
 Turn-zero entry when the user says "use loom" without a specific task. Returns an offer menu backed by live queue counts, open questions, and one recommended command.
 
 ```text
-loom next [--mode <queue>] [--all] [--json]
+loom next [--mode <queue>] [--all] [--full] [--json]
 ```
 
 Highest-priority `WorkItem` + `PromptContract` for the current queue. Without `--mode`, routes by compass priority. The `ratify` queue is human-decision work and is NEVER served by plain `loom next`, so an autonomous loop is not interrupted by a product question. `loom next --mode ratify` returns a structured host gate: Keep, Remove, or Revise, plus recommendation guidance and exact write-backs. The LLM presents and recommends, waits for the human, then records that answer.
@@ -42,6 +42,11 @@ Closure invariant (uniform adjudicability): every served packet's `write_back` n
                    as lightweight rows (target + reason + effort, no packet). Use
                    it to page a queue that `loom status` reports as hundreds deep;
                    work an item with the singular `loom next --mode <m>`.
+--full: only with `--all --json` — the closeout carrying each queue's full
+                   packet instead of a summary row. Refused everywhere else:
+                   `--mode <m> --all` is a lightweight roster by definition, the
+                   singular `loom next` is already a full packet, and without
+                   `--json` the closeout is text that must not mint packet ids.
 ```
 
 Queue partition is deliberately disjoint:
@@ -99,6 +104,18 @@ loom context <file|intent|query> [--json]
 `context` is the compact, read-only packet for an operator about to work on a file or behavior. It resolves an intent first, then an exact registered codefile path, then the closest intents using the same keyword scoring as `loom door`. It reports criteria/lifecycle/ratification, groundings and locators, validation and quality-rule state, notes and open questions, completeness (for an intent), and plainly labelled stale or failing edges.
 
 Keyword-substring search over intents, codefiles, and quality rules. It is not BM25. Fuzzy hits that match the query as a whole name (case-insensitive) are tagged `(exact)` so an existence check never rests on reading a score. `--exact` restricts output to those whole-name matches only — the reliable "does a node named exactly this exist?" check, and it lists every id when duplicates share a name.
+
+```text
+loom impact <symbol|path> [--depth N] [--json]
+```
+
+What a change here could reach: the symbols that transitively call the target, nearest first, read from the real call graph, plus the intents those callers belong to and how well each is proven. Exact and heuristic resolutions are reported separately and never blended, because a blast-radius number that mixes a certain caller with a guessed one cannot be acted on. `--depth` is call hops walked back, default `3`, and is bounded by the `max_impact_depth` limit that `loom limits` lists; the same default and bound apply to the `loom_impact` MCP tool, which calls the same function.
+
+```text
+loom deepen [--limit N] [--json]
+```
+
+What to strengthen next, once every maturity floor is met. Ranks behaviors by blast radius × (1 − proof strength) × evidence age and names the one move that would raise each. `--limit` defaults to 5. This queue re-orders and never empties, so it is advisory depth work rather than a floor: nothing here blocks a checkpoint.
 
 ```text
 loom door "<utterance>" [--json]
@@ -914,6 +931,12 @@ loom proposal item reject <proposal> <number> --reason "<why>" [--json]
 
 Proposals are durable plan/RFC artifacts. Adoption is a one-way transition that can optionally spawn ordinary Loom work.
 
+```text
+loom absorb [--confirm] [--json]
+```
+
+Read the working tree and report the graph mutations it implies: new symbols in owned files, symbols whose callers all belong to one behavior, locators naming code that moved, and files nothing owns. Bare `absorb` observes only and writes nothing; the batch lands as a Proposal you confirm. `--confirm` adopts every item that needs nothing from you, leaving the rest to say what they need. Items loom cannot derive are reported with their missing input rather than guessed.
+
 ---
 
 ## Judgment inbox commands
@@ -1017,6 +1040,13 @@ loom note remove <id> [--json]
 
 Durable notes attach to any node (by name, id, or unique fragment) or any edge (by id or unique id prefix) — adjudications attach to claims, and claims live on edges too. On a key that could name both, the node wins.
 
+```text
+loom decide "<chose>" --instead-of "<rejected>" --because "<why>" \
+  [--about <intent|file>] [--evidence <file:line|intent|journal ref>] [--json]
+```
+
+Record a decision as a REVERSAL. `--instead-of` is required because a decision with no named alternative is only a description, and the rejected option is the half a later reader needs to know was already considered. `--because` states the reason that would have to change for the decision to change. `--about` binds the decision to the behavior or file it concerns, so it surfaces to whoever next touches that code — the reasoning arrives before the rediscovery instead of after it.
+
 ---
 
 ## Vocab and layer commands
@@ -1070,10 +1100,10 @@ Cross-graph federation over committed exports; see "Graph init and travel" for t
 These are **not** current shipped commands or flags. Do not emit them from prompts or examples unless explicitly discussing absence:
 
 - removed/deferred from `next`: `--take`, `--compact`, `--slice`
-- removed/deferred command families: impact preview, hotspots, dig
+- removed/deferred command families: hotspots, dig
 - removed/deferred subcommands: intent context, edge unimplement, vocab merge, inbox normalize
 - removed/deferred flags: `guide --mode`, `import --as-planned`
-- shipped since this list was written (do **not** treat as deferred): batch writes (`loom apply`), wiki projection (`loom wiki`, with the verb set above — the older `generate/verify/publish/update` design in `wiki-projection.md` was superseded), and federation (`loom graph link/unlink/list`, `graph unlink --prune`, `graph prune-orphans`, `loom edge depends-on`)
+- shipped since this list was written (do **not** treat as deferred): blast radius (`loom impact`, documented under Orientation — the deferred entry above was an earlier "impact preview" design, not this command), depth ranking (`loom deepen`), decision reversals (`loom decide`), working-tree absorption (`loom absorb`), batch writes (`loom apply`), wiki projection (`loom wiki`, with the verb set above — the older `generate/verify/publish/update` design in `wiki-projection.md` was superseded), and federation (`loom graph link/unlink/list`, `graph unlink --prune`, `graph prune-orphans`, `loom edge depends-on`)
 - removed legacy (grammar convergence): top-level `loom validate` (→ `loom validation run`), `validation mark --result` (→ `validation verdict <outcome>`), `rule verdict --status` (→ positional outcome), `hypothesis prove --verdict` (→ positional outcome), `validation delete`/`surface delete` (→ `remove`), `rule ungovern` (→ `rule unlink`), the `loom saga` alias, the `saga` validation type, and the `saga:` spec name key
 - removed by the schema-v12 Journey-root break: executable Journey artifact fields and transport-specific steps; Journey metadata flags on `validation add`; `journey coverage`, `journey invariant`, and `journey prompt`; `journey run <artifact>` and transport override flags. Use the authored-root lifecycle documented above.
 
