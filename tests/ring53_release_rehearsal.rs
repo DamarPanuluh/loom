@@ -21,9 +21,9 @@ mod common;
 use common::Tmp;
 
 static RELEASE_ENV: Mutex<()> = Mutex::new(());
-const RELEASE_INVENTORY_MANIFEST_HASH: &str = "fc4f127a2bfd9a4f";
-const RELEASE_INVENTORY_ENTRY_COUNT: usize = 388;
-const RELEASE_INVENTORY_FILE_COUNT: usize = 388;
+const RELEASE_INVENTORY_MANIFEST_HASH: &str = "88a7d45a52285174";
+const RELEASE_INVENTORY_ENTRY_COUNT: usize = 384;
+const RELEASE_INVENTORY_FILE_COUNT: usize = 384;
 const RELEASE_INVENTORY_TOMBSTONE_COUNT: usize = 0;
 
 #[test]
@@ -2962,7 +2962,7 @@ impl RuntimeFixture {
                     {"path":"src/release/mod.rs","mode":"regular"},
                     {"path":"src/removed.rs","mode":"absent"}
                 ],
-                "reserved_components":[".claude",".git",".loom",".nodeterm",".qoder",".reasonix",".release-sandbox","review-manifests","target"],
+                "reserved_components":[".claude",".commandcode",".git",".loom",".nodeterm",".qoder",".reasonix",".release-sandbox","review-manifests","target"],
                 "secret_name_patterns":[".env",".env.*","*.key","*.pem",".netrc",".npmrc",".pypirc","credentials","credentials.json","id_ed25519","id_rsa","secrets.json"]
             })).unwrap(),
         );

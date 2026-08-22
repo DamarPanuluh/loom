@@ -7732,6 +7732,20 @@
       "updated_at": "2026-08-13T05:06:25.132Z"
     },
     {
+      "id": "4fe9c0e7a11c64d53475a130c0daadac",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge b98f5aab retargeted from '51efe0b037e3e7bfe3d3993dacd628ef' to 'cfa4696fdf83f14294989dcc4c4d6d7b': queues split: ratify_item packet assembler now lives in src/workitem/queues/packets.rs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "2964fa778f2f69f560f0f091645b63f3"
+      },
+      "created_at": "2026-08-22T14:41:13.150Z",
+      "updated_at": "2026-08-22T14:41:13.150Z"
+    },
+    {
       "id": "4ff9dbb37e19c76d1aa100d1231f732e",
       "type": "interface_surface",
       "name": "loom-unratified-candidate-state",
@@ -12554,14 +12568,14 @@
       "type": "validation",
       "name": "legacy export is refused with a blocked rehearsal report",
       "description": "",
-      "status": "passed",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "command": "cargo test --test ring53_release_rehearsal legacy_export_is_refused_before_any_candidate_command_or_live_mutation -- --exact",
         "type": "test"
       },
       "created_at": "2026-08-16T11:20:18.128Z",
-      "updated_at": "2026-08-18T09:00:06.821Z"
+      "updated_at": ""
     },
     {
       "id": "7f5cd9c7fd93ffcf3b63bfda9c4693e0",
@@ -12933,6 +12947,20 @@
       },
       "created_at": "2026-08-09T12:54:19.721Z",
       "updated_at": "2026-08-09T12:54:19.741Z"
+    },
+    {
+      "id": "816775b391e78b822e413165f7be3143",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge fe33ab02 retargeted from '163504107b2e40c6ee30c853a89356bb' to '833ac1c41f3835b85d6d203ffbc3facc': commands/journey split: ratification_batch and the hash-bound batch seal now live in src/commands/journey/derive.rs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "d3864a5f8d70c25b772a67ff81e23bbc"
+      },
+      "created_at": "2026-08-22T14:40:56.273Z",
+      "updated_at": "2026-08-22T14:40:56.273Z"
     },
     {
       "id": "82379cd8e2e3db51dc0cf82948a950e3",
@@ -19165,6 +19193,20 @@
       "updated_at": "2026-08-09T16:34:31.201Z"
     },
     {
+      "id": "b4b9b812778782b48a1277eb358ade76",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge 3de13c3e retargeted from '21fd8c807143c66d9b503b9700182246' to 'b24357e5e433792ae69b794c077b2bb2': completeness split: journey_readiness and the readiness walk now live in src/completeness/readiness.rs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "e269bba68eb2e76594e28fbffc8ed276"
+      },
+      "created_at": "2026-08-22T14:41:04.551Z",
+      "updated_at": "2026-08-22T14:41:04.551Z"
+    },
+    {
       "id": "b4dc26e8c409f11ec5a077579e0b6cdd",
       "type": "note",
       "name": "note:ratify",
@@ -19197,7 +19239,7 @@
       "type": "validation",
       "name": "journey:writes-graph:proof",
       "description": "compiler-owned Journey proof profile",
-      "status": "not_run",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "compiler_version": "6",
@@ -19207,7 +19249,7 @@
         "type": "journey"
       },
       "created_at": "2026-08-11T16:48:43.423Z",
-      "updated_at": ""
+      "updated_at": "2026-08-22T14:49:16.006Z"
     },
     {
       "id": "b5b9cb9e7b293626c2a816d86d54388c",
@@ -21737,6 +21779,20 @@
       "updated_at": "2026-08-14T07:28:34.567Z"
     },
     {
+      "id": "cd869a317515deeed353af1cf4ac1f0d",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge 6f2ded15 retargeted from 'b3237aa330ebe743b658f541458ea333' to '85210d57be7956d2690ae516cf42334d': signal.rs facade split: shared_proof_command_smells detector now lives in src/signal/smells.rs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "00a7e296fbd01d217e4cd38f108fbe6c"
+      },
+      "created_at": "2026-08-22T14:40:43.174Z",
+      "updated_at": "2026-08-22T14:40:43.174Z"
+    },
+    {
       "id": "cd899afe70796e36f9254b2ed9f68dbc",
       "type": "codefile",
       "name": "scripts/reconstruct-v12.sh",
@@ -22403,6 +22459,21 @@
       "updated_at": ""
     },
     {
+      "id": "d1ca6be53e0bf9779",
+      "type": "finding",
+      "name": "src/workitem/contracts/repair.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:829e229173f8e02c07599fb2010833c0:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d1df1acc44292e9b6",
       "type": "finding",
       "name": "src/journey/surface_ops.rs is oversized",
@@ -22515,6 +22586,21 @@
       "updated_at": ""
     },
     {
+      "id": "d260458f32cc6c8a9",
+      "type": "finding",
+      "name": "src/signal/doctor.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:6cc74d241f27e480e6df71c95e10571a:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d2718ee994b8fd2d3",
       "type": "finding",
       "name": "src/proofstrength/command.rs::cargo_test_entries is complex",
@@ -22584,6 +22670,21 @@
         "kind": "large_symbol",
         "metric": 188,
         "symbol": "compile_internal"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d28d940e6d3d57f13",
+      "type": "finding",
+      "name": "src/workitem/contracts/mod.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:e2415bcc65debfbd0db9b82572a26359:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -23298,6 +23399,36 @@
       "updated_at": ""
     },
     {
+      "id": "d3e81f21552a22c70",
+      "type": "finding",
+      "name": "src/workitem/queues/roster.rs imports src/lane.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:ddcaf59c98947361074a4d804383b110:09d557353836040cdc62fd2cb64196c3",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d3f325dfdb12909d0",
+      "type": "finding",
+      "name": "src/workitem/contracts/journey.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:e22f0bdf2aba1b96b2cbcce9cd817228:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d3ff8101e1dfa4913",
       "type": "finding",
       "name": "src/commands/edge.rs::edge_verdict takes many arguments",
@@ -23383,6 +23514,21 @@
         "kind": "large_symbol",
         "metric": 172,
         "symbol": "codefile_show"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d41efe685159aa103",
+      "type": "finding",
+      "name": "src/workitem/contracts/quality.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:c1d195f6262909e73d525166fda5d832:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -23638,6 +23784,21 @@
       "updated_at": ""
     },
     {
+      "id": "d5362a3c3328291c0",
+      "type": "finding",
+      "name": "src/proofstrength/entries.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:d4e40a3d7c2f0498fa3b12b91f20ebfc:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d540713badb90c0f7",
       "type": "finding",
       "name": "src/store/open.rs is oversized",
@@ -23871,6 +24032,21 @@
       "updated_at": "2026-08-09T15:51:31.760Z"
     },
     {
+      "id": "d5e3479c58b10c0ef",
+      "type": "finding",
+      "name": "src/proofstrength/runner_summary.rs imports src/store/mod.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:2503659d92b743a6326dd7b800d8a811:68abc76dec473dc3531b398c4f2b0581",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d5f84db9924f54be20fc5aa2e370a59e",
       "type": "note",
       "name": "note:decision",
@@ -23940,21 +24116,6 @@
         "kind": "large_symbol",
         "metric": 236,
         "symbol": "expected_projection"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "d63aadcebfb0cb2ba",
-      "type": "finding",
-      "name": "user-visible intent 'An invalid quality pattern fails the scan with the pattern named' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:fb88a31e5386f25d2c33097d3d229f7b",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -24536,7 +24697,7 @@
       "type": "validation",
       "name": "journey:compass-projection:proof",
       "description": "compiler-owned Journey proof profile",
-      "status": "failed",
+      "status": "passed",
       "truth_class": "asserted",
       "body": {
         "compiler_version": "6",
@@ -24546,12 +24707,12 @@
         "type": "journey"
       },
       "created_at": "2026-08-11T16:48:40.772Z",
-      "updated_at": "2026-08-22T06:54:10.466Z"
+      "updated_at": "2026-08-22T14:32:05.874Z"
     },
     {
       "id": "d78300f04ba83b873",
       "type": "finding",
-      "name": "proof 'journey:writes-graph:proof' reported passed then failed over unchanged code for 'An invalid quality pattern fails the scan with the pattern named', 'Loom extracts repository evidence', 'Loom proposes nonauthoritative typed graph writes' — its outcome does not depend only on the code it covers",
+      "name": "proof 'journey:writes-graph:proof' reported failed then passed over unchanged code for 'An invalid quality pattern fails the scan with the pattern named', 'Loom extracts repository evidence', 'Loom proposes nonauthoritative typed graph writes' — its outcome does not depend only on the code it covers",
       "description": "make the proof deterministic (serialize shared state, pin clocks/ordering, remove network reliance), then adjudicate this smell (deferred/resolved/justified) — agreement alone no longer clears it",
       "status": "unstable_proof",
       "truth_class": "derived",
@@ -24741,6 +24902,21 @@
       "updated_at": "2026-08-13T13:41:21.740Z"
     },
     {
+      "id": "d834e488fa6c2f5fc",
+      "type": "finding",
+      "name": "src/workitem/queues/prescreen.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:7d3e729799acb86072f59a7e3286dc25:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d843123ce52ed6520",
       "type": "finding",
       "name": "src/evidence.rs is oversized",
@@ -24884,21 +25060,6 @@
       "updated_at": ""
     },
     {
-      "id": "d8dc7fa96eb5366ad",
-      "type": "finding",
-      "name": "user-visible intent 'Loom extracts repository evidence' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:bf87f391e40cfc2612e0dbe0dc1609fa",
-        "kind": "proof_too_shallow_for_intent"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "d8e01f9e371546b180f6f2807f731288",
       "type": "journey",
       "name": "ratify-guard",
@@ -24979,6 +25140,35 @@
       },
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "d8ff0329552a39323",
+      "type": "finding",
+      "name": "src/workitem/contracts/build.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:f98503921da6aac187fd1599ca8f7446:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d921b07ff33d4d66399794a5c854c2de",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge 4f5b0aaf retargeted from '163504107b2e40c6ee30c853a89356bb' to '833ac1c41f3835b85d6d203ffbc3facc': commands/journey split: journey_derive and its read-packet now live in src/commands/journey/derive.rs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "d80ce4b1c200e00240a81222b27ab325"
+      },
+      "created_at": "2026-08-22T14:40:56.229Z",
+      "updated_at": "2026-08-22T14:40:56.229Z"
     },
     {
       "id": "d930a061173abdb75",
@@ -25120,6 +25310,21 @@
         "kind": "complex_symbol",
         "metric": 24,
         "symbol": "lint"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "d9957edb5d0e77f7f",
+      "type": "finding",
+      "name": "src/signal/smells.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:85210d57be7956d2690ae516cf42334d:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -25365,6 +25570,21 @@
       "updated_at": ""
     },
     {
+      "id": "d9f05ac4756c2b451",
+      "type": "finding",
+      "name": "src/workitem/contracts/inspect.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:e4e57c8af1368dfc9043955fcaa2a1d5:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "d9f34580f5b90af40",
       "type": "finding",
       "name": "src/store/facts.rs::materialize_anchors is long",
@@ -25445,6 +25665,21 @@
         "kind": "large_symbol",
         "metric": 187,
         "symbol": "assess_readiness"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "da2299f0c861e3ac2",
+      "type": "finding",
+      "name": "'classify only evidence-judgment conflicts for human decision' and 'With nothing ranked, the deepen lane serves no work instead of inventing a weakest claim' both realize src/workitem/queues/packets.rs with no relationship connecting them",
+      "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
+      "status": "tangled_file",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "tangled_file:cfa4696fdf83f14294989dcc4c4d6d7b",
+        "kind": "tangled_file"
       },
       "created_at": "",
       "updated_at": ""
@@ -25639,21 +25874,6 @@
         "kind": "excess_args",
         "metric": 19,
         "symbol": "run_json_operation"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
-      "id": "dabf2a4fc2f574c64",
-      "type": "finding",
-      "name": "user-visible intent 'Loom proposes nonauthoritative typed graph writes' has validations but no passing S3-or-stronger journey proof",
-      "description": "compile and run the current Journey proof profile until it reaches S3 — Loom observes positive structured output assertions, the compiled Validation Calls the accepted surface, and its Exercises entry reaches the grounded symbol",
-      "status": "proof_too_shallow_for_intent",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "proof_too_shallow_for_intent:01d410d00647c2706fd0307318242787",
-        "kind": "proof_too_shallow_for_intent"
       },
       "created_at": "",
       "updated_at": ""
@@ -26011,21 +26231,6 @@
       "updated_at": "2026-08-16T18:06:26.732Z"
     },
     {
-      "id": "dbe26ead2b61f615e",
-      "type": "finding",
-      "name": "src/signal.rs is realized by 3 intents with no recorded relationship connecting them",
-      "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
-      "status": "tangled_file",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "tangled_file:b3237aa330ebe743b658f541458ea333",
-        "kind": "tangled_file"
-      },
-      "created_at": "",
-      "updated_at": ""
-    },
-    {
       "id": "dbea4ef1ee950ed03",
       "type": "finding",
       "name": "src/journey_gate.rs is oversized",
@@ -26110,7 +26315,7 @@
     {
       "id": "dc3f07a69a3db1ec1",
       "type": "finding",
-      "name": "src/workitem/queues/predicates.rs is realized by 5 intents with no recorded relationship connecting them",
+      "name": "src/workitem/queues/predicates.rs is realized by 3 intents with no recorded relationship connecting them",
       "description": "split the file or the intents, or record relates/hierarchy/scenario-of so the co-owners form one connected neighborhood",
       "status": "tangled_file",
       "truth_class": "derived",
@@ -26224,6 +26429,21 @@
       "updated_at": ""
     },
     {
+      "id": "dc88cbf6bcfae9e5c",
+      "type": "finding",
+      "name": "src/release/mod.rs imports src/journey/mod.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:c6b4c22fd6e1f56f9cf4aed61c14d3ff:04834ff3358575a7dcce0ddd2cfc7ca1",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dc8d20f70fbfaee68",
       "type": "finding",
       "name": "src/divergence.rs imports src/model.rs but their intents have no recorded relationship",
@@ -26322,6 +26542,21 @@
       "updated_at": ""
     },
     {
+      "id": "dcd23a3544233d94e",
+      "type": "finding",
+      "name": "src/journey/compile.rs imports src/evidence.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:1356269d9617479c68c95404e184b872:aaef2cb35ec1d145f6e5f258e4f5a174",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
       "id": "dce3e8f313ee8c71d",
       "type": "finding",
       "name": "src/store/edges.rs is oversized",
@@ -26332,6 +26567,21 @@
         "kind": "oversized_file",
         "metric": 813,
         "symbol": ""
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "dd021651574831674",
+      "type": "finding",
+      "name": "src/completeness/scorecard.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:161157a9f61de1a68eea6c6ce9042f65:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -26645,21 +26895,6 @@
       },
       "created_at": "2026-08-22T06:44:01.402Z",
       "updated_at": "2026-08-22T06:44:01.402Z"
-    },
-    {
-      "id": "dd8d118cfca383580",
-      "type": "finding",
-      "name": "src/release/mod.rs imports src/model.rs but their intents have no recorded relationship",
-      "description": "record a relates edge between the owning intents, or justify with a note",
-      "status": "undeclared_coupling",
-      "truth_class": "derived",
-      "body": {
-        "category": "smell",
-        "identity": "undeclared_coupling:c6b4c22fd6e1f56f9cf4aed61c14d3ff:e6ffd99fcef7728d3955a1add7b45343",
-        "kind": "undeclared_coupling"
-      },
-      "created_at": "",
-      "updated_at": ""
     },
     {
       "id": "dd9031c195651aa7b",
@@ -26992,6 +27227,36 @@
         "category": "smell",
         "identity": "consumer_owned_file:e5f70e6ef383fbe535898c6bf48c99a8:7539753a724bba90543accbe7dcd8c56",
         "kind": "consumer_owned_file"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de88c87f4f6a9cbf5",
+      "type": "finding",
+      "name": "src/signal/adjudication.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:efdb0c41144e93712a57a80a29cc27b2:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
+      },
+      "created_at": "",
+      "updated_at": ""
+    },
+    {
+      "id": "de9f0d9ef72e1937e",
+      "type": "finding",
+      "name": "src/signal/graph.rs imports src/model.rs but their intents have no recorded relationship",
+      "description": "record a relates edge between the owning intents, or justify with a note",
+      "status": "undeclared_coupling",
+      "truth_class": "derived",
+      "body": {
+        "category": "smell",
+        "identity": "undeclared_coupling:6f781af14361217faec9e2082cb84b54:e6ffd99fcef7728d3955a1add7b45343",
+        "kind": "undeclared_coupling"
       },
       "created_at": "",
       "updated_at": ""
@@ -29430,6 +29695,20 @@
       "updated_at": "2026-08-22T06:38:29.401Z"
     },
     {
+      "id": "e6778b1a07e476f463e7bca26fb78c50",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge 42dfe933 retargeted from 'b3237aa330ebe743b658f541458ea333' to '85210d57be7956d2690ae516cf42334d': signal.rs facade split: shared_proof_command_smells detector now lives in src/signal/smells.rs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "d07d180c7138297956c1cb6badbcf1ec"
+      },
+      "created_at": "2026-08-22T14:40:43.132Z",
+      "updated_at": "2026-08-22T14:40:43.132Z"
+    },
+    {
       "id": "e6c3a72704bb49e0ecb822faaf72bbb4",
       "type": "note",
       "name": "note:ratify",
@@ -30274,6 +30553,20 @@
       "updated_at": "2026-08-14T07:27:49.490Z"
     },
     {
+      "id": "f225e456a89a7ca166e50e0368888079",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge 0e9b76e5 retargeted from '51efe0b037e3e7bfe3d3993dacd628ef' to 'ddcaf59c98947361074a4d804383b110': queues split: roster_build and the build-roster enumeration now live in src/workitem/queues/roster.rs",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "e269bba68eb2e76594e28fbffc8ed276"
+      },
+      "created_at": "2026-08-22T14:41:13.099Z",
+      "updated_at": "2026-08-22T14:41:13.099Z"
+    },
+    {
       "id": "f23410a69f1a1c5e5eeb9384a383959b",
       "type": "note",
       "name": "note:ratify",
@@ -30478,7 +30771,7 @@
       "type": "validation",
       "name": "journey:release-workflow:proof",
       "description": "compiler-owned Journey proof profile",
-      "status": "blocked",
+      "status": "not_run",
       "truth_class": "asserted",
       "body": {
         "compiler_version": "6",
@@ -30488,7 +30781,7 @@
         "type": "journey"
       },
       "created_at": "2026-08-10T12:18:01.358Z",
-      "updated_at": "2026-08-21T13:27:56.079Z"
+      "updated_at": ""
     },
     {
       "id": "f65f5ff4112d2d8a0607898203cbe7ab",
@@ -30826,6 +31119,20 @@
       },
       "created_at": "2026-08-09T12:54:19.676Z",
       "updated_at": "2026-08-09T16:40:13.494Z"
+    },
+    {
+      "id": "fb148b5a43ef01784a92721ca74b9502",
+      "type": "note",
+      "name": "note:decision",
+      "description": "edge 3da0c50a retargeted from 'b3237aa330ebe743b658f541458ea333' to '6cc74d241f27e480e6df71c95e10571a': signal.rs facade split: doctor() and the integrity audit now live in src/signal/doctor.rs; behavior moved intact",
+      "status": "decision",
+      "truth_class": "asserted",
+      "body": {
+        "kind": "decision",
+        "target_id": "bbd0126142a517757982cc9ba1d27a0d"
+      },
+      "created_at": "2026-08-22T14:40:43.087Z",
+      "updated_at": "2026-08-22T14:40:43.087Z"
     },
     {
       "id": "fb241a17ca2997d88806af6337005c03",
@@ -31892,6 +32199,20 @@
       "updated_at": "2026-08-17T07:30:59.795Z"
     },
     {
+      "id": "008ebbdec7536a49990d5225f9d867ee",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "7414db91dd8059d49ca69df2bf54129b",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:58.915Z",
+      "updated_at": "2026-08-22T14:46:58.915Z"
+    },
+    {
       "id": "00ec7a0389eca0992309216dbe6e68a3",
       "from_id": "79ba183fdb956d9097a1ab2d39f7df42",
       "to_id": "f58e7ec60190ac229e057a54df33a043",
@@ -32272,6 +32593,20 @@
       "updated_at": "2026-08-17T07:28:04.679Z"
     },
     {
+      "id": "05dac0f98249e04202bec2b278ea26d6",
+      "from_id": "2e8cbf11bab0349b7cb1b5925fbef95c",
+      "to_id": "b3237aa330ebe743b658f541458ea333",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:49:05.496Z",
+      "updated_at": "2026-08-22T14:49:05.496Z"
+    },
+    {
       "id": "05e3439498dbabb81d65b9577f23c0dd",
       "from_id": "7f5cd9c7fd93ffcf3b63bfda9c4693e0",
       "to_id": "02d66b7b5d4eabc067845e10c794a750",
@@ -32582,6 +32917,20 @@
       "updated_at": "2026-08-17T09:58:41.196Z"
     },
     {
+      "id": "09ee100a27c2e681488f941b202cfc7e",
+      "from_id": "845c678005dd26ca3cbfb5e3d16635cd",
+      "to_id": "829e229173f8e02c07599fb2010833c0",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.767Z",
+      "updated_at": "2026-08-22T14:47:34.767Z"
+    },
+    {
       "id": "0a3a9e9def0e839d35c92794eb0bbc0b",
       "from_id": "d8e01f9e371546b180f6f2807f731288",
       "to_id": "166192875bfa7f63ae990fffe1196766",
@@ -32624,6 +32973,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T12:54:19.691Z",
       "updated_at": "2026-08-15T11:08:31.449Z"
+    },
+    {
+      "id": "0abb6cb359eb88d468a0e5d4a5fb856b",
+      "from_id": "79ba183fdb956d9097a1ab2d39f7df42",
+      "to_id": "04834ff3358575a7dcce0ddd2cfc7ca1",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.509Z",
+      "updated_at": "2026-08-22T14:46:25.509Z"
     },
     {
       "id": "0ae1300983fe6993f96118bdea1e9797",
@@ -32962,9 +33325,23 @@
       "updated_at": "2026-08-19T14:30:54.039Z"
     },
     {
+      "id": "0e8e9cb6a562608376906b8231e50bf5",
+      "from_id": "1c84e4f5fdfd871ddbc8bfbe6934ec53",
+      "to_id": "5ea663c0ef8e19add862de9efb9dbcca",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.386Z",
+      "updated_at": "2026-08-22T14:47:07.386Z"
+    },
+    {
       "id": "0e9b76e55a923b92b3fbe6a55f1fa0e1",
       "from_id": "e269bba68eb2e76594e28fbffc8ed276",
-      "to_id": "51efe0b037e3e7bfe3d3993dacd628ef",
+      "to_id": "ddcaf59c98947361074a4d804383b110",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -32973,7 +33350,7 @@
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T16:45:08.032Z",
-      "updated_at": "2026-08-22T06:44:01.401Z"
+      "updated_at": "2026-08-22T14:41:13.099Z"
     },
     {
       "id": "0f27211c5745010a8b7c352651a00f40",
@@ -32988,6 +33365,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:34:33.579Z",
       "updated_at": "2026-08-17T10:24:07.351Z"
+    },
+    {
+      "id": "0f570459a170e4c06df05ac2e5519e29",
+      "from_id": "2e8cbf11bab0349b7cb1b5925fbef95c",
+      "to_id": "6f781af14361217faec9e2082cb84b54",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.282Z",
+      "updated_at": "2026-08-22T14:47:07.282Z"
     },
     {
       "id": "0fa4c71866622c2b8ba150e3c1885129",
@@ -33088,6 +33479,20 @@
       "updated_at": "2026-08-15T11:08:45.503Z"
     },
     {
+      "id": "1111362b4f600ef178c3855cc2a51bc7",
+      "from_id": "b5725c801af4c3b75b932b5be43c6059",
+      "to_id": "74b96a6be1ae5d7c638326d16f970d94",
+      "kind": "proves",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-22T14:48:06.102Z",
+      "updated_at": "2026-08-22T14:49:16.004Z"
+    },
+    {
       "id": "1139d66f2c2292222c58b0be9a2899a4",
       "from_id": "f270b321706fb5d8b1b94fb9535a29db",
       "to_id": "a0c67e4b689e9f31f477cb6cdd894535",
@@ -33172,6 +33577,20 @@
       "updated_at": "2026-08-17T10:19:44.039Z"
     },
     {
+      "id": "1271bad3b06a86b0ecc9ec2ff63fe8d9",
+      "from_id": "32141e1b005e5af9942406aeab573c5c",
+      "to_id": "2503659d92b743a6326dd7b800d8a811",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.177Z",
+      "updated_at": "2026-08-22T14:47:07.177Z"
+    },
+    {
       "id": "1299a3856bae42cd73334f152ceccd16",
       "from_id": "dfe31470815685fd8",
       "to_id": "5345985b41a16ffdade0d603bced3643",
@@ -33184,6 +33603,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:34:26.384Z",
       "updated_at": "2026-08-17T07:34:26.394Z"
+    },
+    {
+      "id": "1332038f26ff3087f038f8b70f0b102e",
+      "from_id": "b5725c801af4c3b75b932b5be43c6059",
+      "to_id": "fb88a31e5386f25d2c33097d3d229f7b",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-22T14:48:06.103Z",
+      "updated_at": "2026-08-22T14:49:16.002Z"
     },
     {
       "id": "133ff8bc18f20d03d628f1ea90e19151",
@@ -33578,6 +34011,20 @@
       "inspected_by": "llm:analyzer",
       "created_at": "2026-08-16T03:52:43.557Z",
       "updated_at": "2026-08-22T06:38:31.020Z"
+    },
+    {
+      "id": "17b029a57358aa8e2a898154038a4c4b",
+      "from_id": "4384bab2047fef2b1ee7accd81d08ff3",
+      "to_id": "21fd8c807143c66d9b503b9700182246",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:49:05.456Z",
+      "updated_at": "2026-08-22T14:49:05.456Z"
     },
     {
       "id": "17cfd8e1dde86c062dd228f729420285",
@@ -34035,13 +34482,13 @@
       "to_id": "a8b68c190362615aa838dd237ffef8fa",
       "kind": "proves",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "loom",
       "created_at": "2026-08-22T06:54:23.344Z",
-      "updated_at": "2026-08-22T06:54:23.344Z"
+      "updated_at": "2026-08-22T14:32:05.872Z"
     },
     {
       "id": "1d2e67974a7d46e55af60928b290b881",
@@ -34056,6 +34503,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:30:28.258Z",
       "updated_at": "2026-08-17T10:06:49.374Z"
+    },
+    {
+      "id": "1d481b0c0dd20ba45c3a181a5f70ce2e",
+      "from_id": "2e8cbf11bab0349b7cb1b5925fbef95c",
+      "to_id": "864ebe4dada57bdcb9ec0ca1158a276b",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.329Z",
+      "updated_at": "2026-08-22T14:47:07.329Z"
     },
     {
       "id": "1d905391ed3f4e9d0880e8a97c89d589",
@@ -34372,6 +34833,20 @@
       "updated_at": "2026-08-16T03:52:14.676Z"
     },
     {
+      "id": "2200b18294a6c37a38de3ab31c140b5f",
+      "from_id": "1c84e4f5fdfd871ddbc8bfbe6934ec53",
+      "to_id": "c64beafae19bd8690bea93d62ecceeb0",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.490Z",
+      "updated_at": "2026-08-22T14:47:07.490Z"
+    },
+    {
       "id": "2222e9fd850c63efc0dd31f17c2b5598",
       "from_id": "be0fe713b672af342bdf003d5d1ad51b",
       "to_id": "4df3da35d45316e7777ae9e4fa2efabd",
@@ -34412,6 +34887,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-16T14:15:51.074Z",
       "updated_at": "2026-08-16T14:16:38.454Z"
+    },
+    {
+      "id": "230f390e15789f7bcda6f283595a1883",
+      "from_id": "1c84e4f5fdfd871ddbc8bfbe6934ec53",
+      "to_id": "75daa64b5a217ce52e89a4a14fa0b4a5",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.441Z",
+      "updated_at": "2026-08-22T14:47:07.441Z"
     },
     {
       "id": "2326d77a6f4b9693600196f6b1deeb69",
@@ -34538,6 +35027,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-16T06:25:02.998Z",
       "updated_at": "2026-08-16T11:34:44.143Z"
+    },
+    {
+      "id": "246cc81f2338653904391a9b2cd6dec3",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "4a18136f56280b1ce26bd50e2332fa7e",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:58.876Z",
+      "updated_at": "2026-08-22T14:46:58.876Z"
     },
     {
       "id": "24c26c8380907badd2ab6e2186e4aa6c",
@@ -34736,18 +35239,32 @@
       "updated_at": "2026-08-22T06:50:04.654Z"
     },
     {
-      "id": "278f856813f2718d73c05d6aa772e5e9",
-      "from_id": "d75242d6ee594ec8c2136c2713a49c64",
-      "to_id": "c9e18a7a0fda0ffb7c73fe133fa40617",
-      "kind": "calls",
+      "id": "2753baa3243ae229e75a1cbc4d161dbf",
+      "from_id": "79ba183fdb956d9097a1ab2d39f7df42",
+      "to_id": "f8e2e279be80db7769d21b9fea80cefb",
+      "kind": "implements",
       "truth_class": "asserted",
       "status": "uninspected",
       "criterion": "",
       "confidence": 0.0,
       "depends_on": [],
       "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.569Z",
+      "updated_at": "2026-08-22T14:46:25.569Z"
+    },
+    {
+      "id": "278f856813f2718d73c05d6aa772e5e9",
+      "from_id": "d75242d6ee594ec8c2136c2713a49c64",
+      "to_id": "c9e18a7a0fda0ffb7c73fe133fa40617",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
       "created_at": "2026-08-22T06:54:23.347Z",
-      "updated_at": "2026-08-22T06:54:23.347Z"
+      "updated_at": "2026-08-22T14:32:05.872Z"
     },
     {
       "id": "27a67cc1776b59dd4c27a5562f769127",
@@ -35060,6 +35577,20 @@
       "updated_at": "2026-08-17T13:33:33.655Z"
     },
     {
+      "id": "2c20e1c494f7c3ae31d40a9acb994df2",
+      "from_id": "32141e1b005e5af9942406aeab573c5c",
+      "to_id": "0168e2b3684aaecd5406c27b0eeda146",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.065Z",
+      "updated_at": "2026-08-22T14:47:07.065Z"
+    },
+    {
       "id": "2c4f86217ded57fe6015690227fee090",
       "from_id": "8e768135da3f1d9dd85940650749726b",
       "to_id": "8eb58e388d9b999f62666a0582c1b893",
@@ -35312,6 +35843,20 @@
       "updated_at": "2026-08-17T10:19:44.047Z"
     },
     {
+      "id": "2f1ac31758b794be6fdd3e747efa22e5",
+      "from_id": "79ba183fdb956d9097a1ab2d39f7df42",
+      "to_id": "f47e2f0c6b7ad28aa1d73ce752dcbaad",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.666Z",
+      "updated_at": "2026-08-22T14:46:25.666Z"
+    },
+    {
       "id": "2f87af26c8376671210cea101135c7ba",
       "from_id": "d23f5c463fb1e4861",
       "to_id": "f12ddcf7961eee4f13b0676776dd3e19",
@@ -35534,6 +36079,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-16T12:11:39.099Z",
       "updated_at": "2026-08-16T12:24:58.634Z"
+    },
+    {
+      "id": "331e11104d7cb3715e7c9e96ab8c35fb",
+      "from_id": "2e8cbf11bab0349b7cb1b5925fbef95c",
+      "to_id": "efdb0c41144e93712a57a80a29cc27b2",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.229Z",
+      "updated_at": "2026-08-22T14:47:07.229Z"
     },
     {
       "id": "3331ba78a307de5874f397addeff96e7",
@@ -36080,6 +36639,20 @@
       "updated_at": "2026-08-17T07:29:07.581Z"
     },
     {
+      "id": "3b5f30574ca8207de77e6ad4cf3b1b29",
+      "from_id": "c9c69db32b06a1a9f6ecdcfbd8a059e2",
+      "to_id": "e2415bcc65debfbd0db9b82572a26359",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.733Z",
+      "updated_at": "2026-08-22T14:47:34.733Z"
+    },
+    {
       "id": "3b608661ffbb7254edf5d9652fb9c474",
       "from_id": "34eff2b59151ca5a46e7d5635317bad4",
       "to_id": "29dda843c5cc785b9ee93692c53c36d9",
@@ -36180,7 +36753,7 @@
     {
       "id": "3da0c50ae0e6571b3c4a61fa597d3178",
       "from_id": "bbd0126142a517757982cc9ba1d27a0d",
-      "to_id": "b3237aa330ebe743b658f541458ea333",
+      "to_id": "6cc74d241f27e480e6df71c95e10571a",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -36189,26 +36762,12 @@
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T15:47:24.690Z",
-      "updated_at": "2026-08-22T06:38:30.464Z"
-    },
-    {
-      "id": "3dad82294e496b19b5525ca7e13de209",
-      "from_id": "b5725c801af4c3b75b932b5be43c6059",
-      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
-      "kind": "exercises",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-22T06:53:21.989Z",
-      "updated_at": "2026-08-22T06:53:21.989Z"
+      "updated_at": "2026-08-22T14:40:43.086Z"
     },
     {
       "id": "3de13c3ea03f7d8b52cc2fb920366462",
       "from_id": "e269bba68eb2e76594e28fbffc8ed276",
-      "to_id": "21fd8c807143c66d9b503b9700182246",
+      "to_id": "b24357e5e433792ae69b794c077b2bb2",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -36217,7 +36776,7 @@
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T16:45:14.611Z",
-      "updated_at": "2026-08-22T07:02:06.224Z"
+      "updated_at": "2026-08-22T14:41:04.551Z"
     },
     {
       "id": "3e394b8057952009f18a5a9a52e71667",
@@ -36362,6 +36921,20 @@
       "updated_at": "2026-08-17T10:19:44.058Z"
     },
     {
+      "id": "419200bb0a7c54fcbd6a799307e6a3e6",
+      "from_id": "4384bab2047fef2b1ee7accd81d08ff3",
+      "to_id": "f98503921da6aac187fd1599ca8f7446",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.657Z",
+      "updated_at": "2026-08-22T14:47:34.657Z"
+    },
+    {
       "id": "41a3eb110662331763b86d4745ca95d3",
       "from_id": "f638e6ec8f71890d8c96adb0c6a1fc7f",
       "to_id": "8de90b8bb12da4e88463e63e9de7c1d0",
@@ -36462,7 +37035,7 @@
     {
       "id": "42dfe933ee7e0ad79ca5b9563403ab1e",
       "from_id": "d07d180c7138297956c1cb6badbcf1ec",
-      "to_id": "b3237aa330ebe743b658f541458ea333",
+      "to_id": "85210d57be7956d2690ae516cf42334d",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -36471,7 +37044,7 @@
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T14:52:01.270Z",
-      "updated_at": "2026-08-22T06:38:37.367Z"
+      "updated_at": "2026-08-22T14:40:43.132Z"
     },
     {
       "id": "434898fe4b22c88b7717c166f870cd33",
@@ -36772,6 +37345,20 @@
       "updated_at": "2026-08-22T05:29:30.633Z"
     },
     {
+      "id": "47ac4da0087627c4183d8d276a4ddd19",
+      "from_id": "4384bab2047fef2b1ee7accd81d08ff3",
+      "to_id": "161157a9f61de1a68eea6c6ce9042f65",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.569Z",
+      "updated_at": "2026-08-22T14:47:34.569Z"
+    },
+    {
       "id": "47dc34df467617e47fb39667a8e9577e",
       "from_id": "f6fafa381872d2760615b412a1a1338a",
       "to_id": "0d0cfe4a0497a60b7f286d64d8a7723b",
@@ -36900,6 +37487,20 @@
       "updated_at": "2026-08-16T11:32:02.414Z"
     },
     {
+      "id": "49a982b3182fc8233fbfb44f58266a3c",
+      "from_id": "a578ed6182e5928e78178445c4c749fa",
+      "to_id": "e4e57c8af1368dfc9043955fcaa2a1d5",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.804Z",
+      "updated_at": "2026-08-22T14:47:34.804Z"
+    },
+    {
       "id": "49fd508600334e2ed42f34a3acc439e6",
       "from_id": "d708de924a7a0f122803f010c9f2113f",
       "to_id": "18667ffa6b23f6033b3d083d5f1564ca",
@@ -36933,13 +37534,13 @@
       "to_id": "d54387b358a615d705c6a53599b2daf6",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "loom",
       "created_at": "2026-08-22T06:54:23.347Z",
-      "updated_at": "2026-08-22T06:54:23.347Z"
+      "updated_at": "2026-08-22T14:32:05.870Z"
     },
     {
       "id": "4b069a079b613be392958c1bfe408e43",
@@ -37242,7 +37843,7 @@
     {
       "id": "4f5b0aafa80d3911358a5aa926f068e3",
       "from_id": "d80ce4b1c200e00240a81222b27ab325",
-      "to_id": "163504107b2e40c6ee30c853a89356bb",
+      "to_id": "833ac1c41f3835b85d6d203ffbc3facc",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -37251,7 +37852,7 @@
       "depends_on": [],
       "inspected_by": "solo",
       "created_at": "2026-08-09T15:27:19.931Z",
-      "updated_at": "2026-08-22T06:38:34.749Z"
+      "updated_at": "2026-08-22T14:40:56.228Z"
     },
     {
       "id": "4f6dc2e14a4f30bb7398677de4e115ee",
@@ -37478,6 +38079,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-11T02:14:11.891Z",
       "updated_at": "2026-08-11T02:24:50.578Z"
+    },
+    {
+      "id": "51bc647b5874c5e438f88148fbe6630e",
+      "from_id": "f90323739cd30a85789829751c9387e9",
+      "to_id": "e22f0bdf2aba1b96b2cbcce9cd817228",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.699Z",
+      "updated_at": "2026-08-22T14:47:34.699Z"
     },
     {
       "id": "51e62e33c7842d51baae58ffddea5285",
@@ -37781,13 +38396,13 @@
       "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
       "kind": "exercises",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "loom",
       "created_at": "2026-08-22T06:54:23.349Z",
-      "updated_at": "2026-08-22T06:54:23.349Z"
+      "updated_at": "2026-08-22T14:32:05.873Z"
     },
     {
       "id": "54a811bddd0c9592304b2abed575de2e",
@@ -37804,20 +38419,6 @@
       "updated_at": "2026-08-15T10:58:52.409Z"
     },
     {
-      "id": "54c0dba27020ef69f9c303e73b9f183c",
-      "from_id": "b5725c801af4c3b75b932b5be43c6059",
-      "to_id": "4467cafc320f61fa2c8cc682b8814dc7",
-      "kind": "calls",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-22T06:53:21.989Z",
-      "updated_at": "2026-08-22T06:53:21.989Z"
-    },
-    {
       "id": "55033db872ff96bfc4bd3f3e27418f1d",
       "from_id": "74b96a6be1ae5d7c638326d16f970d94",
       "to_id": "bf87f391e40cfc2612e0dbe0dc1609fa",
@@ -37830,6 +38431,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T12:54:20.782Z",
       "updated_at": "2026-08-15T11:10:58.733Z"
+    },
+    {
+      "id": "55524445cc879e9954aebcb080939417",
+      "from_id": "c3288e3da1dd348fcdd044b9c441c289",
+      "to_id": "c1d195f6262909e73d525166fda5d832",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.436Z",
+      "updated_at": "2026-08-22T14:47:34.436Z"
     },
     {
       "id": "55959aecdabecc807877a5b62069d348",
@@ -37914,6 +38529,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:31:58.654Z",
       "updated_at": "2026-08-17T07:31:58.660Z"
+    },
+    {
+      "id": "568aa4cb33c88afd10ed69ca86fca30c",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "f8832c7fd555fd86af21195c544415aa",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.073Z",
+      "updated_at": "2026-08-22T14:46:59.073Z"
     },
     {
       "id": "5698393e6a37ef7569e40e92a85129f4",
@@ -38844,6 +39473,34 @@
       "updated_at": "2026-08-19T03:15:25.070Z"
     },
     {
+      "id": "63c3a7e9b6532fff61b60c4f488cc92b",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "163504107b2e40c6ee30c853a89356bb",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:49:05.412Z",
+      "updated_at": "2026-08-22T14:49:05.412Z"
+    },
+    {
+      "id": "63e8bb2b385b135a32207749eea534b3",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "1df0f31f08bf506b4d6e8c0dc8e14abc",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.501Z",
+      "updated_at": "2026-08-22T14:46:11.501Z"
+    },
+    {
       "id": "6422b0ed4b4a0a6731c34e37d81e727f",
       "from_id": "e744929246b47e11f98b0028d0ad2d29",
       "to_id": "350a29cee6d583ad6e557e233eb39a04",
@@ -39096,6 +39753,20 @@
       "updated_at": "2026-08-15T11:35:37.474Z"
     },
     {
+      "id": "6852fafe20568f55309e927af689cce0",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "1356269d9617479c68c95404e184b872",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.226Z",
+      "updated_at": "2026-08-22T14:46:59.226Z"
+    },
+    {
       "id": "688d83fca834ca607267251b36d966db",
       "from_id": "da0094e3c821d6b7d",
       "to_id": "03ce676907f25b437e8b4ce4fc28f5da",
@@ -39250,6 +39921,20 @@
       "updated_at": "2026-08-17T10:07:09.209Z"
     },
     {
+      "id": "6b436e1ae5876313bb28d760a19adab3",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "606db34757f74aeb5241800f6812453f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:58.997Z",
+      "updated_at": "2026-08-22T14:46:58.997Z"
+    },
+    {
       "id": "6b47a8e1779d6868cce0366efa7e5a82",
       "from_id": "8e768135da3f1d9dd85940650749726b",
       "to_id": "ecd01554eaee1e917013d3e24b4e76b1",
@@ -39394,7 +40079,7 @@
     {
       "id": "6f2ded1540263b1cb07749a4ce53ae42",
       "from_id": "00a7e296fbd01d217e4cd38f108fbe6c",
-      "to_id": "b3237aa330ebe743b658f541458ea333",
+      "to_id": "85210d57be7956d2690ae516cf42334d",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -39403,7 +40088,7 @@
       "depends_on": [],
       "inspected_by": "llm:builder",
       "created_at": "2026-08-15T08:00:48.994Z",
-      "updated_at": "2026-08-22T06:38:43.483Z"
+      "updated_at": "2026-08-22T14:40:43.173Z"
     },
     {
       "id": "6f604002d330b2df1380f4b0ad045caa",
@@ -39495,13 +40180,13 @@
       "to_id": "93b9fa2719c5c0aaa28f1fd6da1ec3be",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
       "depends_on": [],
-      "inspected_by": "",
+      "inspected_by": "loom",
       "created_at": "2026-08-22T06:54:23.346Z",
-      "updated_at": "2026-08-22T06:54:23.346Z"
+      "updated_at": "2026-08-22T14:32:05.872Z"
     },
     {
       "id": "70b1dfd8474f39f9a57eb494a94c73af",
@@ -39560,20 +40245,6 @@
       "updated_at": "2026-08-17T10:04:23.933Z"
     },
     {
-      "id": "71dfd8ac41ac5592e2de239b3701b7b5",
-      "from_id": "b5725c801af4c3b75b932b5be43c6059",
-      "to_id": "01d410d00647c2706fd0307318242787",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-22T06:53:21.988Z",
-      "updated_at": "2026-08-22T06:53:21.988Z"
-    },
-    {
       "id": "71e60c47dd5b3c9dd1d8a296c0523a63",
       "from_id": "da0094e3c821d6b7d",
       "to_id": "e44da152fe229cb7887548b94d7d8c36",
@@ -39628,6 +40299,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-17T08:25:51.283Z",
       "updated_at": "2026-08-17T08:25:51.286Z"
+    },
+    {
+      "id": "723ee3c7a6a955f1f07fbf73f809068b",
+      "from_id": "b999f926fc735d94573ed77e037b1523",
+      "to_id": "c727276d6bcf320ef258fc0776e7d308",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.528Z",
+      "updated_at": "2026-08-22T14:47:34.528Z"
     },
     {
       "id": "7286d68efa91ffae00ba6195d78c0f1c",
@@ -40128,6 +40813,20 @@
       "updated_at": "2026-08-17T06:35:50.660Z"
     },
     {
+      "id": "78fc32ad3a21185e9292eb16e6a0bb60",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "ee817583d06dc576197bc5fb4c73db5c",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:58.952Z",
+      "updated_at": "2026-08-22T14:46:58.952Z"
+    },
+    {
       "id": "7926675abd81182787f675c177a8ed6c",
       "from_id": "d9697ad2cc3ba5d0c",
       "to_id": "739b96472f173e519500740e11dd9007",
@@ -40378,20 +41077,6 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-09T16:40:04.769Z",
       "updated_at": "2026-08-16T11:32:15.924Z"
-    },
-    {
-      "id": "7b7b80f298a03e8ef0af180aaaddb7a8",
-      "from_id": "b5725c801af4c3b75b932b5be43c6059",
-      "to_id": "bf87f391e40cfc2612e0dbe0dc1609fa",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-22T06:53:21.988Z",
-      "updated_at": "2026-08-22T06:53:21.988Z"
     },
     {
       "id": "7bbff33f88ec49a3b89cdf4346c61ddd",
@@ -41058,6 +41743,20 @@
       "inspected_by": "solo",
       "created_at": "2026-08-10T03:58:49.130Z",
       "updated_at": "2026-08-14T07:25:20.005Z"
+    },
+    {
+      "id": "8330a2d8908e84ff4ed0fdbadba4ee9e",
+      "from_id": "a56b7bd65fc2de871f8c55586cd8e493",
+      "to_id": "67941231dd7d4353f00ca7db73a6200f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.847Z",
+      "updated_at": "2026-08-22T14:46:25.847Z"
     },
     {
       "id": "837c05a845ca3f251263e559a6c3fa0d",
@@ -41807,6 +42506,20 @@
       "updated_at": "2026-08-22T06:38:37.930Z"
     },
     {
+      "id": "8f2adc8ad1e42349fe73a87b70d62fc3",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "f6828a8911f11cf57478e7a79e66b283",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.212Z",
+      "updated_at": "2026-08-22T14:46:11.212Z"
+    },
+    {
       "id": "8f2e62c1a7ac341a889ec267150e2f95",
       "from_id": "68e80c57771ccb2dd8c543fffaa50dfe",
       "to_id": "4138af2a0d3a264c124be7a12def5456",
@@ -41861,20 +42574,6 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:32:39.085Z",
       "updated_at": "2026-08-22T06:38:42.384Z"
-    },
-    {
-      "id": "8ffd858510cdd021ea6ba70a0bd9a683",
-      "from_id": "b5725c801af4c3b75b932b5be43c6059",
-      "to_id": "fb88a31e5386f25d2c33097d3d229f7b",
-      "kind": "validates",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-22T06:53:21.988Z",
-      "updated_at": "2026-08-22T06:53:21.988Z"
     },
     {
       "id": "9010823ee513ad494e213a71af9bae7a",
@@ -42017,6 +42716,20 @@
       "updated_at": "2026-08-17T07:27:28.335Z"
     },
     {
+      "id": "91ffcd9bd8d9115e178e21f6c3366321",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "3add92e34a8d78d44683f64b27677c2f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.256Z",
+      "updated_at": "2026-08-22T14:46:11.256Z"
+    },
+    {
       "id": "92017fbb8f55c6af4457c3ec065b2529",
       "from_id": "d2e01de8af8327d1b",
       "to_id": "d80ce4b1c200e00240a81222b27ab325",
@@ -42157,6 +42870,20 @@
       "updated_at": "2026-08-16T12:25:25.494Z"
     },
     {
+      "id": "939156f748aa858fd6a398284632929a",
+      "from_id": "b5725c801af4c3b75b932b5be43c6059",
+      "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
+      "kind": "exercises",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-22T14:48:06.103Z",
+      "updated_at": "2026-08-22T14:49:16.005Z"
+    },
+    {
       "id": "9398dc4596e259ec135e7b9ac5e1bb63",
       "from_id": "d9697ad2cc3ba5d0c",
       "to_id": "2e8cbf11bab0349b7cb1b5925fbef95c",
@@ -42169,6 +42896,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:27:36.308Z",
       "updated_at": "2026-08-17T13:33:33.657Z"
+    },
+    {
+      "id": "93a5c579e6c65d46b2395040deff1d1f",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "879dfa3aed3ea908c1c98e8d59162982",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.150Z",
+      "updated_at": "2026-08-22T14:46:59.150Z"
     },
     {
       "id": "93adf1311811a123198c10f1f680ab37",
@@ -42325,6 +43066,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-14T22:25:55.134Z",
       "updated_at": "2026-08-15T10:59:32.524Z"
+    },
+    {
+      "id": "955b5dbcc6f309ebe92592a724aebb84",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "70b6301daa40569c6d790ebd3cea9846",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.106Z",
+      "updated_at": "2026-08-22T14:46:59.106Z"
     },
     {
       "id": "9599772cb091911cd19abd33072356ee",
@@ -42770,6 +43525,20 @@
       "inspected_by": "llm:analyzer",
       "created_at": "2026-08-16T03:53:05.306Z",
       "updated_at": "2026-08-16T03:53:05.318Z"
+    },
+    {
+      "id": "9b9428400cef288a728ad8b56878ea91",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "90bd3e8f5de170294057d1618231782f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.035Z",
+      "updated_at": "2026-08-22T14:46:59.035Z"
     },
     {
       "id": "9c41744b441629de31034dbad69cd78b",
@@ -43280,6 +44049,20 @@
       "inspected_by": "llm:builder",
       "created_at": "2026-08-14T22:22:28.459Z",
       "updated_at": "2026-08-15T11:04:39.604Z"
+    },
+    {
+      "id": "a32f529a22c7354829cfb1c85216c142",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "ff7dea5e214c43394d33c73ee137a6c8",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.356Z",
+      "updated_at": "2026-08-22T14:46:11.356Z"
     },
     {
       "id": "a34d122daa2dcb6d3fa2a34653138f33",
@@ -44400,6 +45183,20 @@
       "updated_at": "2026-08-15T11:05:07.704Z"
     },
     {
+      "id": "b02f8682c104133ba748a7f41ab08d27",
+      "from_id": "a56b7bd65fc2de871f8c55586cd8e493",
+      "to_id": "7c2e9751468eb6feefdf242461425aa8",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.760Z",
+      "updated_at": "2026-08-22T14:46:25.760Z"
+    },
+    {
       "id": "b0e9c035e15cdbccde304c0cdd2e82c5",
       "from_id": "10ba438c486686f5477d2831208644d3",
       "to_id": "9193ce6f8061eb9c507bfcdcdd87796a",
@@ -44908,7 +45705,7 @@
     {
       "id": "b98f5aabd5775045a568386f768f7e03",
       "from_id": "2964fa778f2f69f560f0f091645b63f3",
-      "to_id": "51efe0b037e3e7bfe3d3993dacd628ef",
+      "to_id": "cfa4696fdf83f14294989dcc4c4d6d7b",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -44917,7 +45714,7 @@
       "depends_on": [],
       "inspected_by": "solo",
       "created_at": "2026-08-09T16:04:56.613Z",
-      "updated_at": "2026-08-22T06:44:01.636Z"
+      "updated_at": "2026-08-22T14:41:13.149Z"
     },
     {
       "id": "b9afb7b2dc8221affa11e43e844f95f4",
@@ -45106,6 +45903,20 @@
       "updated_at": "2026-08-17T10:39:04.656Z"
     },
     {
+      "id": "bcd3ca63bab371d0594c64fee00ccda5",
+      "from_id": "79ba183fdb956d9097a1ab2d39f7df42",
+      "to_id": "53e2866e596af113ad6552377f2444b1",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.621Z",
+      "updated_at": "2026-08-22T14:46:25.621Z"
+    },
+    {
       "id": "bd0e525450436d63c5ebff54a4c916ad",
       "from_id": "dfe31470815685fd8",
       "to_id": "29dda843c5cc785b9ee93692c53c36d9",
@@ -45160,20 +45971,6 @@
       "inspected_by": "",
       "created_at": "2026-08-19T13:20:48.875Z",
       "updated_at": "2026-08-19T13:20:48.875Z"
-    },
-    {
-      "id": "bd4223b652e3eaa79ccf36d6bdeca20f",
-      "from_id": "b5725c801af4c3b75b932b5be43c6059",
-      "to_id": "74b96a6be1ae5d7c638326d16f970d94",
-      "kind": "proves",
-      "truth_class": "asserted",
-      "status": "uninspected",
-      "criterion": "",
-      "confidence": 0.0,
-      "depends_on": [],
-      "inspected_by": "",
-      "created_at": "2026-08-22T06:53:21.988Z",
-      "updated_at": "2026-08-22T06:53:21.988Z"
     },
     {
       "id": "bd6ee3c5335ca155fadadea400aa1fb9",
@@ -45288,6 +46085,20 @@
       "updated_at": "2026-08-17T07:33:02.005Z"
     },
     {
+      "id": "bed3cacf2f2cd312a29502532a0e3787",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "d74a3f4b4a8fdb225ddb7f88ebd2ae9a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.121Z",
+      "updated_at": "2026-08-22T14:46:11.121Z"
+    },
+    {
       "id": "bedaab4ba77c6a11fe4408e97f0ae1a8",
       "from_id": "da0094e3c821d6b7d",
       "to_id": "344ac5c73017502a7d5ea71949d48259",
@@ -45314,6 +46125,20 @@
       "inspected_by": "loom",
       "created_at": "2026-08-16T07:07:39.178Z",
       "updated_at": "2026-08-16T07:07:39.195Z"
+    },
+    {
+      "id": "bef6e3d9bef4179db9a5891ffb47ad2d",
+      "from_id": "c3288e3da1dd348fcdd044b9c441c289",
+      "to_id": "7d3e729799acb86072f59a7e3286dc25",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:34.491Z",
+      "updated_at": "2026-08-22T14:47:34.491Z"
     },
     {
       "id": "bf6fe3c5c3bee503db209fa8405903e3",
@@ -45652,6 +46477,20 @@
       "inspected_by": "llm:analyzer",
       "created_at": "2026-08-16T03:59:31.313Z",
       "updated_at": "2026-08-16T03:59:31.329Z"
+    },
+    {
+      "id": "c375959d5adbe57779f2c78a17888690",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "e95ec1b860d64079fd48c615bce2ec57",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.073Z",
+      "updated_at": "2026-08-22T14:46:11.073Z"
     },
     {
       "id": "c3b3938a738ab21aa7c5bda7a0b7b8ab",
@@ -46027,13 +46866,13 @@
       "to_id": "2e8479dd8226308d45171e27750cd2d1",
       "kind": "validates",
       "truth_class": "asserted",
-      "status": "passing",
+      "status": "needs_reverification",
       "criterion": "proof",
       "confidence": 1.0,
       "depends_on": [],
       "inspected_by": "loom",
       "created_at": "2026-08-16T11:20:18.131Z",
-      "updated_at": "2026-08-18T09:00:06.816Z"
+      "updated_at": "2026-08-22T14:47:54.533Z"
     },
     {
       "id": "c9266150b3ba5c12864e30e05da3e268",
@@ -46092,6 +46931,20 @@
       "updated_at": "2026-08-15T11:17:14.370Z"
     },
     {
+      "id": "c9db4a205d4e2c131791794fe6e60ef1",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "248e4a9a4ed7ab471be033748303e87f",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.312Z",
+      "updated_at": "2026-08-22T14:46:59.312Z"
+    },
+    {
       "id": "c9e55dbddba53b1a5e207aadc31a4161",
       "from_id": "36c40e3ddbbcdc4fc1f2a575b8e8eaa6",
       "to_id": "845c678005dd26ca3cbfb5e3d16635cd",
@@ -46146,6 +46999,34 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:36:22.557Z",
       "updated_at": "2026-08-17T10:24:07.464Z"
+    },
+    {
+      "id": "caaa8f198f1139eb395e440bb3264228",
+      "from_id": "a56b7bd65fc2de871f8c55586cd8e493",
+      "to_id": "6558d65bdb6226c9bb38866a5b99cce0",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.924Z",
+      "updated_at": "2026-08-22T14:46:25.924Z"
+    },
+    {
+      "id": "cab04fc8929213161f76248da31cc88a",
+      "from_id": "1c84e4f5fdfd871ddbc8bfbe6934ec53",
+      "to_id": "df8c948a8b324baaa8e43fa277167e1c",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.527Z",
+      "updated_at": "2026-08-22T14:47:07.527Z"
     },
     {
       "id": "cb03874a7aa8de1aa3da27f589657bc1",
@@ -46446,6 +47327,20 @@
       "updated_at": "2026-08-15T11:17:35.437Z"
     },
     {
+      "id": "ce31b3b26c6e6815b807af28c1d5c625",
+      "from_id": "a56b7bd65fc2de871f8c55586cd8e493",
+      "to_id": "10e1b8651f3a250a7e2b5d981ed1577a",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.886Z",
+      "updated_at": "2026-08-22T14:46:25.886Z"
+    },
+    {
       "id": "ce44abc00da15d92aaff4209bff6e464",
       "from_id": "927a988b424c3d26c84337c7424d6b4a",
       "to_id": "4138af2a0d3a264c124be7a12def5456",
@@ -46588,6 +47483,20 @@
       "inspected_by": "llm:analyzer",
       "created_at": "2026-08-16T03:54:32.134Z",
       "updated_at": "2026-08-16T03:56:13.588Z"
+    },
+    {
+      "id": "cfa1e264ed4e5be5fe4a10217872f918",
+      "from_id": "a56b7bd65fc2de871f8c55586cd8e493",
+      "to_id": "37d91ca68c097466b7378e30a6179aa3",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.803Z",
+      "updated_at": "2026-08-22T14:46:25.803Z"
     },
     {
       "id": "cfc99b6b5996c6e10282c141d69e1da1",
@@ -50582,6 +51491,20 @@
       "updated_at": ""
     },
     {
+      "id": "da6d28321befd197c3df3ab499f682b7",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "4a0691dfe42ccf06ae52fa406a1533dd",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.307Z",
+      "updated_at": "2026-08-22T14:46:11.307Z"
+    },
+    {
       "id": "da78874723c01a44a",
       "from_id": "d00c5be28d003021b",
       "to_id": "d2fcf6c1e25f78a67",
@@ -51056,6 +51979,20 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "dbd32d2a7c6373ecfe547ff99609e416",
+      "from_id": "79ba183fdb956d9097a1ab2d39f7df42",
+      "to_id": "878d6d65e9e5cf96edc2a178f5e683c4",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:25.712Z",
+      "updated_at": "2026-08-22T14:46:25.712Z"
     },
     {
       "id": "dbd757a3732767118",
@@ -51590,6 +52527,20 @@
       "updated_at": ""
     },
     {
+      "id": "dd1c07bb9addb51d1a969afa77e797d6",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "6b8ab71f1b7a66865530c9203a33cdd6",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.453Z",
+      "updated_at": "2026-08-22T14:46:11.453Z"
+    },
+    {
       "id": "dd2d65fd594dd8e9a",
       "from_id": "d31f3618175c7a794",
       "to_id": "2797afeefa9af39b6053082c2f141372",
@@ -51602,6 +52553,20 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "dd36f640199a27570061481b09db1f3e",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "a00fef890f0a45d9831f89a3d6177fec",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.190Z",
+      "updated_at": "2026-08-22T14:46:59.190Z"
     },
     {
       "id": "dd3bffd789ae2c2af",
@@ -51630,6 +52595,20 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "dd6127b97c8d9f37d8bc8643d870f36c",
+      "from_id": "32141e1b005e5af9942406aeab573c5c",
+      "to_id": "d4e40a3d7c2f0498fa3b12b91f20ebfc",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:47:07.125Z",
+      "updated_at": "2026-08-22T14:47:07.125Z"
     },
     {
       "id": "dd656bf9aff5a7dac",
@@ -52134,6 +53113,20 @@
       "inspected_by": "",
       "created_at": "",
       "updated_at": ""
+    },
+    {
+      "id": "de9c1531df41bd3168318e8c0d13ea32",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "d7e4e2e49b25387648bd45ab8670d5a5",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.173Z",
+      "updated_at": "2026-08-22T14:46:11.173Z"
     },
     {
       "id": "de9f25859af03d309",
@@ -52982,6 +53975,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:30:23.351Z",
       "updated_at": "2026-08-17T07:30:23.354Z"
+    },
+    {
+      "id": "e47db0513e9eda57697745eefab742ff",
+      "from_id": "b5725c801af4c3b75b932b5be43c6059",
+      "to_id": "4467cafc320f61fa2c8cc682b8814dc7",
+      "kind": "calls",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-22T14:48:06.103Z",
+      "updated_at": "2026-08-22T14:49:16.005Z"
     },
     {
       "id": "e485b7842db454b4ad3cae2cec2c4f5b",
@@ -53998,6 +55005,20 @@
       "updated_at": "2026-08-19T14:30:16.400Z"
     },
     {
+      "id": "f28da1c19a420b974093a9b919254452",
+      "from_id": "b5725c801af4c3b75b932b5be43c6059",
+      "to_id": "bf87f391e40cfc2612e0dbe0dc1609fa",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-22T14:48:06.103Z",
+      "updated_at": "2026-08-22T14:49:16.003Z"
+    },
+    {
       "id": "f31053e408896375b87039d1c8794f4d",
       "from_id": "4df3da35d45316e7777ae9e4fa2efabd",
       "to_id": "057bc2ec51dde77864587a258a3c3bd6",
@@ -54168,6 +55189,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:32:52.557Z",
       "updated_at": "2026-08-19T13:19:26.108Z"
+    },
+    {
+      "id": "f5c36898f8b32e37f5c3ee851bfe5f22",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "0fdcacedc1fe183af3f1266722cb2ac6",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.411Z",
+      "updated_at": "2026-08-22T14:46:11.411Z"
     },
     {
       "id": "f5db6c6a1f383fb964586d8fc8fae2b4",
@@ -54382,6 +55417,20 @@
       "updated_at": "2026-08-17T10:22:54.018Z"
     },
     {
+      "id": "f957b1dab1e5b2857cbd14626c8226dd",
+      "from_id": "8fe1e8413db5f3df8c41f23ad4f3327f",
+      "to_id": "1781ace9eadea6cdb9d1c75e4357c079",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:59.265Z",
+      "updated_at": "2026-08-22T14:46:59.265Z"
+    },
+    {
       "id": "fa011d84ccacd2c793af685aed71843a",
       "from_id": "e6f9753e5d1938c2722a00d63125873e",
       "to_id": "a56b7bd65fc2de871f8c55586cd8e493",
@@ -54466,6 +55515,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:32:37.551Z",
       "updated_at": "2026-08-17T07:32:37.562Z"
+    },
+    {
+      "id": "fb0a3a3a6a700da1ec2db2fe8b749700",
+      "from_id": "b5725c801af4c3b75b932b5be43c6059",
+      "to_id": "01d410d00647c2706fd0307318242787",
+      "kind": "validates",
+      "truth_class": "asserted",
+      "status": "passing",
+      "criterion": "compiled Journey profile",
+      "confidence": 1.0,
+      "depends_on": [],
+      "inspected_by": "loom",
+      "created_at": "2026-08-22T14:48:06.102Z",
+      "updated_at": "2026-08-22T14:49:16.004Z"
     },
     {
       "id": "fb3e06650401b246dc1519243c864441",
@@ -54624,6 +55687,20 @@
       "updated_at": "2026-08-17T07:31:27.936Z"
     },
     {
+      "id": "fd7027087c4a1cad6ed2ecf5e01fcc2a",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "d56393bd8fc0adeeeacbe0af4a0a7e86",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:10.946Z",
+      "updated_at": "2026-08-22T14:46:10.946Z"
+    },
+    {
       "id": "fd81e6a711776b1ab5bf569b188aaa4d",
       "from_id": "dfe31470815685fd8",
       "to_id": "f58e7ec60190ac229e057a54df33a043",
@@ -54654,7 +55731,7 @@
     {
       "id": "fe33ab02fce26d358e64c0d2bd9192a9",
       "from_id": "d3864a5f8d70c25b772a67ff81e23bbc",
-      "to_id": "163504107b2e40c6ee30c853a89356bb",
+      "to_id": "833ac1c41f3835b85d6d203ffbc3facc",
       "kind": "implements",
       "truth_class": "asserted",
       "status": "needs_reverification",
@@ -54663,7 +55740,7 @@
       "depends_on": [],
       "inspected_by": "solo",
       "created_at": "2026-08-09T16:33:06.340Z",
-      "updated_at": "2026-08-22T06:38:31.266Z"
+      "updated_at": "2026-08-22T14:40:56.273Z"
     },
     {
       "id": "fe5d56dfc4f5604f97756b3c7ee76580",
@@ -54706,6 +55783,20 @@
       "inspected_by": "llm:quality",
       "created_at": "2026-08-17T07:36:27.112Z",
       "updated_at": "2026-08-17T07:36:27.118Z"
+    },
+    {
+      "id": "fe9b9a86536d93ca5cc7754b3efc66f8",
+      "from_id": "2e7da1d273ba0fc513d1dceed9b40bf8",
+      "to_id": "e97a47e4a50a112001a3ec3f0b7f8a01",
+      "kind": "implements",
+      "truth_class": "asserted",
+      "status": "uninspected",
+      "criterion": "",
+      "confidence": 0.0,
+      "depends_on": [],
+      "inspected_by": "",
+      "created_at": "2026-08-22T14:46:11.030Z",
+      "updated_at": "2026-08-22T14:46:11.030Z"
     },
     {
       "id": "fed0f4b993b4a77cc7df5166635334ec",
@@ -55290,6 +56381,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f052de69b9a6edb89",
+      "subject_kind": "edge",
+      "subject_id": "939156f748aa858fd6a398284632929a",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:49:16.005Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f0559ab965d206a2a",
       "subject_kind": "edge",
       "subject_id": "7ab6d9dee5e0a1c13052988d52162cf0",
@@ -55679,6 +56783,19 @@
       "confidence": 1.0,
       "asserted_by": "llm:analyzer",
       "asserted_at": "2026-08-16T04:08:32.013Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f08df0a16f777f7bc",
+      "subject_kind": "edge",
+      "subject_id": "1111362b4f600ef178c3855cc2a51bc7",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:49:16.004Z",
       "decision_mode": "individual"
     },
     {
@@ -57366,6 +58483,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f1afebde6cbf5e4be",
+      "subject_kind": "edge",
+      "subject_id": "e47db0513e9eda57697745eefab742ff",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:49:16.004Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f1b0cddc3a01285fe",
       "subject_kind": "edge",
       "subject_id": "6844335785547d79441a02026be01b22",
@@ -57839,6 +58969,19 @@
       "confidence": 0.85,
       "asserted_by": "llm:builder",
       "asserted_at": "2026-08-16T12:24:31.719Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f21b3002ebfbef78d",
+      "subject_kind": "edge",
+      "subject_id": "54856a3b47b7685188fb71ad130f918a",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:32:05.873Z",
       "decision_mode": "individual"
     },
     {
@@ -59372,7 +60515,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "ratification_batch in src/commands/journey/mod.rs records the exact non-placeholder human decision bound to the current journey/manifest hash and keeps human authority (the seal) distinct from the executing agent.",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.85,
       "asserted_by": "solo",
       "asserted_at": "2026-08-14T07:16:41.255Z",
@@ -61844,6 +62987,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "f4c215da7fac588df",
+      "subject_kind": "edge",
+      "subject_id": "4ae31f3d7d21b290ce0f30d560852869",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:32:05.870Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "f4c7a4757f71f3959",
       "subject_kind": "edge",
       "subject_id": "2d25dbd7477f046b663afaddd93d22cd",
@@ -62030,6 +63186,19 @@
       "confidence": 0.88,
       "asserted_by": "llm:builder",
       "asserted_at": "2026-08-15T11:15:34.489Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f4e04680858e8d2b4",
+      "subject_kind": "edge",
+      "subject_id": "f28da1c19a420b974093a9b919254452",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:49:16.003Z",
       "decision_mode": "individual"
     },
     {
@@ -64050,11 +65219,24 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "unratified derivations keep a journey out of implemented/realized readiness and out of the build roster",
-      "verification": "expired",
+      "verification": "verified",
       "confidence": 0.9,
       "asserted_by": "llm:builder",
       "asserted_profile": "claude-fable-session",
       "asserted_at": "2026-08-18T14:20:57.305Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f6205ac7d8f505ee3",
+      "subject_kind": "edge",
+      "subject_id": "1332038f26ff3087f038f8b70f0b102e",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:49:16.002Z",
       "decision_mode": "individual"
     },
     {
@@ -64668,6 +65850,19 @@
       "asserted_by": "llm:builder",
       "asserted_profile": "drain-2026-08-17",
       "asserted_at": "2026-08-17T06:46:04.175Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f6895c9ae65b1724e",
+      "subject_kind": "edge",
+      "subject_id": "fb0a3a3a6a700da1ec2db2fe8b749700",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:49:16.004Z",
       "decision_mode": "individual"
     },
     {
@@ -65629,7 +66824,7 @@
       "claim": "verdict",
       "state": "passing",
       "criterion": "proof",
-      "verification": "verified",
+      "verification": "expired",
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-18T09:00:06.813Z",
@@ -68348,6 +69543,19 @@
       "confidence": 1.0,
       "asserted_by": "loom",
       "asserted_at": "2026-08-16T06:52:08.099Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "f8f7a3de398935037",
+      "subject_kind": "edge",
+      "subject_id": "278f856813f2718d73c05d6aa772e5e9",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:32:05.872Z",
       "decision_mode": "individual"
     },
     {
@@ -71684,6 +72892,19 @@
       "decision_mode": "individual"
     },
     {
+      "id": "fb5453a83b2153fbd",
+      "subject_kind": "edge",
+      "subject_id": "1d0d7063f707b7372508c60020e1ef70",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:32:05.872Z",
+      "decision_mode": "individual"
+    },
+    {
       "id": "fb556dfc0ed205ba1",
       "subject_kind": "node",
       "subject_id": "dd3695e59757635a7",
@@ -71933,6 +73154,19 @@
       "confidence": 0.88,
       "asserted_by": "llm:builder",
       "asserted_at": "2026-08-15T11:10:37.492Z",
+      "decision_mode": "individual"
+    },
+    {
+      "id": "fb73942f9c4145eea",
+      "subject_kind": "edge",
+      "subject_id": "7079b6456f15e85209ecf2a99b3c61e7",
+      "claim": "verdict",
+      "state": "passing",
+      "criterion": "compiled Journey profile",
+      "verification": "verified",
+      "confidence": 1.0,
+      "asserted_by": "loom",
+      "asserted_at": "2026-08-22T14:32:05.872Z",
       "decision_mode": "individual"
     },
     {
@@ -80001,6 +81235,120 @@
       "recorded_at": "2026-08-16T14:16:24.660Z"
     },
     {
+      "id": "e62bed8066cfdb354",
+      "fact_id": "f052de69b9a6edb89",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'writes-graph:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:49:16.005Z"
+    },
+    {
+      "id": "e913605dacac03a70",
+      "fact_id": "f052de69b9a6edb89",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run writes-graph --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "8e20fd3b3401af21",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"failed_assertions\":[],\"journey\":\"writes-graph\",\"passed_assertions\":[{\"assertion_id\":\"writes-legacy-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-type\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-name\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-truth-class\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-source\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-items\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-number\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-kind\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-text\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-file\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-symbol\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-fingerprint\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-needs\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-no-authoritative-spawn\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-legacy-items-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-ready-count-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-human-review-remains\",\"operation_id\":\"absorb-repository-state\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-type"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-name"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-truth-class"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-source"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-items"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-number"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-kind"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-text"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-file"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-symbol"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-fingerprint"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-needs"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-no-authoritative-spawn"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-items-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-ready-count-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-human-review-remains"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787410156001",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:49:16.005Z"
+    },
+    {
       "id": "e04eca2a9c358be54",
       "fact_id": "f0559ab965d206a2a",
       "payload": {
@@ -80900,6 +82248,120 @@
         "text": "tests/ring58_trust_surfaces.rs:38"
       },
       "recorded_at": "2026-08-16T04:08:32.013Z"
+    },
+    {
+      "id": "e3f94e4b7986a707c",
+      "fact_id": "f08df0a16f777f7bc",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'writes-graph:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:49:16.004Z"
+    },
+    {
+      "id": "ebe680350cb604a58",
+      "fact_id": "f08df0a16f777f7bc",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run writes-graph --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "8e20fd3b3401af21",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"failed_assertions\":[],\"journey\":\"writes-graph\",\"passed_assertions\":[{\"assertion_id\":\"writes-legacy-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-type\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-name\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-truth-class\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-source\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-items\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-number\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-kind\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-text\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-file\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-symbol\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-fingerprint\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-needs\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-no-authoritative-spawn\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-legacy-items-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-ready-count-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-human-review-remains\",\"operation_id\":\"absorb-repository-state\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-type"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-name"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-truth-class"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-source"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-items"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-number"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-kind"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-text"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-file"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-symbol"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-fingerprint"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-needs"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-no-authoritative-spawn"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-items-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-ready-count-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-human-review-remains"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787410156001",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:49:16.004Z"
     },
     {
       "id": "e0788d31571df0ce9",
@@ -86072,6 +87534,120 @@
       "recorded_at": "2026-08-22T06:50:06.237Z"
     },
     {
+      "id": "e049c36829be99c57",
+      "fact_id": "f1afebde6cbf5e4be",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run writes-graph --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "8e20fd3b3401af21",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"failed_assertions\":[],\"journey\":\"writes-graph\",\"passed_assertions\":[{\"assertion_id\":\"writes-legacy-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-type\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-name\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-truth-class\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-source\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-items\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-number\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-kind\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-text\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-file\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-symbol\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-fingerprint\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-needs\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-no-authoritative-spawn\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-legacy-items-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-ready-count-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-human-review-remains\",\"operation_id\":\"absorb-repository-state\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-type"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-name"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-truth-class"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-source"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-items"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-number"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-kind"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-text"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-file"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-symbol"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-fingerprint"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-needs"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-no-authoritative-spawn"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-items-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-ready-count-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-human-review-remains"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787410156001",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:49:16.004Z"
+    },
+    {
+      "id": "e3cedbcb4a6cb81ab",
+      "fact_id": "f1afebde6cbf5e4be",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'writes-graph:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:49:16.004Z"
+    },
+    {
       "id": "e0362734b8e76fdfd",
       "fact_id": "f1b0cddc3a01285fe",
       "payload": {
@@ -87237,6 +88813,72 @@
         "symbol_hash": "f111f84a3c1781c3"
       },
       "recorded_at": "2026-08-16T12:24:31.719Z"
+    },
+    {
+      "id": "e6268c43e49654575",
+      "fact_id": "f21b3002ebfbef78d",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'compass-projection:proof' observed passed with 8 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:32:05.873Z"
+    },
+    {
+      "id": "eb80c747de8fe8313",
+      "fact_id": "f21b3002ebfbef78d",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run compass-projection --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "78a4edc71223b294",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":8,\"failed_assertions\":[],\"journey\":\"compass-projection\",\"passed_assertions\":[{\"assertion_id\":\"seed-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"fix-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"derive-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-lane-is-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-rung-is-unmet\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-points-to-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-reports-grounded\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-routes-build\",\"operation_id\":\"inspect-work-direction\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 8,
+        "observed_assertions": [
+          {
+            "group": "inspect-work-direction",
+            "assertion": "seed-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "fix-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "derive-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-lane-is-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-rung-is-unmet"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-points-to-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-reports-grounded"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-routes-build"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787409125869",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:32:05.873Z"
     },
     {
       "id": "eba601ed7c564fbc7",
@@ -98334,6 +99976,72 @@
       "recorded_at": "2026-08-15T13:50:36.332Z"
     },
     {
+      "id": "e27f94a899c2c1a72",
+      "fact_id": "f4c215da7fac588df",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'compass-projection:proof' observed passed with 8 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:32:05.870Z"
+    },
+    {
+      "id": "ecaeaf2a48e38429c",
+      "fact_id": "f4c215da7fac588df",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run compass-projection --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "78a4edc71223b294",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":8,\"failed_assertions\":[],\"journey\":\"compass-projection\",\"passed_assertions\":[{\"assertion_id\":\"seed-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"fix-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"derive-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-lane-is-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-rung-is-unmet\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-points-to-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-reports-grounded\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-routes-build\",\"operation_id\":\"inspect-work-direction\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 8,
+        "observed_assertions": [
+          {
+            "group": "inspect-work-direction",
+            "assertion": "seed-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "fix-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "derive-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-lane-is-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-rung-is-unmet"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-points-to-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-reports-grounded"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-routes-build"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787409125869",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:32:05.870Z"
+    },
+    {
       "id": "e83eea71eacbe651f",
       "fact_id": "f4c7a4757f71f3959",
       "payload": {
@@ -98738,6 +100446,120 @@
         "text": "manifest compass-projection-technical-projection entry 'maintain-rung-lane-queue-invariant' (operation=create) maps it to step_ids ['inspect-work-direction'], all of which appear in the Journey's declared steps ['inspect-work-direction']. The manifest's journey_hash ed6a23c4d1d8f2b4 equals the Journey's current semantic_hash ed6a23c4d1d8f2b4, and loom journey map reports derivations_ratified=True. Entry rationale: Compass selection is only meaningful if maturity state and queue state cannot disagree."
       },
       "recorded_at": "2026-08-15T11:15:34.489Z"
+    },
+    {
+      "id": "e117672583f4543de",
+      "fact_id": "f4e04680858e8d2b4",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run writes-graph --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "8e20fd3b3401af21",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"failed_assertions\":[],\"journey\":\"writes-graph\",\"passed_assertions\":[{\"assertion_id\":\"writes-legacy-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-type\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-name\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-truth-class\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-source\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-items\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-number\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-kind\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-text\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-file\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-symbol\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-fingerprint\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-needs\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-no-authoritative-spawn\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-legacy-items-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-ready-count-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-human-review-remains\",\"operation_id\":\"absorb-repository-state\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-type"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-name"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-truth-class"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-source"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-items"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-number"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-kind"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-text"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-file"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-symbol"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-fingerprint"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-needs"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-no-authoritative-spawn"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-items-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-ready-count-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-human-review-remains"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787410156001",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:49:16.003Z"
+    },
+    {
+      "id": "e280e1953950189d2",
+      "fact_id": "f4e04680858e8d2b4",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'writes-graph:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:49:16.003Z"
     },
     {
       "id": "eae919909db751c92",
@@ -103946,6 +105768,120 @@
       "recorded_at": "2026-08-18T14:20:57.305Z"
     },
     {
+      "id": "e194e84ae556c4c52",
+      "fact_id": "f6205ac7d8f505ee3",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run writes-graph --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "8e20fd3b3401af21",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"failed_assertions\":[],\"journey\":\"writes-graph\",\"passed_assertions\":[{\"assertion_id\":\"writes-legacy-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-type\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-name\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-truth-class\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-source\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-items\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-number\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-kind\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-text\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-file\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-symbol\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-fingerprint\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-needs\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-no-authoritative-spawn\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-legacy-items-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-ready-count-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-human-review-remains\",\"operation_id\":\"absorb-repository-state\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-type"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-name"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-truth-class"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-source"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-items"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-number"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-kind"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-text"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-file"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-symbol"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-fingerprint"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-needs"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-no-authoritative-spawn"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-items-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-ready-count-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-human-review-remains"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787410156001",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:49:16.002Z"
+    },
+    {
+      "id": "ec6567e9930bd74e6",
+      "fact_id": "f6205ac7d8f505ee3",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'writes-graph:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:49:16.002Z"
+    },
+    {
       "id": "e15f657c3a82c0372",
       "fact_id": "f620f4d9887d8d306",
       "payload": {
@@ -105673,6 +107609,120 @@
       "recorded_at": "2026-08-17T06:46:04.175Z"
     },
     {
+      "id": "ebb14ed836c2726d5",
+      "fact_id": "f6895c9ae65b1724e",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run writes-graph --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "8e20fd3b3401af21",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":20,\"failed_assertions\":[],\"journey\":\"writes-graph\",\"passed_assertions\":[{\"assertion_id\":\"writes-legacy-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-id\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-type\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-name\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-truth-class\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-proposal-source\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-persisted-items\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-number\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-status\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-kind\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-item-text\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-file\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-symbol\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-evidence-fingerprint\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-first-persisted-needs\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-no-authoritative-spawn\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-legacy-items-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-ready-count-preserved\",\"operation_id\":\"absorb-repository-state\"},{\"assertion_id\":\"writes-human-review-remains\",\"operation_id\":\"absorb-repository-state\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 20,
+        "observed_assertions": [
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-id"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-type"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-name"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-truth-class"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-proposal-source"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-persisted-items"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-number"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-status"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-kind"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-item-text"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-file"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-symbol"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-evidence-fingerprint"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-first-persisted-needs"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-no-authoritative-spawn"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-legacy-items-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-ready-count-preserved"
+          },
+          {
+            "group": "absorb-repository-state",
+            "assertion": "writes-human-review-remains"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787410156001",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:49:16.004Z"
+    },
+    {
+      "id": "efe88ec571b020629",
+      "fact_id": "f6895c9ae65b1724e",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'writes-graph:proof' observed passed with 20 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:49:16.004Z"
+    },
+    {
       "id": "e3ce39d01dcd1c31e",
       "fact_id": "f68dfbcd2d396c778",
       "payload": {
@@ -106002,7 +108052,7 @@
       "recorded_at": "2026-08-17T07:36:27.117Z"
     },
     {
-      "id": "e3981d6c25f5c8a89",
+      "id": "e4dcb227f205a530e",
       "fact_id": "f6a0968c33d128dcb",
       "payload": {
         "kind": "run",
@@ -106013,24 +108063,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/release/mod.rs": "01723d530c4b6bec"
+          "src/release/mod.rs": "278f2ed9b238decc"
         },
         "assertions": 2,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787033492813",
-        "loom_version": "0.33.0"
+        "ran_at": "1787410074504",
+        "loom_version": "0.35.4"
       },
       "recorded_at": "2026-08-17T07:36:27.117Z"
     },
     {
-      "id": "ee2f100886d419830",
+      "id": "ef3d7758a68991e82",
       "fact_id": "f6a0968c33d128dcb",
       "payload": {
         "kind": "span",
         "file": "src/release/mod.rs",
-        "start": 95,
-        "end": 112,
+        "start": 96,
+        "end": 113,
         "hash": "f33564e0fff07d5c"
       },
       "recorded_at": "2026-08-17T07:36:27.117Z"
@@ -116306,24 +118356,14 @@
       "recorded_at": "2026-08-17T07:33:07.756Z"
     },
     {
-      "id": "e186bac1e0d02bcb8",
+      "id": "e01ca78c94f19ad6b",
       "fact_id": "f8f05be9e58c92f76",
       "payload": {
-        "kind": "run",
-        "producer": "prescreen",
-        "command": "scan 'iso5055-sec-no-injection' [e068a2257f89f241] (3 pattern(s)) over 1 realizing file(s)",
-        "cwd": "",
-        "exit_code": 0,
-        "stdout_hash": "cbf29ce484222325",
-        "stderr_hash": "cbf29ce484222325",
-        "covered": {
-          "src/release/mod.rs": "01723d530c4b6bec"
-        },
-        "assertions": 3,
-        "locally_minted": false,
-        "duration_ms": 0,
-        "ran_at": "1787043752745",
-        "loom_version": "0.33.0"
+        "kind": "span",
+        "file": "src/release/mod.rs",
+        "start": 366,
+        "end": 377,
+        "hash": "d5d3ae83a72790e9"
       },
       "recorded_at": "2026-08-18T09:02:32.742Z"
     },
@@ -116351,14 +118391,24 @@
       "recorded_at": "2026-08-18T09:02:32.742Z"
     },
     {
-      "id": "ef17aafb5a9785499",
+      "id": "eed3d379d1f145723",
       "fact_id": "f8f05be9e58c92f76",
       "payload": {
-        "kind": "span",
-        "file": "src/release/mod.rs",
-        "start": 365,
-        "end": 376,
-        "hash": "d5d3ae83a72790e9"
+        "kind": "run",
+        "producer": "prescreen",
+        "command": "scan 'iso5055-sec-no-injection' [e068a2257f89f241] (3 pattern(s)) over 1 realizing file(s)",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "cbf29ce484222325",
+        "stderr_hash": "cbf29ce484222325",
+        "covered": {
+          "src/release/mod.rs": "278f2ed9b238decc"
+        },
+        "assertions": 3,
+        "locally_minted": false,
+        "duration_ms": 0,
+        "ran_at": "1787410074766",
+        "loom_version": "0.35.4"
       },
       "recorded_at": "2026-08-18T09:02:32.742Z"
     },
@@ -116453,6 +118503,72 @@
         "text": "compiled Journey 'pagination:proof' observed passed with 6 typed assertion(s)"
       },
       "recorded_at": "2026-08-16T06:52:08.099Z"
+    },
+    {
+      "id": "e7d157a3d6ce28471",
+      "fact_id": "f8f7a3de398935037",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run compass-projection --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "78a4edc71223b294",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":8,\"failed_assertions\":[],\"journey\":\"compass-projection\",\"passed_assertions\":[{\"assertion_id\":\"seed-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"fix-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"derive-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-lane-is-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-rung-is-unmet\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-points-to-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-reports-grounded\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-routes-build\",\"operation_id\":\"inspect-work-direction\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 8,
+        "observed_assertions": [
+          {
+            "group": "inspect-work-direction",
+            "assertion": "seed-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "fix-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "derive-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-lane-is-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-rung-is-unmet"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-points-to-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-reports-grounded"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-routes-build"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787409125869",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:32:05.872Z"
+    },
+    {
+      "id": "eadd409685ab533df",
+      "fact_id": "f8f7a3de398935037",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'compass-projection:proof' observed passed with 8 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:32:05.872Z"
     },
     {
       "id": "e4adbfb1756f86238",
@@ -125713,6 +127829,72 @@
       "recorded_at": "2026-08-15T11:13:55.954Z"
     },
     {
+      "id": "e497084e691eb2a08",
+      "fact_id": "fb5453a83b2153fbd",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run compass-projection --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "78a4edc71223b294",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":8,\"failed_assertions\":[],\"journey\":\"compass-projection\",\"passed_assertions\":[{\"assertion_id\":\"seed-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"fix-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"derive-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-lane-is-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-rung-is-unmet\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-points-to-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-reports-grounded\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-routes-build\",\"operation_id\":\"inspect-work-direction\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 8,
+        "observed_assertions": [
+          {
+            "group": "inspect-work-direction",
+            "assertion": "seed-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "fix-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "derive-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-lane-is-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-rung-is-unmet"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-points-to-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-reports-grounded"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-routes-build"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787409125869",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:32:05.872Z"
+    },
+    {
+      "id": "eb786a8445948166e",
+      "fact_id": "fb5453a83b2153fbd",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'compass-projection:proof' observed passed with 8 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:32:05.872Z"
+    },
+    {
       "id": "e6fbc47899c45089b",
       "fact_id": "fb556dfc0ed205ba1",
       "payload": {
@@ -126137,6 +128319,72 @@
         "text": "manifest mcp-in-band-v2 entry 'project-behavior-risk-and-proof-exposure' (operation=reuse) maps it to step_ids ['inspect-live-impact'], all of which appear in the Journey's declared steps ['discover-tools', 'inspect-live-impact', 'request-unknown-tool', 'invoke-failing-tool']. The manifest's journey_hash edbe81e359d5ad43 equals the Journey's current semantic_hash edbe81e359d5ad43, and loom journey map reports derivations_ratified=True. Entry rationale: The MCP route exposes the same behavior-risk and proof-exposure projection rather than a weakened protocol-specific substitute."
       },
       "recorded_at": "2026-08-15T11:10:37.492Z"
+    },
+    {
+      "id": "e0eca811469e538f2",
+      "fact_id": "fb73942f9c4145eea",
+      "payload": {
+        "kind": "claim",
+        "text": "compiled Journey 'compass-projection:proof' observed passed with 8 typed assertion(s)"
+      },
+      "recorded_at": "2026-08-22T14:32:05.872Z"
+    },
+    {
+      "id": "e79bf710072afb91c",
+      "fact_id": "fb73942f9c4145eea",
+      "payload": {
+        "kind": "run",
+        "producer": "journey",
+        "command": "loom journey run compass-projection --profile proof",
+        "cwd": "",
+        "exit_code": 0,
+        "stdout_hash": "78a4edc71223b294",
+        "stderr_hash": "cbf29ce484222325",
+        "stdout_excerpt": "{\"assertions_failed\":0,\"assertions_passed\":8,\"failed_assertions\":[],\"journey\":\"compass-projection\",\"passed_assertions\":[{\"assertion_id\":\"seed-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"fix-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"derive-is-met\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-lane-is-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"grounding-rung-is-unmet\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-points-to-build\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-reports-grounded\",\"operation_id\":\"inspect-work-direction\"},{\"assertion_id\":\"compass-routes-build\",\"operation_id\":\"inspect-work-direction\"}],\"profile\":\"proof\",\"status\":\"passed\"}",
+        "covered": {
+          "src/commands.rs": "7485cccc089c15a9"
+        },
+        "assertions": 8,
+        "observed_assertions": [
+          {
+            "group": "inspect-work-direction",
+            "assertion": "seed-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "fix-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "derive-is-met"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-lane-is-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "grounding-rung-is-unmet"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-points-to-build"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-reports-grounded"
+          },
+          {
+            "group": "inspect-work-direction",
+            "assertion": "compass-routes-build"
+          }
+        ],
+        "locally_minted": true,
+        "duration_ms": 0,
+        "ran_at": "1787409125869",
+        "loom_version": "0.35.4"
+      },
+      "recorded_at": "2026-08-22T14:32:05.872Z"
     },
     {
       "id": "e091a1a657c2dd6fe",
@@ -134690,13 +136938,13 @@
       "recorded_at": "2026-08-13T13:27:17.522Z"
     },
     {
-      "id": "e02bbec055dc4ed3a",
+      "id": "e76a37b0047aa3b7c",
       "fact_id": "fdfa162c44c788851",
       "payload": {
         "kind": "span",
         "file": "src/release/mod.rs",
-        "start": 114,
-        "end": 435,
+        "start": 115,
+        "end": 436,
         "hash": "3e87f491fb8ebaa2"
       },
       "recorded_at": "2026-08-17T07:36:20.117Z"
@@ -136273,7 +138521,19 @@
       "recorded_at": "2026-08-14T23:11:51.497Z"
     },
     {
-      "id": "e42b10503c09c329c",
+      "id": "e034b3a29e18b04fd",
+      "fact_id": "fe64f9335b79e78f9",
+      "payload": {
+        "kind": "span",
+        "file": "src/release/mod.rs",
+        "start": 123,
+        "end": 130,
+        "hash": "e48590dde78a380c"
+      },
+      "recorded_at": "2026-08-18T09:02:47.919Z"
+    },
+    {
+      "id": "e2d15edec6f8985e7",
       "fact_id": "fe64f9335b79e78f9",
       "payload": {
         "kind": "run",
@@ -136284,48 +138544,24 @@
         "stdout_hash": "cbf29ce484222325",
         "stderr_hash": "cbf29ce484222325",
         "covered": {
-          "src/release/mod.rs": "01723d530c4b6bec"
+          "src/release/mod.rs": "278f2ed9b238decc"
         },
         "assertions": 3,
         "locally_minted": false,
         "duration_ms": 0,
-        "ran_at": "1787043767920",
-        "loom_version": "0.33.0"
+        "ran_at": "1787410077647",
+        "loom_version": "0.35.4"
       },
       "recorded_at": "2026-08-18T09:02:47.919Z"
     },
     {
-      "id": "e4c76d52c8de12280",
+      "id": "eda09a3eb1e1267a3",
       "fact_id": "fe64f9335b79e78f9",
       "payload": {
         "kind": "span",
         "file": "src/release/mod.rs",
-        "start": 122,
-        "end": 129,
-        "hash": "e48590dde78a380c"
-      },
-      "recorded_at": "2026-08-18T09:02:47.919Z"
-    },
-    {
-      "id": "e96a00f6c85eb2511",
-      "fact_id": "fe64f9335b79e78f9",
-      "payload": {
-        "kind": "span",
-        "file": "src/release/mod.rs",
-        "start": 437,
-        "end": 473,
-        "hash": "b5b0be595a29ffb4"
-      },
-      "recorded_at": "2026-08-18T09:02:47.919Z"
-    },
-    {
-      "id": "edd279ceda283d9b1",
-      "fact_id": "fe64f9335b79e78f9",
-      "payload": {
-        "kind": "span",
-        "file": "src/release/mod.rs",
-        "start": 365,
-        "end": 376,
+        "start": 366,
+        "end": 377,
         "hash": "d5d3ae83a72790e9"
       },
       "recorded_at": "2026-08-18T09:02:47.919Z"
@@ -136336,6 +138572,18 @@
       "payload": {
         "kind": "claim",
         "text": "Loom pre-screen scanned src/release/mod.rs with all 3 unchecked-failure patterns and found no candidates; src/release/mod.rs:122-129 is a total enum-to-string mapping, src/release/mod.rs:365-376 makes the execution seam return Result<CommandObservation>, and src/release/mod.rs:437-473 constructs an explicit blocked report rather than swallowing an error"
+      },
+      "recorded_at": "2026-08-18T09:02:47.919Z"
+    },
+    {
+      "id": "ef9c2d0a6243773e1",
+      "fact_id": "fe64f9335b79e78f9",
+      "payload": {
+        "kind": "span",
+        "file": "src/release/mod.rs",
+        "start": 438,
+        "end": 474,
+        "hash": "b5b0be595a29ffb4"
       },
       "recorded_at": "2026-08-18T09:02:47.919Z"
     },
@@ -142949,6 +145197,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "008ebbdec7536a49990d5225f9d867ee",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "00a7e296fbd01d217e4cd38f108fbe6c",
       "target_kind": "node",
       "key": "aspect",
@@ -143232,7 +145487,7 @@
       "target_id": "01d410d00647c2706fd0307318242787",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/absorb.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/absorb.rs\",\"proven_by\":\"journey:writes-graph:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -143653,6 +145908,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/research.rs\",\"start\":53,\"end\":73,\"hash\":\"be5bf07f45f124c3\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "05dac0f98249e04202bec2b278ea26d6",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -144279,6 +146541,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "09ee100a27c2e681488f941b202cfc7e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "fixer_contract",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "09fc9f9cbbf5c81f5b08bf3c8f755673",
       "target_kind": "node",
       "key": "de_facto",
@@ -144416,6 +146685,13 @@
       "target_kind": "edge",
       "key": "step_ids",
       "value": "[\"attempt-automated-ratification\"]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0abb6cb359eb88d468a0e5d4a5fb856b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -144800,7 +147076,7 @@
       "target_id": "0dbaf8e33b246bd506400e75c7f3c5bd",
       "target_kind": "edge",
       "key": "locator",
-      "value": "PatternCmd; PatternExemplarCmd; IntentCmd; IntentTagCmd; CodefileCmd; CheckpointCmd; EdgeCmd; InboxCmd; QuestionCmd; NoteCmd; TaskCmd; FindingCmd; RuleCmd; ValidationCmd; HypothesisCmd; SurfaceCmd; VocabCmd; LayerCmd; IgnoreCmd; ProposalCmd; JudgmentCmd; ProposalItemCmd; JourneyCmd; DriveCmd; HookCmd; McpCmd; ScanFormatArg; ScanCmd; ThresholdCmd; PolicyCmd; WikiCmd; GraphCmd; AuditCmd; AuditIncidentCmd; BootstrapCmd",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -144822,6 +147098,13 @@
       "target_kind": "edge",
       "key": "surface_locator",
       "value": "run",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "0e8e9cb6a562608376906b8231e50bf5",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "require_edge_kind_owner; begin",
       "truth_class": "asserted"
     },
     {
@@ -144907,6 +147190,13 @@
       "key": "test_symbols",
       "value": "[\"empty_sample_returns_zero\",\"single_value_is_every_quantile\",\"interpolates_between_adjacent_values\",\"bounds_return_minimum_and_maximum\"]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "0f570459a170e4c06df05ac2e5519e29",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
     },
     {
       "target_id": "0fb3765ade120f2701970e2c20fb37fc",
@@ -145375,6 +147665,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"scripts/reconstruct-v12.sh\",\"start\":14,\"end\":14,\"hash\":\"64d8649af16c2079\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "1271bad3b06a86b0ecc9ec2ff63fe8d9",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -146125,6 +148422,13 @@
       "key": "stale_cause",
       "value": "src/journey_runtime.rs:7-7 no longer holds (span_file_deleted)",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "17b029a57358aa8e2a898154038a4c4b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
     },
     {
       "target_id": "17cfd8e1dde86c062dd228f729420285",
@@ -146946,6 +149250,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "1d481b0c0dd20ba45c3a181a5f70ce2e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "1d905391ed3f4e9d0880e8a97c89d589",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -147499,6 +149810,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "2200b18294a6c37a38de3ab31c140b5f",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "22040b320ffef0616cf30f7bd686a7d6",
       "target_kind": "node",
       "key": "aspect",
@@ -147573,6 +149891,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"skills/loom-driver/SKILL.md\",\"start\":7,\"end\":16,\"hash\":\"0a9457e747691bfd\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "230f390e15789f7bcda6f283595a1883",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "ensure_supported_persisted_schema; apply_schema_migrations",
       "truth_class": "asserted"
     },
     {
@@ -147748,6 +150073,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "hypothesis",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "246cc81f2338653904391a9b2cd6dec3",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -148134,6 +150466,13 @@
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"10\",\"call_witness\":\"find_exact\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands/discover_cmd.rs\",\"entry_symbol\":\"find_exact\",\"grounded_symbol\":\"find_exact\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "2753baa3243ae229e75a1cbc4d161dbf",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "parse; validate_for",
+      "truth_class": "asserted"
     },
     {
       "target_id": "2797afeefa9af39b6053082c2f141372",
@@ -148619,6 +150958,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "2c20e1c494f7c3ae31d40a9acb994df2",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "2c4f86217ded57fe6015690227fee090",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -149098,7 +151444,7 @@
       "target_id": "2e8479dd8226308d45171e27750cd2d1",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/release/mod.rs\",\"proven_by\":\"legacy export is refused with a blocked rehearsal report\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/release/mod.rs\",\"proven_by\":null,\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -149169,6 +151515,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "fn codefile_anchor",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "2f1ac31758b794be6fdd3e747efa22e5",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "validate; resolve_for_store",
       "truth_class": "asserted"
     },
     {
@@ -149555,6 +151908,13 @@
       "key": "test_symbols",
       "value": "[]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "331e11104d7cb3715e7c9e96ab8c35fb",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "findings_view",
+      "truth_class": "asserted"
     },
     {
       "target_id": "3331ba78a307de5874f397addeff96e7",
@@ -150495,6 +152855,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "3b5f30574ca8207de77e6ad4cf3b1b29",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "verdict_write_back",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "3bd5fe99f48d5ab9b9c53fce15029761",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -150710,20 +153077,6 @@
       "key": "stale_cause",
       "value": "src/signal.rs:1139-1149 no longer holds (span_rewritten)",
       "truth_class": "derived"
-    },
-    {
-      "target_id": "3dad82294e496b19b5525ca7e13de209",
-      "target_kind": "edge",
-      "key": "locator",
-      "value": "run",
-      "truth_class": "asserted"
-    },
-    {
-      "target_id": "3dad82294e496b19b5525ca7e13de209",
-      "target_kind": "edge",
-      "key": "surface_locator",
-      "value": "run",
-      "truth_class": "asserted"
     },
     {
       "target_id": "3de13c3ea03f7d8b52cc2fb920366462",
@@ -151004,6 +153357,13 @@
       "key": "test_symbols",
       "value": "[]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "419200bb0a7c54fcbd6a799307e6a3e6",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "coverage_contract",
+      "truth_class": "asserted"
     },
     {
       "target_id": "41d19512d1f0f73cea46bdde59dc9952",
@@ -151874,6 +154234,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "47ac4da0087627c4183d8d276a4ddd19",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "scorecard",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "47dc34df467617e47fb39667a8e9577e",
       "target_kind": "edge",
       "key": "stale_cause",
@@ -152081,6 +154448,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "intent_ratify; intent_reject",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "49a982b3182fc8233fbfb44f58266a3c",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "adversarial_reviewer_contract",
       "truth_class": "asserted"
     },
     {
@@ -152903,6 +155277,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "51bc647b5874c5e438f88148fbe6630e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "derive_contract",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "51e62e33c7842d51baae58ffddea5285",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -153421,6 +155802,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "55524445cc879e9954aebcb080939417",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "quality_contract",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "55c1909ef92751267f671b47e941c1d9",
       "target_kind": "node",
       "key": "proof_anchors",
@@ -153530,6 +155918,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/research.rs\",\"start\":1,\"end\":305,\"hash\":\"0c031f2639e9a3a4\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "568aa4cb33c88afd10ed69ca86fca30c",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -155038,6 +157433,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "63c3a7e9b6532fff61b60c4f488cc92b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "dispatch",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "63dfbde1621abe53ca8ffd7ada8050d2",
       "target_kind": "node",
       "key": "de_facto",
@@ -155063,6 +157465,13 @@
       "target_kind": "node",
       "key": "visibility",
       "value": "internal",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "63e8bb2b385b135a32207749eea534b3",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -155808,6 +158217,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "6852fafe20568f55309e927af689cce0",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "68abc76dec473dc3531b398c4f2b0581",
       "target_kind": "node",
       "key": "calls",
@@ -156352,6 +158768,13 @@
       "key": "proof_strength",
       "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "6b436e1ae5876313bb28d760a19adab3",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
     },
     {
       "target_id": "6b47a8e1779d6868cce0366efa7e5a82",
@@ -156967,6 +159390,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands/proof_cmd/validate.rs\",\"start\":119,\"end\":126,\"hash\":\"ad9cd5910be217f1\",\"symbol\":\"run_validation_batch\",\"symbol_hash\":\"bcfb357f2f4318eb\",\"symbol_offset\":12}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "723ee3c7a6a955f1f07fbf73f809068b",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -157667,6 +160097,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "driver_policy",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "78fc32ad3a21185e9292eb16e6a0bb60",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -158688,7 +161125,7 @@
       "target_id": "7ec864ebdb19c4ebf91cac01a4df33e1",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"1 test(s) reported passing by the runner\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"nothing this proof runs reaches the symbol the behavior is grounded in — exercise the real code path\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
       "truth_class": "derived"
     },
     {
@@ -159123,6 +161560,13 @@
       "target_kind": "edge",
       "key": "locator",
       "value": "extract",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "8330a2d8908e84ff4ed0fdbadba4ee9e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "journey_lint",
       "truth_class": "asserted"
     },
     {
@@ -160827,6 +163271,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "8f2adc8ad1e42349fe73a87b70d62fc3",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "8f2e62c1a7ac341a889ec267150e2f95",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -161254,6 +163705,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "91ffcd9bd8d9115e178e21f6c3366321",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "92017fbb8f55c6af4457c3ec065b2529",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -161590,6 +164048,27 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "939156f748aa858fd6a398284632929a",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "run",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "939156f748aa858fd6a398284632929a",
+      "target_kind": "edge",
+      "key": "surface_locator",
+      "value": "run",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "93a5c579e6c65d46b2395040deff1d1f",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "93adf1311811a123198c10f1f680ab37",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -161600,7 +164079,7 @@
       "target_id": "93b9fa2719c5c0aaa28f1fd6da1ec3be",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/maturity.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/maturity.rs\",\"proven_by\":\"journey:compass-projection:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -161719,7 +164198,7 @@
       "target_id": "93f9aeb81c1b9263ee52b161d1c4dc93",
       "target_kind": "edge",
       "key": "locator",
-      "value": "require_edge_kind_owner; begin; ensure_supported_persisted_schema",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -162056,6 +164535,13 @@
       "target_kind": "node",
       "key": "waiver:scenarios",
       "value": "src/commands.rs:442-455 computes has_more from saturating arithmetic and emits next_offset only when it holds; the past-the-end case is related as an edge_case. The envelope cannot refuse and cannot partially degrade, so sad and fallback have nothing to name.",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "955b5dbcc6f309ebe92592a724aebb84",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -162682,6 +165168,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "9b9428400cef288a728ad8b56878ea91",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "9c41744b441629de31034dbad69cd78b",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -163014,7 +165507,7 @@
       "target_id": "a072c190fa70e48956b61455a88ab995",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S2\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"8\",\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"compiled Journey is S2: no operation exercise was declared for a downstream entry that reaches the realizing symbol. Update the authored surface manifest, then run `loom journey surface-accept`, `loom journey compile`, and `loom journey run`.\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"8\",\"call_witness\":\"journey_derive\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands/journey/derive.rs\",\"entry_symbol\":\"journey_derive\",\"grounded_symbol\":\"journey_derive\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
     },
     {
@@ -163337,6 +165830,13 @@
       "target_kind": "edge",
       "key": "operation_bindings",
       "value": "[{\"operation_id\":\"find-exact-grounding\",\"step_id\":\"find-exact-behavior\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "a32f529a22c7354829cfb1c85216c142",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -164663,6 +167163,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "b02f8682c104133ba748a7f41ab08d27",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "b0672b5570765d14cb59b4cb215446da",
       "target_kind": "node",
       "key": "proof_strength",
@@ -165065,21 +167572,21 @@
       "target_id": "b5725c801af4c3b75b932b5be43c6059",
       "target_kind": "node",
       "key": "proof_last_outcome",
-      "value": "failed",
+      "value": "passed",
       "truth_class": "derived"
     },
     {
       "target_id": "b5725c801af4c3b75b932b5be43c6059",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"20\",\"call_witness\":\"propose\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands.rs\",\"entry_symbol\":\"run\",\"grounded_symbol\":\"propose\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
     },
     {
       "target_id": "b5725c801af4c3b75b932b5be43c6059",
       "target_kind": "node",
       "key": "proof_unstable",
-      "value": "passed then failed over unchanged code for 'An invalid quality pattern fails the scan with the pattern named', 'Loom extracts repository evidence', 'Loom proposes nonauthoritative typed graph writes'",
+      "value": "failed then passed over unchanged code for 'An invalid quality pattern fails the scan with the pattern named', 'Loom extracts repository evidence', 'Loom proposes nonauthoritative typed graph writes'",
       "truth_class": "derived"
     },
     {
@@ -165825,6 +168332,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "bcd3ca63bab371d0594c64fee00ccda5",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "parse_runtime_source; argv_token_source",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "bd155ab83fd22b5eb87dedc8a54ece72",
       "target_kind": "edge",
       "key": "binding_hashes",
@@ -165870,7 +168384,7 @@
       "target_id": "bd6ee3c5335ca155fadadea400aa1fb9",
       "target_kind": "edge",
       "key": "locator",
-      "value": "compile_surface; canonical_bytes; execute_interactive; resume_interactive",
+      "value": "execute_interactive; run_steps",
       "truth_class": "asserted"
     },
     {
@@ -166077,10 +168591,24 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "bed3cacf2f2cd312a29502532a0e3787",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "bedaab4ba77c6a11fe4408e97f0ae1a8",
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"scripts/local-ci.sh\",\"start\":1,\"end\":14,\"hash\":\"10ed32d54c9fcf03\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "bef6e3d9bef4179db9a5891ffb47ad2d",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "prescreen_for",
       "truth_class": "asserted"
     },
     {
@@ -166094,7 +168622,7 @@
       "target_id": "bf87f391e40cfc2612e0dbe0dc1609fa",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/prescan.rs\",\"proven_by\":null,\"used_by\":null,\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/prescan.rs\",\"proven_by\":\"journey:writes-graph:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -166543,6 +169071,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands.rs\",\"start\":47,\"end\":47,\"hash\":\"409515d2f51f3a6d\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "c375959d5adbe57779f2c78a17888690",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -167123,7 +169658,7 @@
       "target_id": "c6b4c22fd6e1f56f9cf4aed61c14d3ff",
       "target_kind": "node",
       "key": "content_hash",
-      "value": "01723d530c4b6bec",
+      "value": "278f2ed9b238decc",
       "truth_class": "derived"
     },
     {
@@ -167144,7 +169679,7 @@
       "target_id": "c6b4c22fd6e1f56f9cf4aed61c14d3ff",
       "target_kind": "node",
       "key": "loc",
-      "value": "539",
+      "value": "540",
       "truth_class": "derived"
     },
     {
@@ -167165,7 +169700,7 @@
       "target_id": "c6b4c22fd6e1f56f9cf4aed61c14d3ff",
       "target_kind": "node",
       "key": "symbol_fingerprints",
-      "value": "{\"ArgvLedgerEntry\":\"6b7558840ed625ce\",\"AuthorizedDerivation\":\"29c394f8c407b2bb\",\"BOUND_DERIVATION_AUTHORITY_SCHEMA\":\"b09f3a5b1dcf4c2c\",\"BoundDerivationAuthority\":\"2f97cece1229a801\",\"CALLER_SOURCE_EXCLUDES\":\"aeb681573756971e\",\"COLD_JOURNEY_REHEARSAL_SCHEMA\":\"c66b9ea6000332d6\",\"CacheRootAttestation\":\"61ce5d0f90ee28c0\",\"ColdJourneyRehearsalReport\":\"c6924a22b05b276b\",\"CommandObservation\":\"7af210412dcecea4\",\"DERIVATION_AUTHORITY_SCHEMA\":\"092bd1a1e906f6f6\",\"DERIVATION_AUTHORITY_STORE_ENV\":\"b0f9bc4ec5bf864c\",\"DERIVATION_AUTHORITY_TOKEN_ENV\":\"e00105ed35fb18f6\",\"DERIVATION_AUTHORITY_TOKEN_PREFIX\":\"fffa8fa577889a7a\",\"DependencyCacheAttestation\":\"c2931513c275f4d2\",\"DerivationAuthoritySubject\":\"7008790ad00029ee\",\"DerivationAuthorizationGrant\":\"edd7c49a3cb85fa4\",\"DerivationCandidatePermit\":\"927867130bf614a2\",\"EffectAttestation\":\"5991ef86ce8e8afd\",\"FixpointAttestation\":\"4a714878aa81f64b\",\"GateResult\":\"1242894f7901b09d\",\"GateRuntime\":\"2ec24d1948279c67\",\"GraphAttestation\":\"fbef2683ed7f362e\",\"INVENTORY_RESERVED_COMPONENTS\":\"aaaa8018cd9dce23\",\"INVENTORY_SECRET_PATTERNS\":\"3170983d54d40676\",\"JourneyResultSummary\":\"876a23b71b253ad1\",\"LiveState\":\"f255e2fa36d4752b\",\"ManifestAttestation\":\"00cd3543a9c820f9\",\"OUTER_COMPILER_VERSION_ENV\":\"d5ac6523acbfb933\",\"OUTER_CONTEXT_CAPSULE_ENV\":\"02e3f63f4ff2d11f\",\"OUTER_JOURNEY_HASH_ENV\":\"107cb66075dbba2f\",\"OUTER_JOURNEY_ID_ENV\":\"780033258f6010cb\",\"OUTER_JOURNEY_PROFILE_ENV\":\"0f2a2351da35d349\",\"OUTER_JOURNEY_RUN_ID_ENV\":\"acf21f01881725ff\",\"OUTER_PROOF_HASH_ENV\":\"abad37980d7c4b5f\",\"OUTER_SURFACE_HASH_ENV\":\"91d04e3ebdc9574f\",\"OuterJourneyAttestation\":\"7c78bb5d405d2a2f\",\"OuterJourneyContextCapsule\":\"e895172d2a610b01\",\"PendingDerivationAuthority\":\"5a50906db08bd881\",\"RELEASE_CACHE_ROOT_ENVIRONMENT\":\"dc8de7ecf244f12f\",\"RELEASE_CODE_GATES\":\"f49680d4d05a65d7\",\"RELEASE_DIAGNOSTIC_BYTES\":\"e1f5f14e29e7a530\",\"RELEASE_INVENTORY_PATH\":\"8d1d8496c11cf5c7\",\"RELEASE_JOURNEY_ID\":\"b2648255b9d6cbc2\",\"RELEASE_PROFILE\":\"4a382451a60d926a\",\"RELEASE_REHEARSAL_SCHEMA\":\"22c6047d472b6929\",\"RESULT_EXCLUDES\":\"4a86f04f1d350322\",\"ReleaseEvent\":\"bed25c5c46f09ced\",\"ReleaseExecutor\":\"f76ab5aa683f5ede\",\"ReleasePhase\":\"fed528a10be1b499\",\"ReleasePolicyAttestation\":\"48574c180d65a1d1\",\"ReleaseRehearsalReport\":\"fcccee99e8f38e88\",\"ReleaseStatus\":\"f36b4c197c3a9dc8\",\"SOURCE_EXCLUDES\":\"7f14b946c9f9dc00\",\"SURFACE_MANIFEST_ROOT\":\"89aee45981023879\",\"SourceInventoryAttestation\":\"9a5b5c6b36a00d87\",\"SourceSnapshotReport\":\"8ad65a0242fed5e0\",\"WorkspaceAttestation\":\"94af296460dd3af7\",\"as_str\":\"99bccdf00f87bb75\",\"blocked\":\"164bc549881ac3f6\",\"execute\":\"a071900c9745b6f7\"}",
+      "value": "{\"ArgvLedgerEntry\":\"6b7558840ed625ce\",\"AuthorizedDerivation\":\"29c394f8c407b2bb\",\"BOUND_DERIVATION_AUTHORITY_SCHEMA\":\"b09f3a5b1dcf4c2c\",\"BoundDerivationAuthority\":\"2f97cece1229a801\",\"CALLER_SOURCE_EXCLUDES\":\"aeb681573756971e\",\"COLD_JOURNEY_REHEARSAL_SCHEMA\":\"c66b9ea6000332d6\",\"CacheRootAttestation\":\"61ce5d0f90ee28c0\",\"ColdJourneyRehearsalReport\":\"c6924a22b05b276b\",\"CommandObservation\":\"7af210412dcecea4\",\"DERIVATION_AUTHORITY_SCHEMA\":\"092bd1a1e906f6f6\",\"DERIVATION_AUTHORITY_STORE_ENV\":\"b0f9bc4ec5bf864c\",\"DERIVATION_AUTHORITY_TOKEN_ENV\":\"e00105ed35fb18f6\",\"DERIVATION_AUTHORITY_TOKEN_PREFIX\":\"fffa8fa577889a7a\",\"DependencyCacheAttestation\":\"c2931513c275f4d2\",\"DerivationAuthoritySubject\":\"7008790ad00029ee\",\"DerivationAuthorizationGrant\":\"edd7c49a3cb85fa4\",\"DerivationCandidatePermit\":\"927867130bf614a2\",\"EffectAttestation\":\"5991ef86ce8e8afd\",\"FixpointAttestation\":\"4a714878aa81f64b\",\"GateResult\":\"1242894f7901b09d\",\"GateRuntime\":\"2ec24d1948279c67\",\"GraphAttestation\":\"fbef2683ed7f362e\",\"INVENTORY_RESERVED_COMPONENTS\":\"c1a6670b3ab520fb\",\"INVENTORY_SECRET_PATTERNS\":\"3170983d54d40676\",\"JourneyResultSummary\":\"876a23b71b253ad1\",\"LiveState\":\"f255e2fa36d4752b\",\"ManifestAttestation\":\"00cd3543a9c820f9\",\"OUTER_COMPILER_VERSION_ENV\":\"d5ac6523acbfb933\",\"OUTER_CONTEXT_CAPSULE_ENV\":\"02e3f63f4ff2d11f\",\"OUTER_JOURNEY_HASH_ENV\":\"107cb66075dbba2f\",\"OUTER_JOURNEY_ID_ENV\":\"780033258f6010cb\",\"OUTER_JOURNEY_PROFILE_ENV\":\"0f2a2351da35d349\",\"OUTER_JOURNEY_RUN_ID_ENV\":\"acf21f01881725ff\",\"OUTER_PROOF_HASH_ENV\":\"abad37980d7c4b5f\",\"OUTER_SURFACE_HASH_ENV\":\"91d04e3ebdc9574f\",\"OuterJourneyAttestation\":\"7c78bb5d405d2a2f\",\"OuterJourneyContextCapsule\":\"e895172d2a610b01\",\"PendingDerivationAuthority\":\"5a50906db08bd881\",\"RELEASE_CACHE_ROOT_ENVIRONMENT\":\"dc8de7ecf244f12f\",\"RELEASE_CODE_GATES\":\"f49680d4d05a65d7\",\"RELEASE_DIAGNOSTIC_BYTES\":\"e1f5f14e29e7a530\",\"RELEASE_INVENTORY_PATH\":\"8d1d8496c11cf5c7\",\"RELEASE_JOURNEY_ID\":\"b2648255b9d6cbc2\",\"RELEASE_PROFILE\":\"4a382451a60d926a\",\"RELEASE_REHEARSAL_SCHEMA\":\"22c6047d472b6929\",\"RESULT_EXCLUDES\":\"4a86f04f1d350322\",\"ReleaseEvent\":\"bed25c5c46f09ced\",\"ReleaseExecutor\":\"f76ab5aa683f5ede\",\"ReleasePhase\":\"fed528a10be1b499\",\"ReleasePolicyAttestation\":\"48574c180d65a1d1\",\"ReleaseRehearsalReport\":\"fcccee99e8f38e88\",\"ReleaseStatus\":\"f36b4c197c3a9dc8\",\"SOURCE_EXCLUDES\":\"7f14b946c9f9dc00\",\"SURFACE_MANIFEST_ROOT\":\"89aee45981023879\",\"SourceInventoryAttestation\":\"9a5b5c6b36a00d87\",\"SourceSnapshotReport\":\"8ad65a0242fed5e0\",\"WorkspaceAttestation\":\"94af296460dd3af7\",\"as_str\":\"99bccdf00f87bb75\",\"blocked\":\"164bc549881ac3f6\",\"execute\":\"a071900c9745b6f7\"}",
       "truth_class": "derived"
     },
     {
@@ -167519,6 +170054,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "c9db4a205d4e2c131791794fe6e60ef1",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "c9e55dbddba53b1a5e207aadc31a4161",
       "target_kind": "edge",
       "key": "stale_cause",
@@ -167531,6 +170073,20 @@
       "key": "stale_cause",
       "value": "skills/loom-driver/SKILL.md:95-95 no longer holds (span_rewritten)",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "caaa8f198f1139eb395e440bb3264228",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "journey_add",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cab04fc8929213161f76248da31cc88a",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
     },
     {
       "target_id": "cac140c4d6b6e626c35355228c22612c",
@@ -168079,6 +170635,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "ce31b3b26c6e6815b807af28c1d5c625",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "journey_surface",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "ce44abc00da15d92aaff4209bff6e464",
       "target_kind": "edge",
       "key": "locator",
@@ -168153,6 +170716,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/commands/proposal_cmd.rs\",\"start\":14,\"end\":14,\"hash\":\"6690d172c6bd8779\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "cfa1e264ed4e5be5fe4a10217872f918",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -169671,14 +172241,14 @@
       "target_id": "d75242d6ee594ec8c2136c2713a49c64",
       "target_kind": "node",
       "key": "proof_last_outcome",
-      "value": "failed",
+      "value": "passed",
       "truth_class": "derived"
     },
     {
       "target_id": "d75242d6ee594ec8c2136c2713a49c64",
       "target_kind": "node",
       "key": "proof_strength",
-      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S0\",\"ran_and_passed\":false,\"content_assertions\":0,\"call_witness\":null,\"baseline_clean\":false,\"boundary\":null,\"next\":\"let loom run this proof (`loom validation run`) — a reported outcome does not grade\"}",
+      "value": "{\"witness_model\":\"validation-specific-v2\",\"grade\":\"S3\",\"ran_and_passed\":true,\"content_assertions\":0,\"observed_assertions\":\"8\",\"call_witness\":\"build_rungs\",\"call_evidence\":{\"source\":\"validation_grounding\",\"file\":\"src/commands.rs\",\"entry_symbol\":\"run\",\"grounded_symbol\":\"build_rungs\",\"s3_eligible\":true},\"baseline_clean\":false,\"boundary\":null,\"next\":\"add stronger compiler-observed replay/boundary evidence when that proof API exists\"}",
       "truth_class": "derived"
     },
     {
@@ -170137,6 +172707,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "da6d28321befd197c3df3ab499f682b7",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "dabf2a4fc2f574c64",
       "target_kind": "node",
       "key": "adjudication_stamp",
@@ -170282,6 +172859,13 @@
       "key": "test_symbols",
       "value": "[\"imported_ratification_and_rejection_journal_rows_have_no_local_authority\",\"insert_imported_rejects_invalid_asserted_at_before_sql\"]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "dbd32d2a7c6373ecfe547ff99609e416",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "serialize; deserialize",
+      "truth_class": "asserted"
     },
     {
       "target_id": "dbe65cf7683c51314",
@@ -170683,6 +173267,13 @@
       "truth_class": "derived"
     },
     {
+      "target_id": "dd1c07bb9addb51d1a969afa77e797d6",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "dd1ce6f281557346c",
       "target_kind": "node",
       "key": "adjudication_stamp",
@@ -170751,6 +173342,20 @@
       "key": "test_symbols",
       "value": "[\"shared_locator_regression_table\",\"realizing_symbols_ignores_non_realizing_roles\"]",
       "truth_class": "derived"
+    },
+    {
+      "target_id": "dd36f640199a27570061481b09db1f3e",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "dd6127b97c8d9f37d8bc8643d870f36c",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
     },
     {
       "target_id": "dd76990e68cfeb24dfd94f890b06b227",
@@ -171009,6 +173614,13 @@
       "target_kind": "edge",
       "key": "setup",
       "value": "{\"graph\":\"local_snapshot\",\"operations\":[\"prepare-owned-snapshot\",\"mint-synthetic-finding-01\",\"mint-synthetic-finding-02\",\"mint-synthetic-finding-03\",\"mint-synthetic-finding-04\",\"mint-synthetic-finding-05\",\"mint-synthetic-finding-06\",\"mint-synthetic-finding-07\",\"mint-synthetic-finding-08\",\"mint-synthetic-finding-09\",\"mint-synthetic-finding-10\",\"mint-synthetic-finding-11\",\"mint-synthetic-finding-12\",\"mint-synthetic-finding-13\",\"mint-synthetic-finding-14\",\"mint-synthetic-finding-15\",\"mint-synthetic-finding-16\",\"mint-synthetic-finding-17\",\"mint-synthetic-finding-18\",\"mint-synthetic-finding-19\",\"mint-synthetic-finding-20\"]}",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "de9c1531df41bd3168318e8c0d13ea32",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
@@ -174407,6 +177019,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "f5c36898f8b32e37f5c3ee851bfe5f22",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "f5db6c6a1f383fb964586d8fc8fae2b4",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -175009,6 +177628,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "f957b1dab1e5b2857cbd14626c8226dd",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "f98503921da6aac187fd1599ca8f7446",
       "target_kind": "node",
       "key": "calls",
@@ -175299,7 +177925,7 @@
       "target_id": "fb88a31e5386f25d2c33097d3d229f7b",
       "target_kind": "node",
       "key": "de_facto",
-      "value": "{\"demonstrated_in\":\"src/prescan.rs\",\"proven_by\":\"an uncompilable quality pattern aborts the scan naming that pattern\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
+      "value": "{\"demonstrated_in\":\"src/prescan.rs\",\"proven_by\":\"journey:writes-graph:proof\",\"used_by\":\"exercised directly\",\"usage_hops\":0}",
       "truth_class": "derived"
     },
     {
@@ -175415,6 +178041,13 @@
       "truth_class": "asserted"
     },
     {
+      "target_id": "fd7027087c4a1cad6ed2ecf5e01fcc2a",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
+      "truth_class": "asserted"
+    },
+    {
       "target_id": "fe14df8fd7f96dc673e23628b39f2f8a",
       "target_kind": "edge",
       "key": "evidence_spans",
@@ -175482,6 +178115,13 @@
       "target_kind": "edge",
       "key": "evidence_spans",
       "value": "[{\"file\":\"src/release/mod.rs\",\"start\":84,\"end\":101,\"hash\":\"f33564e0fff07d5c\"}]",
+      "truth_class": "asserted"
+    },
+    {
+      "target_id": "fe9b9a86536d93ca5cc7754b3efc66f8",
+      "target_kind": "edge",
+      "key": "locator",
+      "value": "module",
       "truth_class": "asserted"
     },
     {
