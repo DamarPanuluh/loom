@@ -6,7 +6,7 @@
     "id": "loom-unratified-candidate-state",
     "title": "Loom unapproved derivation candidate state",
     "identity": "loom journey derive",
-    "codefile": "src/commands/journey/mod.rs",
+    "codefile": "src/commands/journey/derive.rs",
     "locator": "journey_derive",
     "operations": [
       {

@@ -6,7 +6,7 @@
     "id": "green-graph-deepening-cli",
     "title": "Green graph deepening opportunity",
     "identity": "loom next --all --full --json",
-    "codefile": "src/workitem/queues.rs",
+    "codefile": "src/workitem/queues/packets.rs",
     "locator": "deepen_item",
     "operations": [
       {

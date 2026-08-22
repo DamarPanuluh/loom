@@ -37,11 +37,19 @@
   ],
   "files": [
     {
+      "path": ".commandcode/settings.json",
+      "mode": "regular"
+    },
+    {
       "path": ".commandcode/taste/loom/taste.md",
       "mode": "regular"
     },
     {
       "path": ".commandcode/taste/taste.md",
+      "mode": "regular"
+    },
+    {
+      "path": ".commandcode/taste/workflow/taste.md",
       "mode": "regular"
     },
     {
@@ -62,6 +70,14 @@
     },
     {
       "path": "Cargo.toml",
+      "mode": "regular"
+    },
+    {
+      "path": "GATES.md",
+      "mode": "regular"
+    },
+    {
+      "path": "PLAN.md",
       "mode": "regular"
     },
     {
@@ -126,6 +142,46 @@
     },
     {
       "path": "docs/wiki-projection.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/clisub.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/cmdjourney.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/completeness.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/contracts.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/journey.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/jruntime.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/proofstrength.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/queues.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/signal.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates/storemod.md",
       "mode": "regular"
     },
     {
@@ -477,7 +533,55 @@
       "mode": "regular"
     },
     {
-      "path": "src/cli/subcommands.rs",
+      "path": "src/cli/subcommands/capture.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/codefile.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/diagnostics.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/domain.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/edge.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/intent.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/journey.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/ops.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/pattern.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/proof.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/proposal.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/cli/subcommands/release.rs",
       "mode": "regular"
     },
     {
@@ -601,7 +705,31 @@
       "mode": "regular"
     },
     {
+      "path": "src/commands/journey/derive.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/journey/lint.rs",
+      "mode": "regular"
+    },
+    {
       "path": "src/commands/journey/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/journey/registry.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/journey/runtime.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/journey/support.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/commands/journey/surface.rs",
       "mode": "regular"
     },
     {
@@ -673,7 +801,15 @@
       "mode": "regular"
     },
     {
-      "path": "src/completeness.rs",
+      "path": "src/completeness/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/completeness/readiness.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/completeness/scorecard.rs",
       "mode": "regular"
     },
     {
@@ -737,7 +873,39 @@
       "mode": "regular"
     },
     {
-      "path": "src/journey.rs",
+      "path": "src/journey/compile.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/derivation.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/lint.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/sources.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/spec.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/surface_manifest.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/surface_ops.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey/surface_setup.rs",
       "mode": "regular"
     },
     {
@@ -749,7 +917,43 @@
       "mode": "regular"
     },
     {
-      "path": "src/journey_runtime.rs",
+      "path": "src/journey_runtime/artifacts.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/compile.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/continuation.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/execute.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/observation.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/process.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/temporal.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/types.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/journey_runtime/values.rs",
       "mode": "regular"
     },
     {
@@ -809,7 +1013,19 @@
       "mode": "regular"
     },
     {
-      "path": "src/proofstrength.rs",
+      "path": "src/proofstrength/command.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/proofstrength/entries.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/proofstrength/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/proofstrength/runner_summary.rs",
       "mode": "regular"
     },
     {
@@ -889,6 +1105,10 @@
       "mode": "regular"
     },
     {
+      "path": "src/signal/adjudication.rs",
+      "mode": "regular"
+    },
+    {
       "path": "src/signal/debt.rs",
       "mode": "regular"
     },
@@ -901,11 +1121,31 @@
       "mode": "regular"
     },
     {
+      "path": "src/signal/doctor.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/signal/graph.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/signal/imports.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/signal/smells.rs",
+      "mode": "regular"
+    },
+    {
       "path": "src/statistics.rs",
       "mode": "regular"
     },
     {
       "path": "src/store/adjudications.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/codec.rs",
       "mode": "regular"
     },
     {
@@ -929,6 +1169,10 @@
       "mode": "regular"
     },
     {
+      "path": "src/store/lock.rs",
+      "mode": "regular"
+    },
+    {
       "path": "src/store/mod.rs",
       "mode": "regular"
     },
@@ -946,6 +1190,14 @@
     },
     {
       "path": "src/store/nodes/ratify.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/open.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/store/schema.rs",
       "mode": "regular"
     },
     {
@@ -973,7 +1225,35 @@
       "mode": "regular"
     },
     {
-      "path": "src/workitem/contracts.rs",
+      "path": "src/workitem/contracts/build.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts/inspect.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts/journey.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts/quality.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts/repair.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts/triage.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/contracts/validate.rs",
       "mode": "regular"
     },
     {
@@ -981,7 +1261,23 @@
       "mode": "regular"
     },
     {
-      "path": "src/workitem/queues.rs",
+      "path": "src/workitem/queues/mod.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/queues/packets.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/queues/predicates.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/queues/prescreen.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/workitem/queues/roster.rs",
       "mode": "regular"
     },
     {

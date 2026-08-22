@@ -377,7 +377,7 @@
               "type": "string"
             },
             {
-              "contains": "\\\"path\\\": \\\"src/completeness.rs\\\"",
+              "contains": "\\\"path\\\": \\\"src/completeness/readiness.rs\\\"",
               "id": "grounding-codefile",
               "pointer": "/responses/2/result/content/0/text",
               "type": "string"

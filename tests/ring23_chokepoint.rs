@@ -61,7 +61,7 @@ fn only_the_chokepoint_may_write_asserted_truth() {
             if body.contains(sql) {
                 // The migration is allowed to reset state wholesale — it runs
                 // once, before any fact exists, and is reviewed as schema.
-                if path.ends_with("store/mod.rs") && *sql == "UPDATE edge SET status" {
+                if path.ends_with("store/schema.rs") && *sql == "UPDATE edge SET status" {
                     continue;
                 }
                 violations.push(format!("{path} contains `{sql}`"));
