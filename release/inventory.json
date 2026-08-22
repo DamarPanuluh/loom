@@ -37,22 +37,6 @@
   ],
   "files": [
     {
-      "path": ".commandcode/settings.json",
-      "mode": "regular"
-    },
-    {
-      "path": ".commandcode/taste/loom/taste.md",
-      "mode": "regular"
-    },
-    {
-      "path": ".commandcode/taste/taste.md",
-      "mode": "regular"
-    },
-    {
-      "path": ".commandcode/taste/workflow/taste.md",
-      "mode": "regular"
-    },
-    {
       "path": ".github/workflows/ci.yml",
       "mode": "regular"
     },

@@ -26,3 +26,4 @@
 
 # per-session drain campaign reports are operator scratch, never source.
 campaign-report-*.md
+.commandcode/
