@@ -52,7 +52,7 @@
             },
             {
               "contains": {
-                "file": "src/proofstrength.rs",
+                "file": "src/proofstrength/entries.rs",
                 "hops": 2,
                 "resolution": "heuristic",
                 "symbol": "call_witness"
