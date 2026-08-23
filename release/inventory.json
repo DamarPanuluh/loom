@@ -65,6 +65,10 @@
       "mode": "regular"
     },
     {
+      "path": "PLAN-cleanup.md",
+      "mode": "regular"
+    },
+    {
       "path": "PLAN.md",
       "mode": "regular"
     },
@@ -130,6 +134,30 @@
     },
     {
       "path": "docs/wiki-projection.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates-cleanup/GATES.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates-cleanup/baseline.txt",
+      "mode": "regular"
+    },
+    {
+      "path": "gates-cleanup/clusters.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates-cleanup/findings.md",
+      "mode": "regular"
+    },
+    {
+      "path": "gates-cleanup/read-log.txt",
+      "mode": "regular"
+    },
+    {
+      "path": "gates-cleanup/unswept.txt",
       "mode": "regular"
     },
     {
