@@ -66,8 +66,7 @@ const RELEASE_CACHE_ROOT_ENVIRONMENT: &[&str] = &["CARGO_HOME", "RUSTUP_HOME"];
 const SOURCE_EXCLUDES: [&str; 3] = [".git", crate::LOOM_DIR, "target"];
 // Release-owned authority and process scratch lives here after the caller
 // baseline is captured. It is neither caller source nor result identity.
-const CALLER_SOURCE_EXCLUDES: [&str; 4] =
-    [".git", crate::LOOM_DIR, ".release-sandbox", "target"];
+const CALLER_SOURCE_EXCLUDES: [&str; 4] = [".git", crate::LOOM_DIR, ".release-sandbox", "target"];
 // loom.graph.json is excluded because the gate's own export step rewrites it
 // with candidate-local journal ids (<millis>-<pid>-<seq>), fresh validation
 // node ids, and wall-clock timestamps — legitimate per-candidate identity that

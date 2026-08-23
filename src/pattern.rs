@@ -269,9 +269,7 @@ pub fn inspect(store: &Store, node: &crate::model::Node) -> crate::Result<Patter
         let file = store
             .get_node(&edge.to_id)?
             .ok_or_else(|| anyhow::anyhow!("missing exemplar endpoint"))?;
-        let locator = store
-            .edge_locator(&edge.id)?
-            .unwrap_or_default();
+        let locator = store.edge_locator(&edge.id)?.unwrap_or_default();
         let resolution =
             match crate::runner::resolve_locator(store.root(), &file.name, Some(&locator)) {
                 Some(r) if r.run.exit_code == 0 && r.match_count == 1 => r,

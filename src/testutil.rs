@@ -23,10 +23,8 @@ impl TmpRoot {
             .expect("system clock before the unix epoch")
             .as_nanos();
         let seq = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let path = std::env::temp_dir().join(format!(
-            "{prefix}-{}-{nanos}-{seq}",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("{prefix}-{}-{nanos}-{seq}", std::process::id()));
         std::fs::create_dir_all(&path).expect("create temp root");
         Self(path)
     }

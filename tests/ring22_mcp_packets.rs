@@ -1079,7 +1079,10 @@ fn impact_depth_is_one_contract_on_both_surfaces() {
     // just harder to catch.
     let described = depth["description"].as_str().expect("depth is described");
     assert!(
-        described.contains(&format!("default {}", loom::callgraph::DEFAULT_IMPACT_DEPTH)),
+        described.contains(&format!(
+            "default {}",
+            loom::callgraph::DEFAULT_IMPACT_DEPTH
+        )),
         "the tool description must state the real default: {described}"
     );
 }

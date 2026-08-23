@@ -457,6 +457,7 @@ fn writes_during_proof(
     // died mid-execution and the unauditable window is itself the finding.
     let mut open: BTreeMap<(String, u64), i64> = BTreeMap::new();
     let mut open_stamps: BTreeMap<(String, u64), String> = BTreeMap::new();
+    let mut open_entry_ids: BTreeMap<(String, u64), String> = BTreeMap::new();
     let mut windows: Vec<(String, i64, i64)> = Vec::new();
     for entry in entries {
         if entry.event != PROOF_EXECUTION_STARTED_EVENT
@@ -475,9 +476,11 @@ fn writes_during_proof(
         let key = (entry.target_id.clone(), pid);
         if entry.event == PROOF_EXECUTION_STARTED_EVENT {
             open.insert(key.clone(), ms);
-            open_stamps.insert(key, entry.ts.clone());
+            open_stamps.insert(key.clone(), entry.ts.clone());
+            open_entry_ids.insert(key, entry.id.clone());
         } else if let Some(start) = open.remove(&key) {
             open_stamps.remove(&key);
+            open_entry_ids.remove(&key);
             windows.push((entry.target_id.clone(), start, ms));
         }
     }
@@ -486,6 +489,15 @@ fn writes_during_proof(
         // A live pid is a run in flight right now (a parallel reader auditing
         // mid-proof) — expected, not a finding. A dead one died mid-execution.
         if pid_probably_alive(*pid) {
+            continue;
+        }
+        let Some(started_at) = open.get(&(vid.clone(), *pid)).copied() else {
+            continue;
+        };
+        let Some(start_entry_id) = open_entry_ids.get(&(vid.clone(), *pid)) else {
+            continue;
+        };
+        if unclosed_window_was_resolved(store, entries, vid, start_entry_id, started_at)? {
             continue;
         }
         let opened = open_stamps
@@ -500,9 +512,15 @@ fn writes_during_proof(
                  never closed, and that process is gone — the run died mid-execution, so \
                  whatever its children wrote could not be window-audited"
             ),
-            remedy: "inspect the journal and facts around that start time, re-run the proof \
-                     to settle it honestly, and triage this finding with what you established"
-                .into(),
+            remedy: format!(
+                "inspect the journal and facts around that start time; capture the exact incident \
+                 with `loom finding add '<crash>' --source validation --kind \
+                 unclosed_proof_window --evidence journal:{start_entry_id} --impact '<impact>' \
+                 --confidence 1.0 --link {vid}`; re-run the same proof; then record `loom finding \
+                 verdict <finding-id> resolved --reason '<what the rerun established>' --evidence \
+                 journal:<passing-journey_run-id>`. Only that exact locally passed rerun clears the \
+                 audit; the original crash record remains append-only."
+            ),
         });
     }
     if windows.is_empty() {
@@ -543,6 +561,62 @@ fn writes_during_proof(
         });
     }
     Ok(out)
+}
+
+/// Whether one exact crashed proof window has been durably resolved by a later
+/// local passing rerun of the same proof node.
+///
+/// The audit finding itself is historical and therefore cannot disappear when
+/// a later run merely passes. It clears only after an asserted Finding binds to
+/// the exact `proof_execution_started` journal entry and a `resolved`
+/// adjudication cites the later compiler-owned `journey_run`. This keeps the
+/// append-only crash record visible until an operator has inspected and
+/// dispositioned it, without requiring a forged closing timestamp.
+fn unclosed_window_was_resolved(
+    store: &Store,
+    entries: &[crate::journal::Entry],
+    validation_id: &str,
+    start_entry_id: &str,
+    started_at: i64,
+) -> Result<bool> {
+    let expected_start_evidence = format!("journal:{start_entry_id}");
+    for finding in store.list_nodes(Some(NodeType::Finding), usize::MAX)? {
+        if finding.status != "unclosed_proof_window"
+            || finding.body.get("kind").and_then(|v| v.as_str()) != Some("unclosed_proof_window")
+            || finding.body.get("link").and_then(|v| v.as_str()) != Some(validation_id)
+            || finding.body.get("evidence").and_then(|v| v.as_str())
+                != Some(expected_start_evidence.as_str())
+        {
+            continue;
+        }
+        let Some(adjudication) = store.fact(
+            &crate::store::Subject::Node(finding.id.clone()),
+            Claim::Adjudication,
+        )?
+        else {
+            continue;
+        };
+        if adjudication.fact.state != "resolved" || !adjudication.counts() {
+            continue;
+        }
+        for evidence in adjudication.evidence.iter().filter(|row| row.holds) {
+            let crate::evidence::Evidence::Journal { r#ref } = &evidence.payload else {
+                continue;
+            };
+            let Some(rerun) = entries.iter().find(|entry| entry.id == *r#ref) else {
+                continue;
+            };
+            if rerun.origin == crate::journal::Origin::Local
+                && rerun.event == "journey_run"
+                && rerun.target_id == validation_id
+                && rerun.payload.get("outcome").and_then(|v| v.as_str()) == Some("passed")
+                && crate::journal::stamp_millis(&rerun.ts).is_some_and(|ts| ts > started_at)
+            {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
 }
 
 /// Is this pid running right now? Best-effort: `kill(pid, 0)` succeeds or is

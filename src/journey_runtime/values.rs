@@ -496,7 +496,7 @@ pub(crate) fn materialize_setup(root: &Path, setup: &TemporarySetup) -> Result<(
 /// Canonical JSON key ordering. The rule lives in `crate::canonical` — it used
 /// to exist five times under four names, each feeding a hash another module
 /// compared against.
-pub(crate) use crate::canonical::canonicalize as canonicalize;
+pub(crate) use crate::canonical::canonicalize;
 
 pub fn report_observation_json(report: &RuntimeReport) -> Result<Vec<u8>> {
     // This is structured evidence from checks Loom actually performed. The

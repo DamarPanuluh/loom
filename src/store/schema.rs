@@ -578,17 +578,16 @@ pub(crate) fn configure_read(conn: &Connection) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::testutil::TmpRoot;
     use super::*;
     use crate::model::*;
     use crate::store::{Assertion, Store, Subject};
+    use crate::testutil::TmpRoot;
     use crate::{
         CRATE_VERSION, GRAPH_DB, LOOM_DIR, SCHEMA_VERSION, WRITER_SCHEMA_KEY, WRITER_VERSION_KEY,
     };
     use rusqlite::{params, Connection};
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU64, Ordering};
-
 
     fn sqlite_user_version(conn: &Connection) -> u32 {
         conn.pragma_query_value(None, "user_version", |row| row.get(0))

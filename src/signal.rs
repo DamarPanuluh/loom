@@ -15,7 +15,6 @@ mod graph;
 mod imports;
 mod smells;
 
-
 pub use adjudication::{
     adjudication_of, findings_view, needed_findings, smell_det_key,
     smell_has_resolving_adjudication, stale_findings, triage_findings, untriaged_findings,

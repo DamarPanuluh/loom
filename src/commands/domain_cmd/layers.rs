@@ -55,7 +55,10 @@ pub(crate) fn layer(graph: Option<&Path>, cmd: LayerCmd, json: bool) -> Result<(
             if layers.is_empty() {
                 bail!("provide the layer order, top first");
             }
-            store.set_meta(crate::store::LAYER_ORDER_META_KEY, &serde_json::to_string(&layers)?)?;
+            store.set_meta(
+                crate::store::LAYER_ORDER_META_KEY,
+                &serde_json::to_string(&layers)?,
+            )?;
             pulse::emit_line(
                 &store,
                 json,

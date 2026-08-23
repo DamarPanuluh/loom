@@ -7,8 +7,8 @@
 //! runner, not editing the recorder in `commands::proof_cmd`.
 
 use crate::model::{Node, ValidationType};
-use crate::text::ellipsize;
 use crate::subprocess::Captured;
+use crate::text::ellipsize;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 

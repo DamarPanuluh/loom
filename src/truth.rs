@@ -15,7 +15,6 @@
 //! one place that answers "for this axis, what is the authoritative write, what
 //! must NOT be written, and what downstream form must be refreshed after."
 
-
 use crate::model::{str_enum, ParseEnumError};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -50,7 +49,6 @@ str_enum! {
         Risk => "risk",
     }
 }
-
 
 /// Every axis, ladder order — an alias for the macro-generated `ALL`, kept
 /// because callers and `tests/ring9.rs` name it. Not a second list: change a

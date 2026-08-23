@@ -743,10 +743,8 @@ pub fn covering_envelopes(
 
 #[cfg(test)]
 mod tests {
-    use crate::testutil::TmpRoot;
     use super::*;
-    
-
+    use crate::testutil::TmpRoot;
 
     fn envelope() -> BatchAuthorization {
         let subjects = vec!["finding-1".to_string()];

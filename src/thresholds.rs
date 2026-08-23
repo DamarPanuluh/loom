@@ -145,7 +145,9 @@ impl Gate {
             Gate::MaxSymbolComplexity => {
                 t.max_symbol_complexity = u32::try_from(value).map_err(|_| too_big())?
             }
-            Gate::MaxSymbolLoc => t.max_symbol_loc = usize::try_from(value).map_err(|_| too_big())?,
+            Gate::MaxSymbolLoc => {
+                t.max_symbol_loc = usize::try_from(value).map_err(|_| too_big())?
+            }
             Gate::MaxNesting => t.max_nesting = u32::try_from(value).map_err(|_| too_big())?,
             Gate::MaxArgs => t.max_args = u32::try_from(value).map_err(|_| too_big())?,
         }
@@ -335,8 +337,8 @@ fn fitted(samples: &mut [f64], floor: f64, step: f64, current: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::testutil::TmpRoot;
     use super::*;
+    use crate::testutil::TmpRoot;
 
     /// Calibration may only ever RELAX. Found by running loom against a real
     /// 270-file repository it had never seen: calibration nearly doubled the
@@ -364,9 +366,6 @@ mod tests {
         // No samples: keep what is in force rather than proposing from nothing.
         assert_eq!(fitted(&mut [], 1.0, 1.0, 6.0), 6.0);
     }
-    
-    
-    
 
     /// A unique temp dir that removes itself on drop (same shape as the
     /// integration-test `Tmp` and the store module's own `TmpRoot`).

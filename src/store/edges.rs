@@ -19,7 +19,6 @@ impl Store {
         self.get_facet(edge_id, TargetKind::Edge, crate::model::LOCATOR_FACET)
     }
 
-
     /// Add an edge, validated against the edge-kind registry. New edges are
     /// created uninspected (asserted) or current (derived) with empty evidence.
     pub fn add_edge(

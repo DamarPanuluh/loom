@@ -13,9 +13,7 @@
 
 use super::{node_json, open, pulse, require_lane};
 use crate::cli::{IntentCmd, IntentTagCmd};
-use crate::grammar::{
-    looks_like_symbol, ASPECTS, LEVELS, VISIBILITIES,
-};
+use crate::grammar::{looks_like_symbol, ASPECTS, LEVELS, VISIBILITIES};
 use crate::model::{EdgeKind, Node, NodeType, TargetKind, TruthClass};
 use crate::store::Store;
 use crate::Result;

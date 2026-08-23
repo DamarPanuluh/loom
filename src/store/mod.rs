@@ -158,10 +158,9 @@ pub(crate) use schema::{
 
 #[cfg(test)]
 mod tests {
-    use crate::testutil::TmpRoot;
     use super::*;
+    use crate::testutil::TmpRoot;
     use std::sync::atomic::{AtomicU64, Ordering};
-
 
     #[test]
     fn facet_and_tag_writes_reject_missing_typed_targets() {

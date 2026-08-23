@@ -607,9 +607,7 @@ pub fn topology_problems(
         }
         let expected_aggregate: String =
             expected_locators.into_iter().collect::<Vec<_>>().join(";");
-        let actual_aggregate = store
-            .edge_locator(&edge.id)?
-            .unwrap_or_default();
+        let actual_aggregate = store.edge_locator(&edge.id)?.unwrap_or_default();
         if actual_aggregate != expected_aggregate {
             problems.push(format!(
                 "Exercises edge to '{codefile_name}' aggregate locator '{actual_aggregate}' disagrees with the canonical '{expected_aggregate}'"

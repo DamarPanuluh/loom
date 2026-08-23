@@ -104,10 +104,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::testutil::TmpRoot;
     use super::expand;
-    
-
+    use crate::testutil::TmpRoot;
 
     #[test]
     fn expands_recursive_globs_sorted_and_deduped() {

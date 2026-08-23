@@ -4,9 +4,7 @@
 //! the door landing menu in `capture_cmd`.
 
 use super::*;
-use crate::grammar::{
-    ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
-};
+use crate::grammar::{ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES};
 
 /// Keyword scoring shared by `loom find` and the door's landing menu: score
 /// nodes of the given kinds against the query terms, best first, capped at
@@ -366,9 +364,7 @@ fn project_groundings(store: &Store, intent_id: &str) -> Result<Vec<FindGroundin
                 .get_node(&edge.to_id)?
                 .map(|n| n.name)
                 .unwrap_or_else(|| edge.to_id.clone()),
-            locator: store
-                .edge_locator(&edge.id)?
-                .unwrap_or_default(),
+            locator: store.edge_locator(&edge.id)?.unwrap_or_default(),
             role: store.grounding_role(&edge.id)?.as_str().into(),
             status: edge.status.as_str().into(),
             evidence: store.verdict_prose(&edge.id)?,
@@ -765,9 +761,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::grammar_json;
-    use crate::grammar::{
-        ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
-    };
+    use crate::grammar::{ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES};
 
     #[test]
     fn empty_json_validation_id_formats_without_panicking() {

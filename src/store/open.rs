@@ -568,13 +568,12 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
-    use crate::testutil::TmpRoot;
     use super::*;
     use crate::store::Store;
+    use crate::testutil::TmpRoot;
     use crate::{CRATE_VERSION, SCHEMA_VERSION, WRITER_SCHEMA_KEY, WRITER_VERSION_KEY};
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU64, Ordering};
-
 
     #[test]
     fn identity_defaults_only_missing_observed_and_rejects_malformed_values() {
