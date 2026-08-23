@@ -57,6 +57,10 @@
       "mode": "regular"
     },
     {
+      "path": "GATES-archopt.md",
+      "mode": "regular"
+    },
+    {
       "path": "GATES.md",
       "mode": "regular"
     },
@@ -502,6 +506,10 @@
     },
     {
       "path": "src/candidate_surface_policy.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/canonical.rs",
       "mode": "regular"
     },
     {
@@ -1193,6 +1201,14 @@
       "mode": "regular"
     },
     {
+      "path": "src/testutil.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "src/text.rs",
+      "mode": "regular"
+    },
+    {
       "path": "src/thresholds.rs",
       "mode": "regular"
     },
@@ -1554,6 +1570,10 @@
     },
     {
       "path": "tests/ring64_adversarial_review.rs",
+      "mode": "regular"
+    },
+    {
+      "path": "tests/ring65_ring_direction.rs",
       "mode": "regular"
     },
     {

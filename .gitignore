@@ -28,6 +28,8 @@
 campaign-report-*.md
 .commandcode/
 
-# raw agent output from the mechanism-sweep cleanup campaign — the distilled
-# findings live in gates-cleanup/findings.md; these dumps are regenerable scratch.
-gates-cleanup/*.json
+# per-session cleanup-campaign ledgers are operator scratch, never repository
+# source — same rule as campaign-report-*.md above. They are excluded from the
+# release source inventory by construction rather than by remembering.
+PLAN-cleanup.md
+gates-cleanup/
