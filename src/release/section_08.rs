@@ -170,7 +170,7 @@ fn git_head_hash(git_dir: Option<&Path>) -> Result<String> {
     }
     let head = fs::read(&head_path)?;
     let mut projection = BTreeMap::new();
-    projection.insert("HEAD", fingerprint_bytes(&head));
+    projection.insert("HEAD", crate::artifact::fingerprint_bytes(&head));
     if let Ok(text) = std::str::from_utf8(&head) {
         if let Some(reference) = text.trim().strip_prefix("ref: ") {
             projection.insert("referent", hash_optional_path(&git_dir.join(reference))?);
@@ -180,7 +180,7 @@ fn git_head_hash(git_dir: Option<&Path>) -> Result<String> {
             );
         }
     }
-    Ok(fingerprint_bytes(&serde_json::to_vec(&projection)?))
+    Ok(crate::artifact::fingerprint_bytes(&serde_json::to_vec(&projection)?))
 }
 
 fn installed_loom_hash() -> Result<String> {
@@ -211,24 +211,9 @@ fn hash_optional_path_excluding(path: &Path, top_level_excludes: &[&str]) -> Res
 /// (`~/.rustup` alone is gigabytes across six figures of files), and holding
 /// every byte of it in one `Vec` to hash it at the end got the rehearsal
 /// SIGKILLed before it could emit a single line of its report.
-struct TreeHasher(u64);
-
-impl TreeHasher {
-    fn new() -> Self {
-        Self(0xcbf2_9ce4_8422_2325)
-    }
-
-    fn write(&mut self, bytes: &[u8]) {
-        for byte in bytes {
-            self.0 ^= *byte as u64;
-            self.0 = self.0.wrapping_mul(0x0100_0000_01b3);
-        }
-    }
-
-    fn finish(self) -> String {
-        format!("{:016x}", self.0)
-    }
-}
+/// The streaming hasher lives in `crate::artifact` so the FNV-1a schedule has
+/// exactly one definition; the reason it must STREAM is documented above.
+use crate::artifact::Fnv1a as TreeHasher;
 
 fn hash_tree(root: &Path, top_level_excludes: &[&str]) -> Result<String> {
     let mut hasher = TreeHasher::new();
@@ -289,30 +274,9 @@ fn hash_tree_into(
     Ok(())
 }
 
-fn fingerprint_bytes(bytes: &[u8]) -> String {
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for byte in bytes {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x0100_0000_01b3);
-    }
-    format!("{hash:016x}")
-}
 
-fn canonical_json(value: serde_json::Value) -> serde_json::Value {
-    match value {
-        serde_json::Value::Array(values) => {
-            serde_json::Value::Array(values.into_iter().map(canonical_json).collect())
-        }
-        serde_json::Value::Object(object) => {
-            let sorted: BTreeMap<String, serde_json::Value> = object
-                .into_iter()
-                .map(|(key, value)| (key, canonical_json(value)))
-                .collect();
-            serde_json::to_value(sorted).expect("canonical JSON map serializes")
-        }
-        scalar => scalar,
-    }
-}
+
+use crate::canonical::canonicalize as canonical_json;
 
 #[cfg(test)]
 mod tests {
@@ -472,7 +436,7 @@ mod tests {
         );
         fs::create_dir(root.path().join(".git")).unwrap();
         fs::write(root.path().join(".git/config"), b"secret").unwrap();
-        fs::create_dir(root.path().join(".loom")).unwrap();
+        fs::create_dir(root.path().join(crate::LOOM_DIR)).unwrap();
         fs::write(root.path().join(".loom/graph.sqlite"), b"graph").unwrap();
         fs::create_dir(root.path().join("target")).unwrap();
         fs::write(root.path().join("target/output"), b"build").unwrap();

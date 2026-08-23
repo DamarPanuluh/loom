@@ -11,18 +11,15 @@ pub(crate) const DERIVED_TS: &str = "";
 /// 16-hex digest (no prefix). Callers choose a plane prefix (`d` for derived
 /// rows, `c` for debt clusters, `p` for promoted findings).
 pub fn fnv_hex_digest(parts: &[&str]) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for (i, p) in parts.iter().enumerate() {
+    let mut hasher = crate::artifact::Fnv1a::new();
+    for (i, part) in parts.iter().enumerate() {
         if i > 0 {
-            h ^= 0x1f;
-            h = h.wrapping_mul(0x0100_0000_01b3);
+            // Unit separator between parts, so ["ab","c"] and ["a","bc"] differ.
+            hasher.write_byte(0x1f);
         }
-        for b in p.bytes() {
-            h ^= b as u64;
-            h = h.wrapping_mul(0x0100_0000_01b3);
-        }
+        hasher.write(part.as_bytes());
     }
-    format!("{h:016x}")
+    hasher.finish()
 }
 
 /// Deterministic, content-addressed id for derived data (FNV-1a 64-bit over the

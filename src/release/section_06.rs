@@ -220,24 +220,12 @@ fn release_diagnostic_stream(bytes: &[u8], sandbox: &ProcessSandbox) -> String {
     bounded_diagnostic_text(&text, RELEASE_DIAGNOSTIC_BYTES)
 }
 
+/// Bound a release diagnostic to `limit` bytes. The head+tail rule and its
+/// char-boundary handling live in `crate::text`; only the marker is ours.
+const DIAGNOSTIC_OMITTED_MARKER: &str = "...[diagnostic output omitted]...";
+
 fn bounded_diagnostic_text(text: &str, limit: usize) -> String {
-    if text.len() <= limit {
-        return text.trim().to_string();
-    }
-    let half = limit / 2;
-    let mut head = half;
-    while !text.is_char_boundary(head) {
-        head -= 1;
-    }
-    let mut tail = text.len() - half;
-    while !text.is_char_boundary(tail) {
-        tail += 1;
-    }
-    format!(
-        "{}\n...[diagnostic output omitted]...\n{}",
-        text[..head].trim_end(),
-        text[tail..].trim_start()
-    )
+    crate::text::bounded_head_tail(text, limit, DIAGNOSTIC_OMITTED_MARKER)
 }
 
 fn inspect_process_argv(executable: &Path, argv: &[String]) -> Result<&'static str> {

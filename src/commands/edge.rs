@@ -237,7 +237,7 @@ pub(super) fn ground_intent(
     let mut update_existing_locator = false;
     if let Some(edge) = &existing {
         let current_role = store.grounding_role(&edge.id)?;
-        let current_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+        let current_locator = store.edge_locator(&edge.id)?;
         let locator_changed = locator.is_some_and(|new| current_locator.as_deref() != Some(new));
         if current_role != role
             || (locator_changed && edge.status != crate::model::InspectionStatus::Uninspected)
@@ -504,7 +504,7 @@ fn edge_exercises(
             TruthClass::Asserted,
         )?,
     };
-    let previous_locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+    let previous_locator = store.edge_locator(&edge.id)?;
     if previous_locator != locator || is_new {
         invalidate_exercises_validation(
             store,
@@ -521,7 +521,7 @@ fn edge_exercises(
             TruthClass::Asserted,
         )?;
     } else if previous_locator.is_some() {
-        store.clear_facet(&edge.id, TargetKind::Edge, "locator")?;
+        store.clear_facet(&edge.id, TargetKind::Edge, crate::model::LOCATOR_FACET)?;
     }
     pulse::emit_line(
         store,
@@ -692,7 +692,7 @@ fn edge_set_locator(store: &Store, edge_id: String, locator: String, json: bool)
             )
         })?;
         require_resolvable_locator(store, &file, &locator)?;
-        let previous = store.get_facet(&e.id, TargetKind::Edge, "locator")?;
+        let previous = store.edge_locator(&e.id)?;
         if previous.as_deref() != Some(locator.as_str()) {
             invalidate_exercises_validation(
                 store,
@@ -946,7 +946,7 @@ fn edge_list(
             );
             object.insert(
                 "locator".into(),
-                serde_json::to_value(store.get_facet(&edge.id, TargetKind::Edge, "locator")?)?,
+                serde_json::to_value(store.edge_locator(&edge.id)?)?,
             );
             rows.push(row);
         }
@@ -973,7 +973,7 @@ fn edge_list(
                 String::new()
             };
             let locator = store
-                .get_facet(&edge.id, TargetKind::Edge, "locator")?
+                .edge_locator(&edge.id)?
                 .map(|value| format!(" @ {value}"))
                 .unwrap_or_default();
             println!(

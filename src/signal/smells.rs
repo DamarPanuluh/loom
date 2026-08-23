@@ -25,8 +25,16 @@ pub struct Smell {
 // ---- smells ----------------------------------------------------------------
 
 pub fn smells(store: &Store) -> Result<Vec<Smell>> {
-    let snap = store.snapshot()?;
-    let intents = active_intents(&snap);
+    smells_with(store, &store.snapshot()?)
+}
+
+/// [`smells`] over a snapshot the caller already holds.
+///
+/// The whole-graph snapshot is the expensive part, and `loom status` used to
+/// build five of them on one command. Callers that already have one pass it
+/// here; `smells` stays for the standalone callers.
+pub fn smells_with(store: &Store, snap: &Snapshot) -> Result<Vec<Smell>> {
+    let intents = active_intents(snap);
 
     // shared indices (all borrow `snap`)
     // Only ACTIVE intents own anything. `active_intents` above already excludes
@@ -37,7 +45,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
     // every derived view, not just the one that lists intents.
     let active_ids: BTreeSet<&str> = intents.iter().map(|n| n.id.as_str()).collect();
     let mut owners: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
-    for e in implements_edges(&snap) {
+    for e in implements_edges(snap) {
         if !active_ids.contains(e.from_id.as_str()) {
             continue;
         }
@@ -45,7 +53,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         // `verifies` edge (or a superseded one) does not put the file in an
         // intent's cluster. Feeding non-realizing edges here would leak consumer
         // surfaces into ownership/coupling/layering/duplication smells.
-        if edge_is_superseded(&snap, &e.id) || edge_role(&snap, &e.id) != GroundingRole::Realizes {
+        if edge_is_superseded(snap, &e.id) || edge_role(snap, &e.id) != GroundingRole::Realizes {
             continue;
         }
         owners
@@ -53,7 +61,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
             .or_default()
             .push(e.from_id.as_str());
     }
-    let imports = imports_by_file(&snap);
+    let imports = imports_by_file(snap);
     let path_to_id: BTreeMap<&str, &str> = snap
         .nodes
         .iter()
@@ -66,16 +74,16 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         .filter(|n| n.node_type == NodeType::CodeFile)
         .map(|n| (n.id.as_str(), n.name.as_str()))
         .collect();
-    let tags_by_intent = tags_by_node(&snap);
-    let rel_adjacency = relationship_adjacency(&snap);
+    let tags_by_intent = tags_by_node(snap);
+    let rel_adjacency = relationship_adjacency(snap);
 
     let mut out = Vec::new();
-    out.extend(ownership_smells(&snap, &owners, &rel_adjacency));
-    out.extend(shared_proof_command_smells(&snap));
-    out.extend(unstable_proof_smells(&snap));
-    out.extend(consumer_owned_file_smells(&snap, &owners));
+    out.extend(ownership_smells(snap, &owners, &rel_adjacency));
+    out.extend(shared_proof_command_smells(snap));
+    out.extend(unstable_proof_smells(snap));
+    out.extend(consumer_owned_file_smells(snap, &owners));
     out.extend(undeclared_coupling_smells(
-        &snap,
+        snap,
         &owners,
         &imports,
         &path_to_id,
@@ -83,7 +91,7 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
         &rel_adjacency,
     ));
     out.extend(duplicated_responsibility_smells(
-        &snap,
+        snap,
         &intents,
         &owners,
         &tags_by_intent,
@@ -91,16 +99,16 @@ pub fn smells(store: &Store) -> Result<Vec<Smell>> {
     ));
     out.extend(layering_smells(
         store,
-        &snap,
+        snap,
         &owners,
         &imports,
         &path_to_id,
         &id_to_path,
     )?);
     out.extend(disclosure_smells(&intents, &tags_by_intent));
-    out.extend(journey_proof_smells(&snap, &intents));
+    out.extend(journey_proof_smells(snap, &intents));
     out.extend(vague_intent_smells(&intents));
-    out.extend(pack_drift_smells(&snap));
+    out.extend(pack_drift_smells(snap));
     Ok(out)
 }
 
@@ -888,7 +896,7 @@ fn facet_map<'a>(snap: &'a Snapshot, key: &str) -> BTreeMap<&'a str, String> {
 }
 
 fn layer_order(store: &Store) -> Result<Option<Vec<String>>> {
-    match store.get_meta("layer_order")? {
+    match store.get_meta(crate::store::LAYER_ORDER_META_KEY)? {
         Some(v) => {
             let layers: Vec<String> = serde_json::from_str(&v)
                 .with_context(|| format!("meta.layer_order is malformed JSON: {v}"))?;

@@ -536,7 +536,7 @@ fn codefile_show(graph: Option<&Path>, key: &str, json: bool) -> Result<()> {
             .map(|x| x.name)
             .unwrap_or_else(|| e.from_id.clone());
         let locator = store
-            .get_facet(&e.id, TargetKind::Edge, "locator")?
+            .edge_locator(&e.id)?
             .unwrap_or_default();
         let grole = store.grounding_role(&e.id)?.as_str().to_string();
         owners.push((

@@ -90,7 +90,7 @@ pub(crate) fn journey_remove(graph: Option<&Path>, id: &str, json: bool) -> Resu
     tx.commit()?;
     let cache = store
         .root()
-        .join(".loom")
+        .join(crate::LOOM_DIR)
         .join("compiled")
         .join("journeys")
         .join(&journey.name);

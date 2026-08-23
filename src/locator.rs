@@ -8,7 +8,7 @@
 //! repository-aware policy lives here so edge writes, surface acceptance,
 //! doctor, impact, risk, and sync cannot disagree about the same anchor.
 
-use crate::model::{EdgeKind, GroundingRole, Node, NodeType, TargetKind};
+use crate::model::{EdgeKind, GroundingRole, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 use anyhow::{bail, Context};
@@ -696,7 +696,7 @@ pub fn realizing_navigation_symbols(store: &Store, intent_id: &str) -> Result<Ve
         {
             continue;
         }
-        let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
+        let Some(locator) = store.edge_locator(&edge.id)? else {
             continue;
         };
         if is_anchor_locator(&locator) {
@@ -728,7 +728,7 @@ pub fn realizing_targets(store: &Store, intent_id: &str) -> Result<Vec<(String, 
         let Some(file) = store.get_node(&e.to_id)? else {
             continue;
         };
-        if let Some(loc) = store.get_facet(&e.id, TargetKind::Edge, "locator")? {
+        if let Some(loc) = store.edge_locator(&e.id)? {
             for symbol in symbols(&loc) {
                 out.push((file.name.clone(), symbol));
             }
@@ -742,7 +742,7 @@ pub fn realizing_targets(store: &Store, intent_id: &str) -> Result<Vec<(String, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{NodeType, TruthClass};
+    use crate::model::{NodeType, TargetKind, TruthClass};
     use crate::store::Store;
 
     /// Shared regression table: every consumer of locator parsing must agree

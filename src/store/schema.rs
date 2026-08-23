@@ -350,7 +350,13 @@ fn meta_opt(conn: &Connection, key: &str) -> Option<String> {
     .flatten()
 }
 
-fn parse_crate_version(value: &str) -> Option<(u64, u64, u64)> {
+/// Parse `major.minor.patch` into a comparable tuple; `None` if it is not that
+/// shape. Owned here because the schema plane is what GATES on the comparison
+/// (migration consent below); `commands::warn_on_writer_drift` reads the same
+/// stamps to warn, and used to carry a byte-identical private copy — two
+/// answers to "is this binary older than the graph's last writer" that could
+/// disagree about what parses.
+pub(crate) fn parse_crate_version(value: &str) -> Option<(u64, u64, u64)> {
     let mut parts = value.split('.').map(|part| part.parse::<u64>().ok());
     Some((parts.next()??, parts.next()??, parts.next()??))
 }
@@ -572,6 +578,7 @@ pub(crate) fn configure_read(conn: &Connection) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::testutil::TmpRoot;
     use super::*;
     use crate::model::*;
     use crate::store::{Assertion, Store, Subject};
@@ -582,33 +589,6 @@ mod tests {
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU64, Ordering};
 
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-    struct TmpRoot(PathBuf);
-
-    impl TmpRoot {
-        fn new(prefix: &str) -> Self {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-            let path =
-                std::env::temp_dir().join(format!("{prefix}-{}-{nanos}-{n}", std::process::id()));
-            std::fs::create_dir_all(&path).unwrap();
-            Self(path)
-        }
-
-        fn path(&self) -> &Path {
-            &self.0
-        }
-    }
-
-    impl Drop for TmpRoot {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
 
     fn sqlite_user_version(conn: &Connection) -> u32 {
         conn.pragma_query_value(None, "user_version", |row| row.get(0))

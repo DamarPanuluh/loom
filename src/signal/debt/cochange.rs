@@ -499,7 +499,7 @@ fn render_debt_clusters(ctx: &RenderCtx<'_>, clusters: &[Vec<usize>]) -> Vec<Deb
         // Display paths: lexically sorted CodeFile names.
         let mut display: Vec<String> = subject_ids
             .iter()
-            .map(|id| super::super::node_name(ctx.snap, id))
+            .map(|id| super::super::graph::node_name(ctx.snap, id))
             .collect();
         display.sort();
         let paths = display.join(", ");

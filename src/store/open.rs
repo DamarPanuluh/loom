@@ -306,7 +306,7 @@ impl Store {
                     paths.insert(PathBuf::from(file));
                 }
             }
-            paths.insert(PathBuf::from("loom.graph.json"));
+            paths.insert(PathBuf::from(crate::GRAPH_EXPORT));
             for relative in paths {
                 copy_addressed_file(&self.root, destination_root, &relative)?;
             }
@@ -568,39 +568,13 @@ impl Store {
 
 #[cfg(test)]
 mod tests {
+    use crate::testutil::TmpRoot;
     use super::*;
     use crate::store::Store;
     use crate::{CRATE_VERSION, SCHEMA_VERSION, WRITER_SCHEMA_KEY, WRITER_VERSION_KEY};
     use std::path::{Path, PathBuf};
     use std::sync::atomic::{AtomicU64, Ordering};
 
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-    struct TmpRoot(PathBuf);
-
-    impl TmpRoot {
-        fn new(prefix: &str) -> Self {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-            let path =
-                std::env::temp_dir().join(format!("{prefix}-{}-{nanos}-{n}", std::process::id()));
-            std::fs::create_dir_all(&path).unwrap();
-            Self(path)
-        }
-
-        fn path(&self) -> &Path {
-            &self.0
-        }
-    }
-
-    impl Drop for TmpRoot {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
 
     #[test]
     fn identity_defaults_only_missing_observed_and_rejects_malformed_values() {

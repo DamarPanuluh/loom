@@ -302,7 +302,7 @@ pub fn expected_projection(store: &Store, journey: &Node) -> Result<ExpectedExer
             );
         }
         let locator = store
-            .get_facet(&exposes.id, TargetKind::Edge, "locator")?
+            .edge_locator(&exposes.id)?
             .filter(|value| !value.trim().is_empty());
         public_entries.push(ExpectedPublicEntry {
             codefile_id: codefile.id,
@@ -608,7 +608,7 @@ pub fn topology_problems(
         let expected_aggregate: String =
             expected_locators.into_iter().collect::<Vec<_>>().join(";");
         let actual_aggregate = store
-            .get_facet(&edge.id, TargetKind::Edge, "locator")?
+            .edge_locator(&edge.id)?
             .unwrap_or_default();
         if actual_aggregate != expected_aggregate {
             problems.push(format!(

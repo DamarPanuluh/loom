@@ -11,6 +11,10 @@ use crate::model::{Edge, EdgeKind, GroundingRole, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
 
+/// Most notes carried on one context packet; the rest are counted, not shown.
+/// Surfaced by `loom limits`.
+pub(crate) const NOTE_CAP: usize = 6;
+
 pub(super) fn node_context(store: &Store, node: &Node, purpose: &str) -> Result<TraversalContext> {
     let mut ctx = TraversalContext {
         purpose: purpose.into(),
@@ -143,7 +147,7 @@ pub(super) fn edge_context(store: &Store, edge: &Edge, purpose: &str) -> Result<
         if let Some(file) = store.get_node(&edge.to_id)? {
             ctx.read_set.push(FileRead {
                 path: file.name,
-                locator: store.get_facet(&edge.id, crate::model::TargetKind::Edge, "locator")?,
+                locator: store.edge_locator(&edge.id)?,
                 why: "live symbol proposed as the reviewed Pattern exemplar".into(),
             });
         }
@@ -200,7 +204,7 @@ fn push_intent_read_set(store: &Store, ctx: &mut TraversalContext, intent: &Node
         if ctx.read_set.iter().any(|r| r.path == cf.name) {
             continue;
         }
-        let locator = store.get_facet(&edge.id, crate::model::TargetKind::Edge, "locator")?;
+        let locator = store.edge_locator(&edge.id)?;
         // Never send a worker to read a ghost without saying so: a grounding
         // whose file vanished is itself the finding.
         let why = if !store.root().join(&cf.name).exists() {
@@ -277,7 +281,6 @@ fn push_notes(
     seen_reads: &mut std::collections::BTreeSet<String>,
     target_id: &str,
 ) -> Result<()> {
-    const NOTE_CAP: usize = 6;
     let notes = store.notes_for(target_id)?;
     let overflow = notes.len() > NOTE_CAP;
     for n in notes.iter().take(NOTE_CAP) {
@@ -341,7 +344,7 @@ fn push_edge_entity(
     if !seen.insert(key) {
         return Ok(());
     }
-    let locator = store.get_facet(&edge.id, crate::model::TargetKind::Edge, "locator")?;
+    let locator = store.edge_locator(&edge.id)?;
     ctx.linked_entities.push(LinkedEntity {
         role: role.into(),
         kind: "edge".into(),

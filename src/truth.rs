@@ -15,43 +15,47 @@
 //! one place that answers "for this axis, what is the authoritative write, what
 //! must NOT be written, and what downstream form must be refreshed after."
 
-use serde::Serialize;
 
-/// A form of truth in the graph. Ordered from "what should exist" through
-/// "how the world sees it", mirroring the maturity ladder's ascent.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum TruthAxis {
-    /// What behavior should exist. Authoritative form: the `Intent`.
-    Intent,
-    /// Where behavior is realized. Authoritative form: code + `implements`.
-    Implementation,
-    /// How behavior is proven. Authoritative form: `Validation`/journey + `validates`.
-    Proof,
-    /// Whether a recorded claim has been inspected. Authoritative form: an
-    /// asserted edge verdict (analyzer/quality/validator, by edge kind).
-    Verdict,
-    /// Evidence-backed findings awaiting adjudication. Authoritative form:
-    /// a durable finding verdict on an asserted or derived Finding.
-    Signal,
-    /// The world-facing projection. Authoritative form: the exported graph file.
-    Projection,
-    /// Where the graph is thinnest relative to what depends on it. Authoritative
-    /// form: stronger proof on high-blast-radius behavior. Unlike every other
-    /// axis this one never closes — it re-ranks.
-    Risk,
+use crate::model::{str_enum, ParseEnumError};
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::str::FromStr;
+
+str_enum! {
+    /// A form of truth in the graph. Ordered from "what should exist" through
+    /// "how the world sees it", mirroring the maturity ladder's ascent.
+    ///
+    /// Through `str_enum!`, so the canonical strings, `ALL`, `FromStr` and the
+    /// serde impls all come from this one variant list. It used to carry a
+    /// hand-written `as_str`, a separate `TRUTH_AXES` const, AND
+    /// `#[serde(rename_all)]` — three mechanisms that had to agree on every name.
+    TruthAxis {
+        /// What behavior should exist. Authoritative form: the `Intent`.
+        Intent => "intent",
+        /// Where behavior is realized. Authoritative form: code + `implements`.
+        Implementation => "implementation",
+        /// How behavior is proven. Authoritative form: `Validation`/journey + `validates`.
+        Proof => "proof",
+        /// Whether a recorded claim has been inspected. Authoritative form: an
+        /// asserted edge verdict (analyzer/quality/validator, by edge kind).
+        Verdict => "verdict",
+        /// Evidence-backed findings awaiting adjudication. Authoritative form:
+        /// a durable finding verdict on an asserted or derived Finding.
+        Signal => "signal",
+        /// The world-facing projection. Authoritative form: the exported graph file.
+        Projection => "projection",
+        /// Where the graph is thinnest relative to what depends on it.
+        /// Authoritative form: stronger proof on high-blast-radius behavior.
+        /// Unlike every other axis this one never closes — it re-ranks.
+        Risk => "risk",
+    }
 }
 
-/// Every axis, ladder order. The self-teaching guide walks this.
-pub const TRUTH_AXES: &[TruthAxis] = &[
-    TruthAxis::Intent,
-    TruthAxis::Implementation,
-    TruthAxis::Proof,
-    TruthAxis::Verdict,
-    TruthAxis::Signal,
-    TruthAxis::Projection,
-    TruthAxis::Risk,
-];
+
+/// Every axis, ladder order — an alias for the macro-generated `ALL`, kept
+/// because callers and `tests/ring9.rs` name it. Not a second list: change a
+/// variant above and this follows.
+pub const TRUTH_AXES: &[TruthAxis] = TruthAxis::ALL;
 
 /// The concrete guidance for one axis: how to make it true, what NOT to write
 /// while doing so (lane discipline), and what dependent form to refresh after.
@@ -73,18 +77,6 @@ pub struct TruthGap {
 }
 
 impl TruthAxis {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            TruthAxis::Intent => "intent",
-            TruthAxis::Implementation => "implementation",
-            TruthAxis::Proof => "proof",
-            TruthAxis::Verdict => "verdict",
-            TruthAxis::Signal => "signal",
-            TruthAxis::Projection => "projection",
-            TruthAxis::Risk => "risk",
-        }
-    }
-
     /// The guidance for closing this axis. This is the matrix: one arm per axis,
     /// authored once and read by compass, work items, and the guide.
     pub fn gap(self) -> TruthGap {

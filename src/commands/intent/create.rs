@@ -89,9 +89,9 @@ fn check_level(level: &str) -> Result<()> {
 
 fn check_lifecycle(lifecycle: &str, allow_deprecated: bool) -> Result<()> {
     let lifecycles = if allow_deprecated {
-        ALL_LIFECYCLES
+        crate::model::IntentLifecycle::all_names()
     } else {
-        ACTIVE_LIFECYCLES
+        crate::model::IntentLifecycle::active_names()
     };
     if !lifecycles.contains(&lifecycle) {
         bail!(

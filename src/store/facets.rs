@@ -71,7 +71,7 @@ impl Store {
             );
         }
         self.require_annotation_target(target_id, target_kind)?;
-        if target_kind == TargetKind::Edge && key == "locator" {
+        if target_kind == TargetKind::Edge && key == crate::model::LOCATOR_FACET {
             if let Some(edge) = self.get_edge(target_id)? {
                 if edge.kind == EdgeKind::Exemplar {
                     let file = self
@@ -341,7 +341,7 @@ impl Store {
                     .filter(|f| {
                         f.target_kind == TargetKind::Edge
                             && f.target_id == e.id
-                            && f.key == "locator"
+                            && f.key == crate::model::LOCATOR_FACET
                             && !f.value.trim().is_empty()
                     })
                     .collect();

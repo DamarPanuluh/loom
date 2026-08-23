@@ -12,7 +12,7 @@
 
 use crate::lane::{LadderInputs, Lane, QueueDepths};
 use crate::model::{EdgeKind, InspectionStatus, NodeType, TargetKind, TruthClass};
-use crate::store::Store;
+use crate::store::{Snapshot, Store};
 use crate::Result;
 use serde::Serialize;
 
@@ -122,6 +122,13 @@ impl LadderInputs {
     /// The ONE gather. Every rung, the compass, and every queue depth read from
     /// this single snapshot, so two predicates can never drift apart.
     pub fn gather(store: &Store) -> Result<LadderInputs> {
+        Self::gather_with(store, &store.snapshot()?)
+    }
+
+    /// [`gather`](LadderInputs::gather) over a snapshot the caller already
+    /// holds. `loom status` gathers the ladder AND runs doctor and the layer
+    /// detector; without this each leg built its own whole-graph snapshot.
+    pub fn gather_with(store: &Store, snap: &Snapshot) -> Result<LadderInputs> {
         let identity = store.identity()?;
         let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?;
         let active: Vec<_> = intents
@@ -203,7 +210,7 @@ impl LadderInputs {
         // of one quantity, agreeing only until one of them changed.
         let unproven_implemented = crate::workitem::unproven_implemented_intents(store)?.len();
 
-        let smells = crate::signal::smells(store)?;
+        let smells = crate::signal::smells_with(store, snap)?;
         // Journey proof gaps block `proven` unless the intent's journey axis is
         // deliberately waived. (Both the waiver and this suppression are slated
         // for deletion once proof strength is derived rather than asserted.)
@@ -230,7 +237,7 @@ impl LadderInputs {
 
         // One actionable list feeds both this status projection and the audit
         // queue. Split it only for the human-readable rung detail.
-        let audit_backlog = crate::audit::backlog(store)?;
+        let audit_backlog = crate::audit::backlog_with(store, snap)?;
         let doctor_issues = audit_backlog
             .iter()
             .filter(|finding| finding.kind == "doctor_issue")
@@ -340,7 +347,12 @@ pub fn ladder(store: &Store) -> Result<Ladder> {
 /// callgraph build, export render, detector suite, audit pass — runs once, not
 /// twice.
 pub fn ladder_and_depths(store: &Store) -> Result<(Ladder, QueueDepths)> {
-    let inputs = LadderInputs::gather(store)?;
+    ladder_and_depths_with(store, &store.snapshot()?)
+}
+
+/// [`ladder_and_depths`] over a snapshot the caller already holds.
+pub fn ladder_and_depths_with(store: &Store, snap: &Snapshot) -> Result<(Ladder, QueueDepths)> {
+    let inputs = LadderInputs::gather_with(store, snap)?;
     let depths = QueueDepths::from_inputs(&inputs);
     let ladder = ladder_from_inputs(store, &inputs)?;
     Ok((ladder, depths))

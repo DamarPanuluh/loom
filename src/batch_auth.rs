@@ -743,39 +743,10 @@ pub fn covering_envelopes(
 
 #[cfg(test)]
 mod tests {
+    use crate::testutil::TmpRoot;
     use super::*;
-    use std::path::{Path, PathBuf};
-    use std::sync::atomic::{AtomicU64, Ordering};
+    
 
-    static TMP_COUNTER: AtomicU64 = AtomicU64::new(0);
-
-    struct TmpRoot(PathBuf);
-
-    impl TmpRoot {
-        fn new() -> Self {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let n = TMP_COUNTER.fetch_add(1, Ordering::SeqCst);
-            let path = std::env::temp_dir().join(format!(
-                "loom-batch-auth-{}-{nanos}-{n}",
-                std::process::id()
-            ));
-            std::fs::create_dir_all(&path).unwrap();
-            Self(path)
-        }
-
-        fn path(&self) -> &Path {
-            &self.0
-        }
-    }
-
-    impl Drop for TmpRoot {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
 
     fn envelope() -> BatchAuthorization {
         let subjects = vec!["finding-1".to_string()];
@@ -819,7 +790,7 @@ mod tests {
 
     #[test]
     fn fabricated_machine_prefixes_are_unresolved() {
-        let tmp = TmpRoot::new();
+        let tmp = TmpRoot::new("loom-batch-auth");
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
         let now = journal::now_iso();
         let minute = journal::minute_key(&now).unwrap();
@@ -844,7 +815,7 @@ mod tests {
 
     #[test]
     fn journal_reference_requires_a_real_entry_with_a_valid_timestamp() {
-        let tmp = TmpRoot::new();
+        let tmp = TmpRoot::new("loom-batch-auth");
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
         let mut missing = envelope();
         missing.evidence = vec!["journal:missing".into()];
@@ -878,7 +849,7 @@ mod tests {
 
     #[test]
     fn real_journal_reference_passes_only_contemporaneously() {
-        let tmp = TmpRoot::new();
+        let tmp = TmpRoot::new("loom-batch-auth");
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
         let evidence = store
             .append_journal(
@@ -938,7 +909,7 @@ mod tests {
 
     #[test]
     fn imported_envelope_and_evidence_are_not_authority() {
-        let tmp = TmpRoot::new();
+        let tmp = TmpRoot::new("loom-batch-auth");
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
         let evidence = store
             .append_journal(
@@ -994,7 +965,7 @@ mod tests {
 
     #[test]
     fn covering_ignores_imported_authority_but_accepts_a_local_envelope() {
-        let tmp = TmpRoot::new();
+        let tmp = TmpRoot::new("loom-batch-auth");
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
         let subjects = vec!["finding-1".to_string()];
         let imported_evidence = Entry {
@@ -1113,7 +1084,7 @@ mod tests {
 
     #[test]
     fn a_retrospective_human_seal_over_a_pre_burst_record_is_accepted() {
-        let tmp = TmpRoot::new();
+        let tmp = TmpRoot::new("loom-batch-auth");
         let store = Store::init(tmp.path(), Some("batch-auth"), false).unwrap();
 
         // The Q&A record: appended FIRST (before the burst facts would be).

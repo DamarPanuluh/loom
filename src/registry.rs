@@ -9,36 +9,34 @@
 //! `registry_is_total` test guards that. Endpoint types, allowed truth classes,
 //! and the owning role all live here, in one place.
 
-use crate::model::{EdgeKind, NodeType, TruthClass};
+use crate::model::{str_enum, EdgeKind, NodeType, ParseEnumError, TruthClass};
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::str::FromStr;
 
-/// The lane that owns writes for an edge kind. Role gates (ring 3) enforce this;
-/// `sync` is the special non-LLM writer for derived edges.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OwnerRole {
-    Builder,
-    Analyzer,
-    Fixer,
-    Validator,
-    Quality,
-    /// Prep lane that clears needless ratify friction (false duplicates,
-    /// mis-marked visibility) without deciding wantedness (INV-8).
-    Rectify,
-    Sync,
+str_enum! {
+    /// The lane that owns writes for an edge kind. Role gates (ring 3) enforce
+    /// this; `sync` is the special non-LLM writer for derived edges.
+    ///
+    /// Through `str_enum!` like every other string-backed vocabulary in the
+    /// crate, so `ALL`, `FromStr` and `Display` come from the variant list
+    /// instead of being re-derived per consumer. `identity::Agent::parse` and
+    /// `policy::GATEABLE_ROLES` each used to carry their own spelling of these
+    /// seven names.
+    OwnerRole {
+        Builder => "builder",
+        Analyzer => "analyzer",
+        Fixer => "fixer",
+        Validator => "validator",
+        Quality => "quality",
+        /// Prep lane that clears needless ratify friction (false duplicates,
+        /// mis-marked visibility) without deciding wantedness (INV-8).
+        Rectify => "rectify",
+        Sync => "sync",
+    }
 }
 
 impl OwnerRole {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            OwnerRole::Builder => "builder",
-            OwnerRole::Analyzer => "analyzer",
-            OwnerRole::Fixer => "fixer",
-            OwnerRole::Validator => "validator",
-            OwnerRole::Quality => "quality",
-            OwnerRole::Rectify => "rectify",
-            OwnerRole::Sync => "sync",
-        }
-    }
-
     /// Whether this agent lane may write facts owned by `required`.
     ///
     /// `rectify` may perform the structural prep writes that normally sit on

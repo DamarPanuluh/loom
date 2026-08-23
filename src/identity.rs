@@ -37,25 +37,31 @@ impl Agent {
         if value == "solo" {
             return Ok(Self::Solo);
         }
-        let Some(lane) = value.strip_prefix("llm:") else {
+        // Both the accepted set and the message come from `OwnerRole::ALL`, so a
+        // new lane cannot be accepted by the parser while the error still lists
+        // the old set — this used to be a hand-written match plus the same
+        // sentence typed out twice.
+        let role = value
+            .strip_prefix("llm:")
+            .and_then(|lane| lane.parse::<OwnerRole>().ok())
+            .filter(|role| *role != OwnerRole::Sync);
+        let Some(role) = role else {
             bail!(
-                "unrecognized LOOM_AGENT '{value}' — use canonical llm:<builder|analyzer|fixer|validator|quality|rectify>, explicit solo, or leave it unset for solo"
+                "unrecognized LOOM_AGENT '{value}' — use canonical llm:<{}>, explicit solo, or leave it unset for solo",
+                Agent::lane_names().join("|")
             );
         };
-        let role = match lane {
-            "builder" => OwnerRole::Builder,
-            "analyzer" => OwnerRole::Analyzer,
-            "fixer" => OwnerRole::Fixer,
-            "validator" => OwnerRole::Validator,
-            "quality" => OwnerRole::Quality,
-            "rectify" => OwnerRole::Rectify,
-            _ => {
-                bail!(
-                    "unrecognized LOOM_AGENT '{value}' — use canonical llm:<builder|analyzer|fixer|validator|quality|rectify>, explicit solo, or leave it unset for solo"
-                )
-            }
-        };
         Ok(Self::Lane(role))
+    }
+
+    /// The lanes `LOOM_AGENT` accepts: every owner role except `sync`, which is
+    /// loom's own derived-edge writer and never an agent identity.
+    fn lane_names() -> Vec<&'static str> {
+        OwnerRole::ALL
+            .iter()
+            .filter(|role| **role != OwnerRole::Sync)
+            .map(|role| role.as_str())
+            .collect()
     }
 
     pub fn actor(self) -> String {

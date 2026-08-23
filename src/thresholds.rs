@@ -82,73 +82,130 @@ pub fn clear(store: &Store) -> Result<()> {
     store.remove_meta(THRESHOLDS_META_KEY)
 }
 
-/// Canonical gate names — the `config.thresholds` JSON keys, in display order.
-/// Ownership smells are not count-gated (`tangled_file` uses graph connectedness).
+/// One tunable detector gate — the single place a gate's name, its field, and
+/// its numeric width are stated together.
+///
+/// The five names used to appear four times over: a `GATES` const, `pairs()`,
+/// `set_gate`'s match and `reset_gate`'s match, with a test whose only job was
+/// to guard that the first two still agreed. Adding a gate meant four edits and
+/// the compiler caught none of them; now it is one variant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Gate {
+    MaxFileLoc,
+    MaxSymbolComplexity,
+    MaxSymbolLoc,
+    MaxNesting,
+    MaxArgs,
+}
+
+impl Gate {
+    /// Every gate, in display order. Ownership smells are not count-gated
+    /// (`tangled_file` uses graph connectedness), so none appears here.
+    pub const ALL: &'static [Gate] = &[
+        Gate::MaxFileLoc,
+        Gate::MaxSymbolComplexity,
+        Gate::MaxSymbolLoc,
+        Gate::MaxNesting,
+        Gate::MaxArgs,
+    ];
+
+    /// The `config.thresholds` JSON key for this gate. `const` so [`GATES`]
+    /// can be built from the variants instead of restating their strings.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Gate::MaxFileLoc => "max_file_loc",
+            Gate::MaxSymbolComplexity => "max_symbol_complexity",
+            Gate::MaxSymbolLoc => "max_symbol_loc",
+            Gate::MaxNesting => "max_nesting",
+            Gate::MaxArgs => "max_args",
+        }
+    }
+
+    fn parse(name: &str) -> Option<Gate> {
+        Gate::ALL.iter().copied().find(|g| g.as_str() == name)
+    }
+
+    /// This gate's current value.
+    pub fn value(self, t: &Thresholds) -> u64 {
+        match self {
+            Gate::MaxFileLoc => t.max_file_loc as u64,
+            Gate::MaxSymbolComplexity => u64::from(t.max_symbol_complexity),
+            Gate::MaxSymbolLoc => t.max_symbol_loc as u64,
+            Gate::MaxNesting => u64::from(t.max_nesting),
+            Gate::MaxArgs => u64::from(t.max_args),
+        }
+    }
+
+    /// Write `value`, refusing anything too large for the gate's own width.
+    /// User input, so never a silent truncation.
+    fn write(self, t: &mut Thresholds, value: u64) -> Result<()> {
+        let too_big = || anyhow!("value {value} is too large for gate '{}'", self.as_str());
+        match self {
+            Gate::MaxFileLoc => t.max_file_loc = usize::try_from(value).map_err(|_| too_big())?,
+            Gate::MaxSymbolComplexity => {
+                t.max_symbol_complexity = u32::try_from(value).map_err(|_| too_big())?
+            }
+            Gate::MaxSymbolLoc => t.max_symbol_loc = usize::try_from(value).map_err(|_| too_big())?,
+            Gate::MaxNesting => t.max_nesting = u32::try_from(value).map_err(|_| too_big())?,
+            Gate::MaxArgs => t.max_args = u32::try_from(value).map_err(|_| too_big())?,
+        }
+        Ok(())
+    }
+}
+
+/// Canonical gate names, in display order. Every string comes from
+/// [`Gate::as_str`], so a renamed gate cannot leave a stale spelling here.
 pub const GATES: &[&str] = &[
-    "max_file_loc",
-    "max_symbol_complexity",
-    "max_symbol_loc",
-    "max_nesting",
-    "max_args",
+    Gate::MaxFileLoc.as_str(),
+    Gate::MaxSymbolComplexity.as_str(),
+    Gate::MaxSymbolLoc.as_str(),
+    Gate::MaxNesting.as_str(),
+    Gate::MaxArgs.as_str(),
 ];
 
 impl Thresholds {
     /// Current `(gate, value)` pairs in [`GATES`] order — for display and JSON.
     pub fn pairs(&self) -> Vec<(&'static str, u64)> {
-        vec![
-            ("max_file_loc", self.max_file_loc as u64),
-            (
-                "max_symbol_complexity",
-                u64::from(self.max_symbol_complexity),
-            ),
-            ("max_symbol_loc", self.max_symbol_loc as u64),
-            ("max_nesting", u64::from(self.max_nesting)),
-            ("max_args", u64::from(self.max_args)),
-        ]
+        Gate::ALL
+            .iter()
+            .map(|gate| (gate.as_str(), gate.value(self)))
+            .collect()
     }
 
     /// Set one gate by its canonical name; errors on an unknown gate or a value
     /// too large for the gate's type (user input, so never a silent truncation).
     pub fn set_gate(&mut self, gate: &str, value: u64) -> Result<()> {
-        let too_big = || anyhow!("value {value} is too large for gate '{gate}'");
-        let as_u32 = || u32::try_from(value).map_err(|_| too_big());
-        let as_usize = || usize::try_from(value).map_err(|_| too_big());
-        match gate {
-            "max_file_loc" => self.max_file_loc = as_usize()?,
-            "max_symbol_complexity" => self.max_symbol_complexity = as_u32()?,
-            "max_symbol_loc" => self.max_symbol_loc = as_usize()?,
-            "max_nesting" => self.max_nesting = as_u32()?,
-            "max_args" => self.max_args = as_u32()?,
-            "max_file_owners" => bail!(
+        if gate == "max_file_owners" {
+            bail!(
                 "max_file_owners is retired — tangled_file uses graph connectedness \
                  (relates/hierarchy/scenario-of), not an owner-count gate"
-            ),
-            other => bail!(
-                "unknown threshold gate '{other}' — one of: {}",
-                GATES.join(", ")
-            ),
+            );
         }
-        Ok(())
+        let Some(g) = Gate::parse(gate) else {
+            bail!(
+                "unknown threshold gate '{gate}' — one of: {}",
+                GATES.join(", ")
+            );
+        };
+        g.write(self, value)
     }
 
     /// Reset one gate to its shipped default; errors on an unknown gate.
     pub fn reset_gate(&mut self, gate: &str) -> Result<()> {
-        let d = Self::default();
-        match gate {
-            "max_file_loc" => self.max_file_loc = d.max_file_loc,
-            "max_symbol_complexity" => self.max_symbol_complexity = d.max_symbol_complexity,
-            "max_symbol_loc" => self.max_symbol_loc = d.max_symbol_loc,
-            "max_nesting" => self.max_nesting = d.max_nesting,
-            "max_args" => self.max_args = d.max_args,
-            "max_file_owners" => bail!(
+        if gate == "max_file_owners" {
+            bail!(
                 "max_file_owners is retired — tangled_file uses graph connectedness, not an owner-count gate"
-            ),
-            other => bail!(
-                "unknown threshold gate '{other}' — one of: {}",
-                GATES.join(", ")
-            ),
+            );
         }
-        Ok(())
+        let Some(g) = Gate::parse(gate) else {
+            bail!(
+                "unknown threshold gate '{gate}' — one of: {}",
+                GATES.join(", ")
+            );
+        };
+        // Reset is "write the shipped default", so it reuses the same writer
+        // rather than a second per-field match.
+        g.write(self, g.value(&Self::default()))
     }
 }
 
@@ -278,6 +335,7 @@ fn fitted(samples: &mut [f64], floor: f64, step: f64, current: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::testutil::TmpRoot;
     use super::*;
 
     /// Calibration may only ever RELAX. Found by running loom against a real
@@ -306,43 +364,14 @@ mod tests {
         // No samples: keep what is in force rather than proposing from nothing.
         assert_eq!(fitted(&mut [], 1.0, 1.0, 6.0), 6.0);
     }
-    use std::path::PathBuf;
-    use std::sync::atomic::{AtomicU64, Ordering};
-    use std::time::{SystemTime, UNIX_EPOCH};
+    
+    
+    
 
     /// A unique temp dir that removes itself on drop (same shape as the
     /// integration-test `Tmp` and the store module's own `TmpRoot`).
-    struct TmpRoot(PathBuf);
-
-    impl TmpRoot {
-        fn new() -> Self {
-            static COUNTER: AtomicU64 = AtomicU64::new(0);
-            let nanos = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-            let p = std::env::temp_dir().join(format!(
-                "loom_thresholds_test_{}_{nanos}_{n}",
-                std::process::id()
-            ));
-            std::fs::create_dir_all(&p).unwrap();
-            TmpRoot(p)
-        }
-
-        fn path(&self) -> &Path {
-            &self.0
-        }
-    }
-
-    impl Drop for TmpRoot {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
-
     fn fresh_store() -> (TmpRoot, Store) {
-        let tmp = TmpRoot::new();
+        let tmp = TmpRoot::new("loom-thresholds-test");
         let store = Store::init(tmp.path(), Some("t"), false).unwrap();
         (tmp, store)
     }

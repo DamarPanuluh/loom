@@ -12,6 +12,14 @@ use super::*;
 impl Store {
     // ---- edges -----------------------------------------------------------
 
+    /// The locator facet on a grounding edge: where inside its file the
+    /// behavior lives. One reader for a key that 26 call sites were spelling
+    /// out as a three-argument `get_facet` by hand.
+    pub fn edge_locator(&self, edge_id: &str) -> Result<Option<String>> {
+        self.get_facet(edge_id, TargetKind::Edge, crate::model::LOCATOR_FACET)
+    }
+
+
     /// Add an edge, validated against the edge-kind registry. New edges are
     /// created uninspected (asserted) or current (derived) with empty evidence.
     pub fn add_edge(
@@ -418,11 +426,11 @@ impl Store {
         // grounding, so re-open it explicitly. `stale_cause: rehomed` routes it
         // through the analyze queue to re-earn the claim on the new intent.
         let new = self.ensure_edge(EdgeKind::Implements, successor_intent_id, &old.to_id)?;
-        if let Some(loc) = self.get_facet(edge_id, TargetKind::Edge, "locator")? {
+        if let Some(loc) = self.edge_locator(edge_id)? {
             self.set_facet(
                 &new.id,
                 TargetKind::Edge,
-                "locator",
+                crate::model::LOCATOR_FACET,
                 &loc,
                 TruthClass::Asserted,
             )?;

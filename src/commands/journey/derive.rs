@@ -1155,16 +1155,7 @@ fn ratification_batch(
         crate::batch_auth::append_envelope(store, &envelope)?.id,
     ))
 }
-fn canonical_json(value: Value) -> Value {
-    match value {
-        Value::Array(values) => Value::Array(values.into_iter().map(canonical_json).collect()),
-        Value::Object(object) => {
-            let sorted: BTreeMap<String, Value> = object
-                .into_iter()
-                .map(|(key, value)| (key, canonical_json(value)))
-                .collect();
-            Value::Object(sorted.into_iter().collect())
-        }
-        scalar => scalar,
-    }
-}
+/// Canonical JSON key ordering. The rule lives in `crate::canonical` — it used
+/// to exist five times under four names, each feeding a hash another module
+/// compared against.
+use crate::canonical::canonicalize as canonical_json;

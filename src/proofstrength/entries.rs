@@ -116,7 +116,7 @@ pub(super) fn validation_entries(store: &Store, validation_id: &str) -> Result<V
         let Some(file) = store.get_node(&edge.to_id)? else {
             continue;
         };
-        let locator = store.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+        let locator = store.edge_locator(&edge.id)?;
         if locator
             .as_deref()
             .is_some_and(crate::locator::is_anchor_locator)

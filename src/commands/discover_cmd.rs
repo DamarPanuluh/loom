@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::grammar::{
-    ACTIVE_LIFECYCLES, ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
+    ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
 };
 
 /// Keyword scoring shared by `loom find` and the door's landing menu: score
@@ -367,7 +367,7 @@ fn project_groundings(store: &Store, intent_id: &str) -> Result<Vec<FindGroundin
                 .map(|n| n.name)
                 .unwrap_or_else(|| edge.to_id.clone()),
             locator: store
-                .get_facet(&edge.id, TargetKind::Edge, "locator")?
+                .edge_locator(&edge.id)?
                 .unwrap_or_default(),
             role: store.grounding_role(&edge.id)?.as_str().into(),
             status: edge.status.as_str().into(),
@@ -653,7 +653,7 @@ fn grammar_json() -> serde_json::Value {
         },
         "intent_facets": {
             "level": LEVELS,
-            "lifecycle_at_add": ACTIVE_LIFECYCLES,
+            "lifecycle_at_add": crate::model::IntentLifecycle::active_names(),
             "visibility": VISIBILITIES,
             "aspect": ASPECTS,
             "origin": ["human", "llm"],
@@ -766,7 +766,7 @@ pub(crate) fn schema_cmd(json: bool) -> Result<()> {
 mod tests {
     use super::grammar_json;
     use crate::grammar::{
-        ACTIVE_LIFECYCLES, ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
+        ASPECTS, LEVELS, PLACEHOLDER_TOKENS, RATIFICATION_STATES, VISIBILITIES,
     };
 
     #[test]
@@ -785,7 +785,7 @@ mod tests {
         assert_eq!(facets["level"], serde_json::json!(LEVELS));
         assert_eq!(
             facets["lifecycle_at_add"],
-            serde_json::json!(ACTIVE_LIFECYCLES)
+            serde_json::json!(crate::model::IntentLifecycle::active_names())
         );
         assert_eq!(facets["visibility"], serde_json::json!(VISIBILITIES));
         assert_eq!(facets["aspect"], serde_json::json!(ASPECTS));

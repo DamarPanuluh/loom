@@ -454,7 +454,7 @@ fn duplicate_pairs<'a>(
             }
             let file = e.to_id.clone();
             let keys = realizing.entry(intent.id.clone()).or_default();
-            match store.get_facet(&e.id, TargetKind::Edge, "locator")? {
+            match store.edge_locator(&e.id)? {
                 Some(loc) if crate::locator::is_module_scope(&loc) => {
                     keys.insert((file, String::new()));
                 }

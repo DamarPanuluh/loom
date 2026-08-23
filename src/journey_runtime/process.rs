@@ -171,23 +171,13 @@ fn failed_operation_detail(
     )
 }
 
+/// Bound a runtime failure diagnostic. Same head+tail rule as the release
+/// section, shared through `crate::text` so the two cannot drift apart.
 fn bounded_runtime_diagnostic(text: &str) -> String {
-    if text.len() <= FAILURE_DIAGNOSTIC_BYTES {
-        return text.trim().to_string();
-    }
-    let half = FAILURE_DIAGNOSTIC_BYTES / 2;
-    let mut head = half;
-    while !text.is_char_boundary(head) {
-        head -= 1;
-    }
-    let mut tail = text.len() - half;
-    while !text.is_char_boundary(tail) {
-        tail += 1;
-    }
-    format!(
-        "{}\n...[diagnostic output omitted]...\n{}",
-        text[..head].trim_end(),
-        text[tail..].trim_start()
+    crate::text::bounded_head_tail(
+        text,
+        FAILURE_DIAGNOSTIC_BYTES,
+        "...[diagnostic output omitted]...",
     )
 }
 
@@ -246,7 +236,7 @@ pub(crate) struct TemporaryRoot(PathBuf);
 
 impl TemporaryRoot {
     pub(crate) fn create(root: &Path) -> Result<Self> {
-        let parent = root.join(".loom").join("tmp");
+        let parent = root.join(crate::LOOM_DIR).join("tmp");
         std::fs::create_dir_all(&parent)?;
         for sequence in 0..1000_u32 {
             let path = parent.join(format!("journey-{}-{sequence}", std::process::id()));

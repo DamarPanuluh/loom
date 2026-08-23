@@ -12,7 +12,7 @@ use crate::subprocess::Captured;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-const VALIDATION_OUTPUT_EXCERPT_BYTES: usize = 8192;
+pub(crate) const VALIDATION_OUTPUT_EXCERPT_BYTES: usize = 8192;
 
 /// The uniform result the engine records, whatever ran the proof. The recorder
 /// maps each variant to a validation status + evidence identically across

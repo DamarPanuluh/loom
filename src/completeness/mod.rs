@@ -218,20 +218,10 @@ fn projection_current(edge: &Edge) -> bool {
     )
 }
 
+/// Canonical JSON key ordering. Takes `&Value` for its one caller; the rule
+/// itself lives in `crate::canonical`.
 fn canonicalize_json(value: &serde_json::Value) -> serde_json::Value {
-    match value {
-        serde_json::Value::Object(map) => {
-            let sorted: std::collections::BTreeMap<String, serde_json::Value> = map
-                .iter()
-                .map(|(key, value)| (key.clone(), canonicalize_json(value)))
-                .collect();
-            serde_json::to_value(sorted).expect("a JSON map remains serializable")
-        }
-        serde_json::Value::Array(values) => {
-            serde_json::Value::Array(values.iter().map(canonicalize_json).collect())
-        }
-        other => other.clone(),
-    }
+    crate::canonical::canonicalize(value.clone())
 }
 
 fn parse_canonical_json(raw: &str) -> Option<serde_json::Value> {
@@ -430,9 +420,6 @@ fn interface_has_code(store: &Store, interface: &Node) -> Result<bool> {
 mod readiness;
 mod scorecard;
 
-#[allow(unused_imports)]
-// kept so crate::completeness::journey_readiness_with_journal still resolves
-pub(crate) use readiness::journey_readiness_with_journal;
 pub use readiness::{
     all_journey_readiness, journey_derive_gaps, journey_derive_gaps_with, journey_readiness,
     journey_surface_gaps, journey_surface_gaps_with,

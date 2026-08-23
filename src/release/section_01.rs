@@ -66,7 +66,7 @@ pub(crate) fn rehearse_cold_journey(
         .and_then(serde_json::Value::as_str)
         .ok_or_else(|| anyhow!("Journey '{journey_id}' has no artifact"))?;
     let artifact_path = confined_inventory_file(&root, &inventory, artifact)?;
-    let artifact_source_hash = fingerprint_bytes(&fs::read(&artifact_path)?);
+    let artifact_source_hash = crate::artifact::fingerprint_bytes(&fs::read(&artifact_path)?);
     let spec = crate::journey::parse(&artifact_path)?;
     if spec.id != journey_id || !spec.profiles.contains_key(RELEASE_PROFILE) {
         bail!("cold rehearsal requires the exact registered Journey '{journey_id}' proof profile");
@@ -83,7 +83,7 @@ pub(crate) fn rehearse_cold_journey(
     let manifest_path = Path::new(SURFACE_MANIFEST_ROOT).join(format!("{journey_id}.surface.json"));
     let manifest_path_source =
         confined_inventory_file(&root, &inventory, &manifest_path.to_string_lossy())?;
-    let manifest_source_hash = fingerprint_bytes(&fs::read(&manifest_path_source)?);
+    let manifest_source_hash = crate::artifact::fingerprint_bytes(&fs::read(&manifest_path_source)?);
     let manifest = SurfaceManifest::parse_json(&manifest_path_source)?;
     if manifest
         .bindings
@@ -125,8 +125,8 @@ pub(crate) fn rehearse_cold_journey(
         &candidate_inventory,
         &manifest_path.to_string_lossy(),
     )?;
-    if fingerprint_bytes(&fs::read(&candidate_artifact)?) != artifact_source_hash
-        || fingerprint_bytes(&fs::read(&candidate_manifest_path)?) != manifest_source_hash
+    if crate::artifact::fingerprint_bytes(&fs::read(&candidate_artifact)?) != artifact_source_hash
+        || crate::artifact::fingerprint_bytes(&fs::read(&candidate_manifest_path)?) != manifest_source_hash
     {
         bail!("cold rehearsal Journey source changed during candidate materialization");
     }
@@ -148,7 +148,7 @@ pub(crate) fn rehearse_cold_journey(
     run_loom(
         candidate.path(),
         &binary,
-        &["import", "loom.graph.json", "--json"],
+        &["import", crate::GRAPH_EXPORT, "--json"],
         &mut executor,
         &sandbox,
         &mut ledger,

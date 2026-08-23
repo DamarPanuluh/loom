@@ -21,7 +21,7 @@ const DEFAULT_MAP: &str =
 /// of a two-line diagnostic (svelte-check-style human output).
 const LOCATION_ONLY_MAP: &str = r"^(?P<file>(?:[A-Za-z]:)?[^:\s][^:]*?):(?P<line>\d+)(?::\d+)?\s*$";
 pub(crate) const SCAN_TIMEOUT_SECS: u64 = 120;
-const TITLE_MSG_LIMIT: usize = 96;
+pub(crate) const TITLE_MSG_LIMIT: usize = 96;
 
 /// How an adapter's output is parsed into diagnostics.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

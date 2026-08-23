@@ -94,6 +94,11 @@ macro_rules! str_enum {
     };
 }
 
+// `macro_rules!` is textually scoped, so a sibling module cannot see this
+// without the export. Shared deliberately: `registry::OwnerRole` and
+// `truth::TruthAxis` each hand-wrote the surface it generates.
+pub(crate) use str_enum;
+
 str_enum! {
     /// The kinds of node the graph can hold. Two cornerstones (Intent, CodeFile)
     /// and their supporting families plus cross-cutting nodes.
@@ -191,6 +196,28 @@ str_enum! {
         NeedsChange => "needs_change",
         Blocked => "blocked",
         Deprecated => "deprecated",
+    }
+}
+
+impl IntentLifecycle {
+    /// Every lifecycle name, derived from the variants rather than restated.
+    /// `grammar` used to carry `ALL_LIFECYCLES`/`ACTIVE_LIFECYCLES` as raw
+    /// `&[&str]` consts, so `loom schema` published one spelling while the enum
+    /// held another; grammar cannot import `model` (model re-exports
+    /// `grammar::is_placeholder`), so the lists live here beside their source.
+    pub fn all_names() -> Vec<&'static str> {
+        Self::ALL.iter().map(|l| l.as_str()).collect()
+    }
+
+    /// Lifecycles accepted when creating or updating an ACTIVE intent: every
+    /// state except the retired one. `blocked` is wanted work whose
+    /// implementation is waiting on a recorded prerequisite — not `deprecated`.
+    pub fn active_names() -> Vec<&'static str> {
+        Self::ALL
+            .iter()
+            .filter(|l| **l != IntentLifecycle::Deprecated)
+            .map(|l| l.as_str())
+            .collect()
     }
 }
 
@@ -496,6 +523,14 @@ str_enum! {
         Edge => "edge",
     }
 }
+
+/// Facet key naming where a grounding edge points inside its file.
+///
+/// Lives here, not in `locator`, because `store::facets` special-cases this
+/// exact key at write time (facets.rs:74) and the store ring sits BELOW
+/// `locator` — a const in `locator` would invert the dependency. Every ring can
+/// see `model`.
+pub const LOCATOR_FACET: &str = "locator";
 
 /// A typed key=value attribute on a node or edge.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

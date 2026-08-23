@@ -22,11 +22,6 @@ use crate::Result;
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 
-/// The states a human may assert. `de_facto` is deliberately absent — it is
-/// derived, and there is no path from caller input to it.
-pub const ASSERTED_STATES: &[&str] =
-    &["unratified", "ratified", "rejected", "needs_reconfirmation"];
-
 /// Evidence that a human made the product decision.
 ///
 /// This separates the authority from the executor. A direct decision is made

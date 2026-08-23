@@ -64,7 +64,22 @@ impl Default for EvidencePolicy {
 
 /// Owner lanes a human gate can meaningfully apply to — the lanes `loom next`
 /// stamps onto a work packet's `owner_role`.
-pub const GATEABLE_ROLES: &[&str] = &["builder", "analyzer", "fixer", "validator", "quality"];
+///
+/// Derived from [`OwnerRole::ALL`] rather than restated: `rectify` is prep work
+/// that decides no wantedness and `sync` is loom's own writer, so neither is a
+/// lane a human can gate. Adding an owner role now shows up here automatically.
+pub fn gateable_roles() -> Vec<&'static str> {
+    crate::registry::OwnerRole::ALL
+        .iter()
+        .filter(|role| {
+            !matches!(
+                role,
+                crate::registry::OwnerRole::Rectify | crate::registry::OwnerRole::Sync
+            )
+        })
+        .map(|role| role.as_str())
+        .collect()
+}
 
 impl EvidencePolicy {
     /// Whether an owner lane is human-gated under this policy.
@@ -92,10 +107,10 @@ impl EvidencePolicy {
             );
         }
         for r in &self.human_gated_roles {
-            if !GATEABLE_ROLES.contains(&r.as_str()) {
+            if !gateable_roles().contains(&r.as_str()) {
                 bail!(
                     "unknown human-gated role '{r}'; valid lanes: {}",
-                    GATEABLE_ROLES.join(", ")
+                    gateable_roles().join(", ")
                 );
             }
         }

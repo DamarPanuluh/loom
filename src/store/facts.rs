@@ -795,7 +795,7 @@ impl Store {
         // no longer has to be believed — and no longer has to be doubted either.
         let mut probe: Option<RunRecord> = None;
         if let Some((edge, file)) = self.grounding_subject(a, edge_kind)? {
-            let locator = self.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+            let locator = self.edge_locator(&edge.id)?;
             let realizes = role == Some(crate::model::GroundingRole::Realizes);
             // A realizing grounding that names NO symbol claims the whole file.
             // Widen its citations to say so, so a span surviving verbatim inside
@@ -824,7 +824,7 @@ impl Store {
             let file = self
                 .get_node(&edge.to_id)?
                 .ok_or_else(|| anyhow!("missing exemplar file"))?;
-            let locator = self.get_facet(&edge.id, TargetKind::Edge, "locator")?;
+            let locator = self.edge_locator(&edge.id)?;
             probe = locator.as_deref().and_then(|locator| {
                 crate::runner::unique_locator_probe(&self.root, &file.name, locator)
             });

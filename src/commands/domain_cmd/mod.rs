@@ -14,6 +14,6 @@ mod surface;
 mod vocab;
 
 pub(crate) use hypothesis::hypothesis;
-pub(crate) use layers::layer_detector_state;
+pub(crate) use layers::{layer, layer_detector_state, layer_detector_state_with};
 pub(crate) use surface::{create_or_reuse_interface_surface, surface};
 pub(crate) use vocab::vocab;

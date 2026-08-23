@@ -18,7 +18,13 @@ pub struct DoctorIssue {
 }
 
 pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
-    let snap = store.snapshot()?;
+    doctor_with(store, &store.snapshot()?)
+}
+
+/// [`doctor`] over a snapshot the caller already holds. Still needs `store`:
+/// the integrity walk re-reads nodes, edge verdicts, ratifications and journey
+/// specs that the snapshot does not carry.
+pub fn doctor_with(store: &Store, snap: &Snapshot) -> Result<Vec<DoctorIssue>> {
     let mut issues = Vec::new();
     let node_types: BTreeMap<&str, NodeType> = snap
         .nodes
@@ -81,7 +87,7 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
         // claim and doctor verifies its strict cardinality, attachment, and
         // target-file identity. Unreferenced source comments remain outside
         // the graph inventory.
-        if let Some(locator) = facet_value(&snap, &e.id, "locator") {
+        if let Some(locator) = facet_value(snap, &e.id, crate::model::LOCATOR_FACET) {
             if crate::locator::is_anchor_locator(locator) {
                 let result = match store.get_node(&e.to_id)? {
                     Some(codefile) if codefile.node_type == NodeType::CodeFile => {
@@ -172,8 +178,8 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
                     | InspectionStatus::Failing
                     | InspectionStatus::Independent
             )
-            && edge_role(&snap, &e.id) == GroundingRole::Consumes
-            && !criterion_names_seam(&snap, e)
+            && edge_role(snap, &e.id) == GroundingRole::Consumes
+            && !criterion_names_seam(snap, e)
         {
             issues.push(DoctorIssue {
                 kind: "consumes_without_seam".into(),
@@ -184,8 +190,8 @@ pub fn doctor(store: &Store) -> Result<Vec<DoctorIssue>> {
             });
         }
     }
-    issues.extend(hierarchy_cycle_issues(&snap));
-    issues.extend(journey_integrity_issues(store, &snap));
+    issues.extend(hierarchy_cycle_issues(snap));
+    issues.extend(journey_integrity_issues(store, snap));
     // Validation names ending in `  proof` — the fingerprint left when a
     // retired proof-level token was excised immediately before a trailing
     // `proof` without rejoining words. Mid-phrase double spaces are legitimate.
@@ -497,7 +503,7 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
                 nodes
                     .get(candidate.to_id.as_str())
                     .is_some_and(|target| target.node_type == NodeType::CodeFile)
-                    && facet_value(snap, &candidate.id, "locator")
+                    && facet_value(snap, &candidate.id, crate::model::LOCATOR_FACET)
                         .is_some_and(|value| !value.trim().is_empty())
             }) {
                 issues.push(DoctorIssue {
@@ -536,7 +542,7 @@ fn journey_integrity_issues(store: &Store, snap: &Snapshot) -> Vec<DoctorIssue> 
             let exercises_locator = snap.edges.iter().any(|candidate| {
                 candidate.kind == EdgeKind::Exercises
                     && candidate.from_id == validation.id
-                    && facet_value(snap, &candidate.id, "locator")
+                    && facet_value(snap, &candidate.id, crate::model::LOCATOR_FACET)
                         .is_some_and(|value| !value.trim().is_empty())
             });
             let version_current = validation
@@ -644,7 +650,7 @@ fn criterion_names_seam(snap: &Snapshot, edge: &Edge) -> bool {
     snap.facets.iter().any(|f| {
         f.target_kind == TargetKind::Edge
             && f.target_id == edge.id
-            && f.key == "locator"
+            && f.key == crate::model::LOCATOR_FACET
             && !f.value.trim().is_empty()
     })
 }

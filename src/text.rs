@@ -21,6 +21,36 @@ pub fn ellipsize(s: &str, max: usize) -> String {
     out
 }
 
+/// Cap `text` at `limit` BYTES, keeping both ends and disclosing the cut.
+///
+/// The tail is as load-bearing as the head for machine output — a test runner
+/// prints its verdict last — so a head-only clip drops exactly the line a
+/// reader needs. Cuts are moved to char boundaries, and each end is trimmed so
+/// the marker does not land against ragged whitespace.
+///
+/// Bytes, not characters, because callers here are bounding captured process
+/// output against a byte budget; [`ellipsize`] is the character-cap rule for
+/// rendered text.
+pub fn bounded_head_tail(text: &str, limit: usize, marker: &str) -> String {
+    if text.len() <= limit {
+        return text.trim().to_string();
+    }
+    let half = limit / 2;
+    let mut head = half;
+    while !text.is_char_boundary(head) {
+        head -= 1;
+    }
+    let mut tail = text.len() - half;
+    while !text.is_char_boundary(tail) {
+        tail += 1;
+    }
+    format!(
+        "{}\n{marker}\n{}",
+        text[..head].trim_end(),
+        text[tail..].trim_start()
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -51,6 +81,33 @@ mod tests {
     #[test]
     fn whitespace_is_preserved_because_trimming_is_the_callers_choice() {
         assert_eq!(ellipsize("  padded  ", 60), "  padded  ");
+    }
+
+    #[test]
+    fn head_and_tail_survive_a_bounded_cut() {
+        // The tail is the half a head-only clip would drop, and it is the half
+        // a runner verdict lives in.
+        let text = format!("HEAD{}TAIL", "x".repeat(200));
+        let out = bounded_head_tail(&text, 40, "...[cut]...");
+        assert!(out.starts_with("HEAD"), "head kept: {out}");
+        assert!(out.ends_with("TAIL"), "tail kept: {out}");
+        assert!(out.contains("...[cut]..."), "cut disclosed: {out}");
+        assert!(out.len() < text.len());
+    }
+
+    #[test]
+    fn text_within_the_budget_is_only_trimmed() {
+        assert_eq!(bounded_head_tail("  short  ", 100, "...[cut]..."), "short");
+    }
+
+    /// The budget is in bytes, so a naive slice would land inside a multi-byte
+    /// character and panic. Both cuts move to a char boundary first.
+    #[test]
+    fn a_byte_budget_never_splits_a_character() {
+        let text = "日本語".repeat(50);
+        let out = bounded_head_tail(&text, 41, "...[cut]...");
+        assert!(out.contains("...[cut]..."));
+        assert!(out.chars().count() > 0);
     }
 
     #[test]

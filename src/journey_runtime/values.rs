@@ -493,19 +493,10 @@ pub(crate) fn materialize_setup(root: &Path, setup: &TemporarySetup) -> Result<(
     Ok(())
 }
 
-pub(crate) fn canonicalize(value: Value) -> Value {
-    match value {
-        Value::Array(values) => Value::Array(values.into_iter().map(canonicalize).collect()),
-        Value::Object(object) => {
-            let sorted: BTreeMap<String, Value> = object
-                .into_iter()
-                .map(|(key, value)| (key, canonicalize(value)))
-                .collect();
-            Value::Object(sorted.into_iter().collect())
-        }
-        scalar => scalar,
-    }
-}
+/// Canonical JSON key ordering. The rule lives in `crate::canonical` — it used
+/// to exist five times under four names, each feeding a hash another module
+/// compared against.
+pub(crate) use crate::canonical::canonicalize as canonicalize;
 
 pub fn report_observation_json(report: &RuntimeReport) -> Result<Vec<u8>> {
     // This is structured evidence from checks Loom actually performed. The

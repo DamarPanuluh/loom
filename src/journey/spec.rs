@@ -617,19 +617,10 @@ pub fn parse(path: &Path) -> Result<JourneySpec> {
     Ok(spec)
 }
 
-pub(super) fn canonicalize_value(value: Value) -> Value {
-    match value {
-        Value::Array(values) => Value::Array(values.into_iter().map(canonicalize_value).collect()),
-        Value::Object(object) => {
-            let sorted: BTreeMap<String, Value> = object
-                .into_iter()
-                .map(|(key, value)| (key, canonicalize_value(value)))
-                .collect();
-            Value::Object(sorted.into_iter().collect())
-        }
-        scalar => scalar,
-    }
-}
+/// Canonical JSON key ordering. The rule lives in `crate::canonical` — it used
+/// to exist five times under four names, each feeding a hash another module
+/// compared against.
+pub(super) use crate::canonical::canonicalize as canonicalize_value;
 
 #[cfg(test)]
 mod tests {

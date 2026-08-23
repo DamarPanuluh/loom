@@ -24,7 +24,7 @@
 //! turn that claim on its own records.
 
 use crate::model::{Claim, NodeType, TargetKind, Verification};
-use crate::store::Store;
+use crate::store::{Snapshot, Store};
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -703,6 +703,12 @@ fn unanchored_settled_facts(store: &Store) -> Result<Vec<AuditFinding>> {
 /// Self-audit findings lead because an unearned record outranks structural
 /// cleanup. Doctor issues and unresolved smells follow in stable order.
 pub fn backlog(store: &Store) -> Result<Vec<AuditFinding>> {
+    backlog_with(store, &store.snapshot()?)
+}
+
+/// [`backlog`] over a snapshot the caller already holds. It folds in doctor and
+/// smells, each of which would otherwise build its own.
+pub fn backlog_with(store: &Store, snap: &Snapshot) -> Result<Vec<AuditFinding>> {
     let mut out = run(store)?;
     for finding in &mut out {
         let orphan = match &finding.subject {
@@ -715,7 +721,7 @@ pub fn backlog(store: &Store) -> Result<Vec<AuditFinding>> {
             finding.subject = AuditSubject::Graph(id);
         }
     }
-    for issue in crate::signal::doctor(store)? {
+    for issue in crate::signal::doctor_with(store, snap)? {
         // Resolve the message's 32-hex token to its live subject; a store
         // failure propagates (an audit that silently reclassifies on a read
         // error would undercount its own subjects), while genuine absence
@@ -739,7 +745,7 @@ pub fn backlog(store: &Store) -> Result<Vec<AuditFinding>> {
             remedy: format!("`loom doctor` reports: {}", issue.kind),
         });
     }
-    for smell in crate::signal::smells(store)? {
+    for smell in crate::signal::smells_with(store, snap)? {
         if crate::signal::smell_has_resolving_adjudication(store, &smell.identity)? {
             continue;
         }

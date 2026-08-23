@@ -278,7 +278,7 @@ fn probe_empty_workspace_policy(
         bail!("nonempty workspace rejection probe did not observe the exact policy failure");
     }
     let initialized = DetachedCandidate::allocate(root, "initialized-probe")?;
-    fs::create_dir_all(initialized.path().join(".loom"))?;
+    fs::create_dir_all(initialized.path().join(crate::LOOM_DIR))?;
     let initialized_result = copy_candidate(root, initialized.path(), ledger);
     let initialized_rejected = initialized_result.as_ref().is_err_and(|error| {
         validate_workspace_probe_failure("preinitialized", &error.to_string()).is_ok()
@@ -362,7 +362,7 @@ fn run_isolated_gate(
         run_loom(
             candidate.path(),
             &binary,
-            &["import", "loom.graph.json", "--json"],
+            &["import", crate::GRAPH_EXPORT, "--json"],
             runtime.executor,
             &sandbox,
             ledger,

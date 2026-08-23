@@ -110,7 +110,7 @@ fn size_outlier_clusters(snap: &Snapshot) -> Vec<DebtCluster> {
                     kind: "size_outlier".into(),
                     message: format!(
                         "{} is {} loc (repo upper fence {:.0})",
-                        super::node_name(snap, id),
+                        super::graph::node_name(snap, id),
                         *v as u64,
                         fence
                     ),

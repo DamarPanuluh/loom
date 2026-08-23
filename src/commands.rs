@@ -169,7 +169,7 @@ pub fn run(cli: Cli) -> Result<()> {
         Command::Hypothesis { cmd } => domain_cmd::hypothesis(cli.graph.as_deref(), cmd, cli.json),
         Command::Surface { cmd } => domain_cmd::surface(cli.graph.as_deref(), cmd, cli.json),
         Command::Vocab { cmd } => domain_cmd::vocab(cli.graph.as_deref(), cmd, cli.json),
-        Command::Layer { cmd } => layer(cli.graph.as_deref(), cmd, cli.json),
+        Command::Layer { cmd } => domain_cmd::layer(cli.graph.as_deref(), cmd, cli.json),
         Command::Limits => limits_cmd::limits_cmd(cli.json),
         Command::Smells => diagnostics_cmd::smells_cmd(cli.graph.as_deref(), cli.json),
         Command::Debt { cmd } => diagnostics_cmd::debt(cli.graph.as_deref(), cmd, cli.json),
@@ -369,15 +369,15 @@ fn stamp_writer_version(store: &Store) {
     let _ = store.set_meta(crate::WRITER_SCHEMA_KEY, &crate::SCHEMA_VERSION.to_string());
 }
 
-fn parse_version(value: &str) -> Option<(u64, u64, u64)> {
-    let mut parts = value.split('.').map(|part| part.parse::<u64>().ok());
-    Some((parts.next()??, parts.next()??, parts.next()??))
-}
-
 fn warn_on_writer_drift(store: &Store) {
     let current = crate::CRATE_VERSION;
     if let Ok(Some(stamped)) = store.get_meta(crate::WRITER_VERSION_KEY) {
-        if let (Some(mine), Some(writer)) = (parse_version(current), parse_version(&stamped)) {
+        // Same parser the schema plane gates migration consent with, so a
+        // version this warning ignores can never be one that silently migrates.
+        use crate::store::parse_crate_version;
+        if let (Some(mine), Some(writer)) =
+            (parse_crate_version(current), parse_crate_version(&stamped))
+        {
             if mine < writer {
                 eprintln!(
                     "warning: this loom binary is v{current}, but the graph was last written by \
@@ -638,49 +638,6 @@ pub(crate) fn query_terms(query: &str) -> Vec<String> {
         q.dedup();
     }
     q
-}
-
-fn layer(graph: Option<&Path>, cmd: LayerCmd, json: bool) -> Result<()> {
-    let store = open(graph)?;
-    match cmd {
-        LayerCmd::Order { layers } => {
-            if layers.is_empty() {
-                bail!("provide the layer order, top first");
-            }
-            store.set_meta("layer_order", &serde_json::to_string(&layers)?)?;
-            pulse::emit_line(
-                &store,
-                json,
-                serde_json::json!({ "layer_order": layers }),
-                "loom sync",
-                format!("layer order: {}", layers.join(" > ")),
-            )
-        }
-        LayerCmd::List => {
-            let state = domain_cmd::layer_detector_state(&store)?;
-            if json {
-                println!("{}", serde_json::to_string_pretty(&state)?);
-            } else if let Some(order) = state.get("order").and_then(|v| v.as_array()) {
-                if order.is_empty() {
-                    println!("no layer order declared");
-                } else {
-                    let labels: Vec<&str> = order.iter().filter_map(|v| v.as_str()).collect();
-                    println!("{}", labels.join(" > "));
-                }
-            }
-            Ok(())
-        }
-        LayerCmd::Clear => {
-            store.set_meta("layer_order", "[]")?;
-            pulse::emit_line(
-                &store,
-                json,
-                serde_json::json!({ "layer_order": [] }),
-                "loom status",
-                "layer order cleared".to_string(),
-            )
-        }
-    }
 }
 
 #[cfg(test)]

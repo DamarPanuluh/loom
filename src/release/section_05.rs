@@ -570,8 +570,8 @@ impl DependencyCacheGuard {
             .iter()
             .map(|root| (&root.environment, &root.path, &root.after_hash))
             .collect();
-        let before_hash = fingerprint_bytes(&serde_json::to_vec(&before_projection)?);
-        let after_hash = fingerprint_bytes(&serde_json::to_vec(&after_projection)?);
+        let before_hash = crate::artifact::fingerprint_bytes(&serde_json::to_vec(&before_projection)?);
+        let after_hash = crate::artifact::fingerprint_bytes(&serde_json::to_vec(&after_projection)?);
         Ok(DependencyCacheAttestation {
             strategy: "declared_cache_roots_before_after_verified".into(),
             unchanged: roots.iter().all(|root| root.unchanged),

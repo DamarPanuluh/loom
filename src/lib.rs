@@ -18,6 +18,7 @@ pub mod artifact;
 pub mod audit;
 pub mod batch_auth;
 pub mod callgraph;
+pub mod canonical;
 pub mod candidate_surface_policy;
 pub mod checkpoint;
 pub mod cli;
@@ -67,6 +68,14 @@ pub mod store;
 pub mod subprocess;
 pub mod sync;
 pub mod text;
+
+/// Shared test scaffolding. Compiled only under `cfg(test)`, so it ships in no
+/// binary. It exists because eight modules had each grown their OWN copy of the
+/// same unique-temp-directory harness — same clock+pid+counter naming, same
+/// create-on-new, same remove-on-drop — and three of the eight had quietly lost
+/// the `Drop`, leaking a directory per test run.
+#[cfg(test)]
+pub(crate) mod testutil;
 pub mod thresholds;
 pub mod travel;
 pub mod truth;

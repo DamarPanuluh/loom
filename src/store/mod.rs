@@ -83,13 +83,22 @@ pub struct RestoreReport {
     pub dropped_tags: Vec<(String, String, String)>,
 }
 
+/// Meta key holding the declared architecture layer order.
+///
+/// Named here, beside the allowlist below, because that entry is the one that
+/// must match exactly — a typo there silently stops the layer order travelling
+/// in the export, and nothing tied the allowlist to the eight sites that read
+/// and write the key. `policy::EVIDENCE_POLICY_META_KEY` already had a const
+/// for exactly this reason; this key did not.
+pub const LAYER_ORDER_META_KEY: &str = "layer_order";
+
 /// Meta keys that travel with the export. Each is repo-portable configuration
 /// (what to track, what to ignore, the layer order, registered scan adapters,
 /// structural finding thresholds) — without these an imported graph silently
 /// loses its coverage exclusions and detectors. Local-only or identity meta
 /// keys must NOT be added here.
 pub const PORTABLE_META_KEYS: &[&str] = &[
-    "layer_order",
+    LAYER_ORDER_META_KEY,
     "ignores",
     "codefile_globs",
     "observed_globs",
@@ -144,41 +153,15 @@ pub(crate) use lock::{
 };
 pub(crate) use schema::{
     ahead_schema_error, apply_schema_migrations, configure, configure_read,
-    ensure_supported_persisted_schema, schema_migration_requires_consent,
+    ensure_supported_persisted_schema, parse_crate_version, schema_migration_requires_consent,
 };
 
 #[cfg(test)]
 mod tests {
+    use crate::testutil::TmpRoot;
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
 
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-    struct TmpRoot(PathBuf);
-
-    impl TmpRoot {
-        fn new(prefix: &str) -> Self {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-            let path =
-                std::env::temp_dir().join(format!("{prefix}-{}-{nanos}-{n}", std::process::id()));
-            std::fs::create_dir_all(&path).unwrap();
-            Self(path)
-        }
-
-        fn path(&self) -> &Path {
-            &self.0
-        }
-    }
-
-    impl Drop for TmpRoot {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
 
     #[test]
     fn facet_and_tag_writes_reject_missing_typed_targets() {

@@ -22,9 +22,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path};
 
 const POLICY_VERSION: &str = "candidate-surface/v1";
-const MAX_NESTING: usize = 3;
-const MAX_ARGV_TOKENS: usize = 512;
-const MAX_ARGV_BYTES: usize = 256 * 1024;
+pub(crate) const MAX_NESTING: usize = 3;
+pub(crate) const MAX_ARGV_TOKENS: usize = 512;
+pub(crate) const MAX_ARGV_BYTES: usize = 256 * 1024;
 const DETACHED_OUTER_ENVIRONMENT: &[&str] = &["CARGO_HOME", "RUSTUP_HOME"];
 
 const RESERVED_ENVIRONMENT: &[&str] = &[

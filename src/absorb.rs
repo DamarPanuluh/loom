@@ -112,7 +112,7 @@ fn claimed(store: &Store) -> Result<Claimed> {
                 continue;
             };
             owned.insert(cf.name.clone(), intent.id.clone());
-            if let Some(loc) = store.get_facet(&e.id, TargetKind::Edge, "locator")? {
+            if let Some(loc) = store.edge_locator(&e.id)? {
                 if let Some(sym) = locator_symbol(&loc) {
                     located.insert(sym, (intent.id.clone(), cf.name.clone()));
                 }

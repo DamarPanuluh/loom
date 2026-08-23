@@ -16,24 +16,60 @@ use crate::model::NodeType;
 /// (and must ripple). It is a pure content hash — no domain knowledge — so it
 /// serves code files, journey specs, and any future artifact class alike.
 pub fn fingerprint(content: &str) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in content.bytes() {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    }
-    format!("{h:016x}")
+    fingerprint_bytes(content.as_bytes())
 }
 
-/// Byte-wise variant for non-text artifacts (executables). Same FNV-1a
-/// schedule as [`fingerprint`], so text fingerprints and byte fingerprints
-/// agree on identical content.
+/// Byte-wise fingerprint — the one implementation of the schedule.
+///
+/// [`fingerprint`] delegates here rather than repeating the loop, so text
+/// fingerprints and byte fingerprints agree on identical content BY
+/// CONSTRUCTION. They used to be two copies of the same constants held level
+/// by a comment, which is exactly how a stored `content_hash` and a byte hash
+/// silently fork.
 pub fn fingerprint_bytes(content: &[u8]) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for &b in content {
-        h ^= b as u64;
-        h = h.wrapping_mul(0x0100_0000_01b3);
+    let mut hasher = Fnv1a::new();
+    hasher.write(content);
+    hasher.finish()
+}
+
+/// Streaming FNV-1a 64-bit — the ONE place the schedule constants appear.
+///
+/// Streaming rather than all-at-once because the release rehearsal hashes
+/// declared toolchain cache roots, and `~/.rustup` alone is gigabytes across
+/// six figures of files: buffering it to hash at the end got the rehearsal
+/// SIGKILLed. Everything else in the crate that needs this schedule —
+/// [`fingerprint_bytes`], the release tree hash, `store::codec::fnv_hex_digest`
+/// — is expressed in terms of this type, so the offset basis and the prime are
+/// written once. They were written five times, in three modules, all feeding
+/// hashes that get compared against each other.
+pub struct Fnv1a(u64);
+
+impl Default for Fnv1a {
+    fn default() -> Self {
+        Self::new()
     }
-    format!("{h:016x}")
+}
+
+impl Fnv1a {
+    pub fn new() -> Self {
+        Self(0xcbf2_9ce4_8422_2325)
+    }
+
+    pub fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.write_byte(byte);
+        }
+    }
+
+    pub fn write_byte(&mut self, byte: u8) {
+        self.0 ^= u64::from(byte);
+        self.0 = self.0.wrapping_mul(0x0100_0000_01b3);
+    }
+
+    /// The 16-hex digest. Bare — callers add their own plane prefix.
+    pub fn finish(self) -> String {
+        format!("{:016x}", self.0)
+    }
 }
 
 /// A ground-artifact class: the seam through which a domain registers a kind of

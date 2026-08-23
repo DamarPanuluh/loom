@@ -22,6 +22,8 @@ pub use continuation::{pending_continuation, resume_interactive};
 pub(crate) use execute::execute_interactive_with_anchors;
 pub use execute::{execute, execute_interactive, execute_observed};
 pub use observation::{ExecutableBoundary, JourneyObservation};
+// Surfaced by `loom limits`: both bound what a worker reads back from a journey run.
+pub(crate) use types::{FAILURE_DIAGNOSTIC_BYTES, STREAM_EXCERPT_BYTES};
 pub(crate) use process::resolve_trusted_executable;
 pub use types::{
     CompiledHumanDecision, CompiledJourneyProof, CompiledProfileShape, CompiledSetup,

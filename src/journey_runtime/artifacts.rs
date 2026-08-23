@@ -11,7 +11,7 @@ pub fn proof_path(root: &Path, journey_id: &str, profile: &str) -> Result<PathBu
     crate::journey::validate_stable_id("journey", journey_id)?;
     crate::journey::validate_stable_id("profile", profile)?;
     Ok(root
-        .join(".loom")
+        .join(crate::LOOM_DIR)
         .join("compiled")
         .join("journeys")
         .join(journey_id)

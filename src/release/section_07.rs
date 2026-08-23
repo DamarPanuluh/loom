@@ -237,7 +237,7 @@ fn inventory_content_hash(root: &Path, entries: &[SourceInventoryEntry]) -> Resu
         bytes.extend_from_slice(&content);
         bytes.push(0xff);
     }
-    Ok(fingerprint_bytes(&bytes))
+    Ok(crate::artifact::fingerprint_bytes(&bytes))
 }
 
 fn git_sandboxed_output(

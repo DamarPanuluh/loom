@@ -20,7 +20,7 @@ use std::time::Duration;
 
 pub const CHECKPOINT_RECOMMENDATION_SCHEMA: &str = "loom.checkpoint-recommendation/v1";
 const GIT_TIMEOUT: Duration = Duration::from_secs(10);
-const GIT_OUTPUT_CAP: usize = 16 * 1024 * 1024;
+pub(crate) const GIT_OUTPUT_CAP: usize = 16 * 1024 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]

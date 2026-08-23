@@ -609,7 +609,7 @@ fn resolve_note_target(store: &crate::store::Store, key: &str) -> Result<(String
                     .ok()
                     .flatten()
                     .map(|n| n.name)
-                    .unwrap_or_else(|| id.chars().take(8).collect())
+                    .unwrap_or_else(|| crate::model::short(id).to_string())
             };
             let name = format!(
                 "{} —{}→ {}",

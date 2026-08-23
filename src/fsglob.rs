@@ -104,45 +104,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::testutil::TmpRoot;
     use super::expand;
-    use std::path::{Path, PathBuf};
-    use std::sync::atomic::{AtomicU64, Ordering};
+    
 
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-    struct TmpRoot(PathBuf);
-
-    impl TmpRoot {
-        fn new(prefix: &str) -> Self {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos();
-            let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-            let path =
-                std::env::temp_dir().join(format!("{prefix}-{}-{nanos}-{n}", std::process::id()));
-            std::fs::create_dir_all(&path).unwrap();
-            Self(path)
-        }
-
-        fn path(&self) -> &Path {
-            &self.0
-        }
-
-        fn write(&self, rel: &str, text: &str) {
-            let path = self.0.join(rel);
-            if let Some(parent) = path.parent() {
-                std::fs::create_dir_all(parent).unwrap();
-            }
-            std::fs::write(path, text).unwrap();
-        }
-    }
-
-    impl Drop for TmpRoot {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.0);
-        }
-    }
 
     #[test]
     fn expands_recursive_globs_sorted_and_deduped() {

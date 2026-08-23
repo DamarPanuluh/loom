@@ -15,9 +15,6 @@ mod graph;
 mod imports;
 mod smells;
 
-// debt.rs / debt/cochange.rs call `super::node_name`.
-#[allow(unused_imports)]
-use graph::node_name;
 
 pub use adjudication::{
     adjudication_of, findings_view, needed_findings, smell_det_key,
@@ -26,5 +23,5 @@ pub use adjudication::{
 };
 pub use debt::{debt, debt_cluster_id, DebtCluster};
 pub(crate) use debt::{CO_CHANGE_MAX_COMMITS, GIT_TIMEOUT_SECS};
-pub use doctor::{doctor, DoctorIssue};
-pub use smells::{smells, Smell};
+pub use doctor::{doctor, doctor_with, DoctorIssue};
+pub use smells::{smells, smells_with, Smell};

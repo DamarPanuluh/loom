@@ -63,10 +63,11 @@ const RELEASE_CODE_GATES: &[&[&str]] = &[
     &["cargo", "build", "--quiet"],
 ];
 const RELEASE_CACHE_ROOT_ENVIRONMENT: &[&str] = &["CARGO_HOME", "RUSTUP_HOME"];
-const SOURCE_EXCLUDES: [&str; 3] = [".git", ".loom", "target"];
+const SOURCE_EXCLUDES: [&str; 3] = [".git", crate::LOOM_DIR, "target"];
 // Release-owned authority and process scratch lives here after the caller
 // baseline is captured. It is neither caller source nor result identity.
-const CALLER_SOURCE_EXCLUDES: [&str; 4] = [".git", ".loom", ".release-sandbox", "target"];
+const CALLER_SOURCE_EXCLUDES: [&str; 4] =
+    [".git", crate::LOOM_DIR, ".release-sandbox", "target"];
 // loom.graph.json is excluded because the gate's own export step rewrites it
 // with candidate-local journal ids (<millis>-<pid>-<seq>), fresh validation
 // node ids, and wall-clock timestamps — legitimate per-candidate identity that
@@ -76,16 +77,16 @@ const CALLER_SOURCE_EXCLUDES: [&str; 4] = [".git", ".loom", ".release-sandbox", 
 // proven separately by its own doctor/audit/coverage/drift and dogfood gates.
 const RESULT_EXCLUDES: [&str; 5] = [
     ".git",
-    ".loom",
+    crate::LOOM_DIR,
     ".release-sandbox",
-    "loom.graph.json",
+    crate::GRAPH_EXPORT,
     "target",
 ];
 const INVENTORY_RESERVED_COMPONENTS: [&str; 10] = [
     ".claude",
     ".commandcode",
     ".git",
-    ".loom",
+    crate::LOOM_DIR,
     ".nodeterm",
     ".qoder",
     ".reasonix",
@@ -107,7 +108,7 @@ const INVENTORY_SECRET_PATTERNS: [&str; 12] = [
     "id_rsa",
     "secrets.json",
 ];
-const RELEASE_DIAGNOSTIC_BYTES: usize = 64 * 1024;
+pub(crate) const RELEASE_DIAGNOSTIC_BYTES: usize = 64 * 1024;
 const DERIVATION_AUTHORITY_SCHEMA: &str = "loom.release-derivation-authority/v1";
 const BOUND_DERIVATION_AUTHORITY_SCHEMA: &str = "loom.release-bound-derivation-authority/v1";
 const DERIVATION_AUTHORITY_TOKEN_PREFIX: &str = "rda1_";

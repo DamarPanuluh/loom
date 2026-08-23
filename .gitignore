@@ -27,3 +27,7 @@
 # per-session drain campaign reports are operator scratch, never source.
 campaign-report-*.md
 .commandcode/
+
+# raw agent output from the mechanism-sweep cleanup campaign — the distilled
+# findings live in gates-cleanup/findings.md; these dumps are regenerable scratch.
+gates-cleanup/*.json

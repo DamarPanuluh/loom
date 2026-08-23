@@ -69,7 +69,7 @@ pub fn surface_projection_hash(
                 json!({
                     "codefile_name": codefile.name,
                     "codefile_id": codefile.id,
-                    "locator": store.get_facet(&exposed.id, TargetKind::Edge, "locator")?,
+                    "locator": store.edge_locator(&exposed.id)?,
                 }),
             ));
         }

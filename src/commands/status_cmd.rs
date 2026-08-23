@@ -304,21 +304,24 @@ struct StatusFacts {
 }
 
 fn gather_status_facts(store: &Store) -> Result<StatusFacts> {
-    let (ladder, queues) = crate::maturity::ladder_and_depths(store)?;
+    // ONE whole-graph snapshot for the whole command. Every leg below used to
+    // build its own: the ladder (via smells and audit::backlog -> doctor +
+    // smells), doctor again here, and the layer detector — five reads of the
+    // same graph to answer one `loom status`.
+    let snap = store.snapshot()?;
+    let (ladder, queues) = crate::maturity::ladder_and_depths_with(store, &snap)?;
     Ok(StatusFacts {
         id: store.identity()?,
-        journeys: store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len(),
-        intents: store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len(),
-        files: store
-            .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
-            .len(),
-        edges: store.list_edges(None, usize::MAX)?.len(),
+        journeys: store.count_nodes(Some(NodeType::Journey))?,
+        intents: store.count_nodes(Some(NodeType::Intent))?,
+        files: store.count_nodes(Some(NodeType::CodeFile))?,
+        edges: store.count_edges(None)?,
         ladder,
         queues,
         pulse: workitem::graph_state(store)?,
         scope: crate::coverage::coverage_scope_summary(store)?,
-        doctor_issues: crate::signal::doctor(store)?,
-        layering: super::domain_cmd::layer_detector_state(store)?,
+        doctor_issues: crate::signal::doctor_with(store, &snap)?,
+        layering: super::domain_cmd::layer_detector_state_with(store, &snap)?,
     })
 }
 

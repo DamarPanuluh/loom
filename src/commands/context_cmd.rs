@@ -503,7 +503,7 @@ fn node_entity(role: &str, node: &Node) -> LinkedEntity {
 }
 
 fn edge_locator(store: &Store, edge: &Edge) -> Result<Option<String>> {
-    store.get_facet(&edge.id, TargetKind::Edge, "locator")
+    store.edge_locator(&edge.id)
 }
 
 fn push_entity(context: &mut TraversalContext, entity: LinkedEntity) {

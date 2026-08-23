@@ -13,6 +13,7 @@ use crate::lane::Lane;
 use crate::model::{Edge, EdgeKind, InspectionStatus, Node, NodeType};
 use crate::store::Store;
 use crate::Result;
+pub(crate) use context::NOTE_CAP;
 pub(crate) use queues::analyze_serves;
 pub(crate) use queues::needed_finding_repair_lane;
 pub(crate) use queues::ungrounded_implemented_intents;
@@ -488,7 +489,7 @@ pub(crate) fn closure_problem(item: &WorkItem) -> Option<String> {
     // The closure command must accept the packet's own target. Commands carry
     // the full id, the short id prefix, the name, or — for edge pairs — the
     // endpoint names; name-resolving commands make all of them equivalent.
-    let short: String = item.target.id.chars().take(8).collect();
+    let short: String = crate::model::short(&item.target.id).to_string();
     let handles: Vec<&str> = [
         Some(item.target.id.as_str()),
         Some(item.target.name.as_str()),

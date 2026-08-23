@@ -4,7 +4,7 @@ use anyhow::{bail, Context};
 use globset::{Glob, GlobSetBuilder};
 use serde::{Deserialize, Serialize};
 
-use crate::model::{Claim, EdgeKind, InspectionStatus, NodeType, TargetKind};
+use crate::model::{Claim, EdgeKind, InspectionStatus, NodeType};
 use crate::store::{Store, Subject};
 
 /// Conservative packet budget. Omitted matches remain recoverable through the
@@ -270,7 +270,7 @@ pub fn inspect(store: &Store, node: &crate::model::Node) -> crate::Result<Patter
             .get_node(&edge.to_id)?
             .ok_or_else(|| anyhow::anyhow!("missing exemplar endpoint"))?;
         let locator = store
-            .get_facet(&edge.id, TargetKind::Edge, "locator")?
+            .edge_locator(&edge.id)?
             .unwrap_or_default();
         let resolution =
             match crate::runner::resolve_locator(store.root(), &file.name, Some(&locator)) {

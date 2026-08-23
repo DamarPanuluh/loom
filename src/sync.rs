@@ -612,7 +612,7 @@ fn stale_unresolved_locator(
     include_uninspected: bool,
     report: &mut SyncReport,
 ) -> Result<()> {
-    let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
+    let Some(locator) = store.edge_locator(&edge.id)? else {
         return Ok(());
     };
     let locator = locator.trim();
@@ -663,7 +663,7 @@ fn plan_anchor_staleness(store: &Store) -> Result<Vec<AnchorStaleness>> {
             if kind == EdgeKind::Implements && store.edge_superseded(&edge.id)? {
                 continue;
             }
-            let Some(locator) = store.get_facet(&edge.id, TargetKind::Edge, "locator")? else {
+            let Some(locator) = store.edge_locator(&edge.id)? else {
                 continue;
             };
             if !crate::locator::is_anchor_locator(&locator) {

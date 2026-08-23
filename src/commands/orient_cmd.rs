@@ -53,7 +53,7 @@ pub(crate) fn welcome(graph: Option<&Path>, json: bool) -> Result<()> {
         .iter()
         .filter(|n| n.status != "deprecated")
         .count();
-    let journeys = store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len();
+    let journeys = store.count_nodes(Some(NodeType::Journey))?;
     let ladder = crate::maturity::ladder(&store)?;
     let (headline, why) = phase_in_plain_english(&ladder.phase);
 
@@ -205,8 +205,8 @@ pub(crate) fn session(graph: Option<&Path>, json: bool) -> Result<()> {
     // One source of truth for the counts: the same pulse every work item and
     // mutating command emits. Session only adds the offer framing on top.
     let pulse = crate::workitem::graph_state(&store)?;
-    let intents = store.list_nodes(Some(NodeType::Intent), usize::MAX)?.len();
-    let journeys = store.list_nodes(Some(NodeType::Journey), usize::MAX)?.len();
+    let intents = store.count_nodes(Some(NodeType::Intent))?;
+    let journeys = store.count_nodes(Some(NodeType::Journey))?;
     let codefiles = store
         .list_nodes(Some(NodeType::CodeFile), usize::MAX)?
         .len();
